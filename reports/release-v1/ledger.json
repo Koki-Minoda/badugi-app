@@ -1,0 +1,5209 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-02T01:55:17.391Z",
+  "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+  "statusSource": "https://github.com/Koki-Minoda/badugi-app/issues/123",
+  "releaseGatePassed": false,
+  "records": [
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "cash",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "cash",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "partial",
+      "exposure": "public-catalog",
+      "evidence": [
+        {
+          "path": "reports/release-v1/engine-soak-20261102.json",
+          "scope": "Independent sampled controller hands with passive check/call/pat policy; fresh bankroll per hand. Not continuous cash, CPU strength, browser, tournament or independent evaluator certification.",
+          "sampledHands": 10000,
+          "result": "sampled-pass"
+        }
+      ],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Independent sampled passive hands do not close the full game gate",
+        "Browser continuity, edge actions, independent oracle and physical-device evidence required"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "cash",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "cash",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "cash",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "cash",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "cash",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "cash",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "tournament",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "tournament",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "tournament",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "tournament",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "tournament",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "tournament",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "tournament",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "tournament",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "mix",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "mix",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "mix",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "mix",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "mix",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "mix",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "mix",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "mix",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "p2p",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "p2p",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "p2p",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "p2p",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "p2p",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "p2p",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "p2p",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B01",
+      "appId": "nlh",
+      "game": "NLH",
+      "mode": "p2p",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "cash",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "cash",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "partial",
+      "exposure": "public-catalog",
+      "evidence": [
+        {
+          "path": "reports/release-v1/engine-soak-20261102.json",
+          "scope": "Independent sampled controller hands with passive check/call/pat policy; fresh bankroll per hand. Not continuous cash, CPU strength, browser, tournament or independent evaluator certification.",
+          "sampledHands": 10000,
+          "result": "sampled-pass"
+        }
+      ],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Independent sampled passive hands do not close the full game gate",
+        "Browser continuity, edge actions, independent oracle and physical-device evidence required"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "cash",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "cash",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "cash",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "cash",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "cash",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "cash",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "tournament",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "tournament",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "tournament",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "tournament",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "tournament",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "tournament",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "tournament",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "tournament",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "mix",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "mix",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "mix",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "mix",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "mix",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "mix",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "mix",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "mix",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "p2p",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "p2p",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "p2p",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "p2p",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "p2p",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "p2p",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "p2p",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B05",
+      "appId": "plo",
+      "game": "PLO",
+      "mode": "p2p",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "cash",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "cash",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "partial",
+      "exposure": "public-catalog",
+      "evidence": [
+        {
+          "path": "reports/release-v1/engine-soak-20261102.json",
+          "scope": "Independent sampled controller hands with passive check/call/pat policy; fresh bankroll per hand. Not continuous cash, CPU strength, browser, tournament or independent evaluator certification.",
+          "sampledHands": 10000,
+          "result": "sampled-pass"
+        }
+      ],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Independent sampled passive hands do not close the full game gate",
+        "Browser continuity, edge actions, independent oracle and physical-device evidence required"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "cash",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "cash",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "cash",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "cash",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "cash",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "cash",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "tournament",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "tournament",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "tournament",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "tournament",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "tournament",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "tournament",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "tournament",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "tournament",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "mix",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "mix",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "mix",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "mix",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "mix",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "mix",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "mix",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "mix",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "p2p",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "p2p",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "p2p",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "p2p",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "p2p",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "p2p",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "p2p",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "B09",
+      "appId": "flo8",
+      "game": "FLO8",
+      "mode": "p2p",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "cash",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "cash",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "partial",
+      "exposure": "public-catalog",
+      "evidence": [
+        {
+          "path": "reports/release-v1/engine-soak-20261102.json",
+          "scope": "Independent sampled controller hands with passive check/call/pat policy; fresh bankroll per hand. Not continuous cash, CPU strength, browser, tournament or independent evaluator certification.",
+          "sampledHands": 10000,
+          "result": "sampled-pass"
+        }
+      ],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Independent sampled passive hands do not close the full game gate",
+        "Browser continuity, edge actions, independent oracle and physical-device evidence required"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "cash",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "cash",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "cash",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "cash",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "cash",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "cash",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "tournament",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "tournament",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "tournament",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "tournament",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "tournament",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "tournament",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "tournament",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "tournament",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "mix",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "mix",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "mix",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "mix",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "mix",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "mix",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "mix",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "mix",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "p2p",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "p2p",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "p2p",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "p2p",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "p2p",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "p2p",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "p2p",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST1",
+      "appId": "stud",
+      "game": "Stud",
+      "mode": "p2p",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "cash",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "cash",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "partial",
+      "exposure": "public-catalog",
+      "evidence": [
+        {
+          "path": "reports/release-v1/engine-soak-20261102.json",
+          "scope": "Independent sampled controller hands with passive check/call/pat policy; fresh bankroll per hand. Not continuous cash, CPU strength, browser, tournament or independent evaluator certification.",
+          "sampledHands": 10000,
+          "result": "sampled-pass"
+        }
+      ],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Independent sampled passive hands do not close the full game gate",
+        "Browser continuity, edge actions, independent oracle and physical-device evidence required"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "cash",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "cash",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "cash",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "cash",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "cash",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "cash",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "tournament",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "tournament",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "tournament",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "tournament",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "tournament",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "tournament",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "tournament",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "tournament",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "mix",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "mix",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "mix",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "mix",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "mix",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "mix",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "mix",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "mix",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "p2p",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "p2p",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "p2p",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "p2p",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "p2p",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "p2p",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "p2p",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST2",
+      "appId": "stud8",
+      "game": "Stud8",
+      "mode": "p2p",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "cash",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "cash",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "partial",
+      "exposure": "public-catalog",
+      "evidence": [
+        {
+          "path": "reports/release-v1/engine-soak-20261102.json",
+          "scope": "Independent sampled controller hands with passive check/call/pat policy; fresh bankroll per hand. Not continuous cash, CPU strength, browser, tournament or independent evaluator certification.",
+          "sampledHands": 10000,
+          "result": "sampled-pass"
+        }
+      ],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Independent sampled passive hands do not close the full game gate",
+        "Browser continuity, edge actions, independent oracle and physical-device evidence required"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "cash",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "cash",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "cash",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "cash",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "cash",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "cash",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "tournament",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "tournament",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "tournament",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "tournament",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "tournament",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "tournament",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "tournament",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "tournament",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "mix",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "mix",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "mix",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "mix",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "mix",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "mix",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "mix",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "mix",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "p2p",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "p2p",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "p2p",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "p2p",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "p2p",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "p2p",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "p2p",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "ST3",
+      "appId": "razz",
+      "game": "Razz",
+      "mode": "p2p",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "cash",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "cash",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "partial",
+      "exposure": "public-catalog",
+      "evidence": [
+        {
+          "path": "reports/release-v1/engine-soak-20261102.json",
+          "scope": "Independent sampled controller hands with passive check/call/pat policy; fresh bankroll per hand. Not continuous cash, CPU strength, browser, tournament or independent evaluator certification.",
+          "sampledHands": 10000,
+          "result": "sampled-pass"
+        }
+      ],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Independent sampled passive hands do not close the full game gate",
+        "Browser continuity, edge actions, independent oracle and physical-device evidence required"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "cash",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "cash",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "cash",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "cash",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "cash",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "cash",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "tournament",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "tournament",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "tournament",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "tournament",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "tournament",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "tournament",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "tournament",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "tournament",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "mix",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "mix",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "mix",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "mix",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "mix",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "mix",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "mix",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "mix",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "p2p",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "p2p",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "p2p",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "p2p",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "p2p",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "p2p",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "p2p",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D01",
+      "appId": "deuce_to_seven_triple_draw",
+      "game": "2-7 Triple Draw",
+      "mode": "p2p",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "cash",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "cash",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "partial",
+      "exposure": "public-catalog",
+      "evidence": [
+        {
+          "path": "reports/release-v1/engine-soak-20261102.json",
+          "scope": "Independent sampled controller hands with passive check/call/pat policy; fresh bankroll per hand. Not continuous cash, CPU strength, browser, tournament or independent evaluator certification.",
+          "sampledHands": 10000,
+          "result": "sampled-pass"
+        }
+      ],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Independent sampled passive hands do not close the full game gate",
+        "Browser continuity, edge actions, independent oracle and physical-device evidence required"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "cash",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "cash",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "cash",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "cash",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "cash",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "cash",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "tournament",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "tournament",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "tournament",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "tournament",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "tournament",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "tournament",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "tournament",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "tournament",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "mix",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "mix",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "mix",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "mix",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "mix",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "mix",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "mix",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "mix",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "p2p",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "p2p",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "p2p",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "p2p",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "p2p",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "p2p",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "p2p",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D02",
+      "appId": "ace_to_five_triple_draw",
+      "game": "A-5 Triple Draw",
+      "mode": "p2p",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "cash",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "cash",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "partial",
+      "exposure": "public-catalog",
+      "evidence": [
+        {
+          "path": "reports/release-v1/engine-soak-20261102.json",
+          "scope": "Independent sampled controller hands with passive check/call/pat policy; fresh bankroll per hand. Not continuous cash, CPU strength, browser, tournament or independent evaluator certification.",
+          "sampledHands": 10000,
+          "result": "sampled-pass"
+        }
+      ],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Independent sampled passive hands do not close the full game gate",
+        "Browser continuity, edge actions, independent oracle and physical-device evidence required"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "cash",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "cash",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "cash",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "cash",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "cash",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "cash",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "tournament",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "tournament",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "tournament",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "tournament",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "tournament",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "tournament",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "tournament",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "tournament",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "career-menu-listed",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "mix",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "mix",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "mix",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "mix",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "mix",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "mix",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "mix",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "mix",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "p2p",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "p2p",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "p2p",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "p2p",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "p2p",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "p2p",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "p2p",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "D03",
+      "appId": "badugi",
+      "game": "Badugi",
+      "mode": "p2p",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "cash",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "cash",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "partial",
+      "exposure": "public-catalog",
+      "evidence": [
+        {
+          "path": "reports/release-v1/engine-soak-20261102.json",
+          "scope": "Independent sampled controller hands with passive check/call/pat policy; fresh bankroll per hand. Not continuous cash, CPU strength, browser, tournament or independent evaluator certification.",
+          "sampledHands": 10000,
+          "result": "sampled-pass"
+        }
+      ],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Independent sampled passive hands do not close the full game gate",
+        "Browser continuity, edge actions, independent oracle and physical-device evidence required"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "cash",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "cash",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "cash",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "cash",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "cash",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "cash",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "public-catalog",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "tournament",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "tournament",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "tournament",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "tournament",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "tournament",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "tournament",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "tournament",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "tournament",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "mix",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "mix",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "mix",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "mix",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "mix",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "mix",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "mix",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "mix",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "p2p",
+      "gate": "G0",
+      "name": "Critical Stability",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "p2p",
+      "gate": "G1",
+      "name": "Core Game Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "p2p",
+      "gate": "G2",
+      "name": "Tournament",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "p2p",
+      "gate": "G3",
+      "name": "UI / UX",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "p2p",
+      "gate": "G4",
+      "name": "Visual Design",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "p2p",
+      "gate": "G5",
+      "name": "Learning Loop",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "p2p",
+      "gate": "G6",
+      "name": "Coach Quality",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    },
+    {
+      "variantId": "S01",
+      "appId": "deuce_to_seven_single_draw",
+      "game": "2-7 Single Draw",
+      "mode": "p2p",
+      "gate": "G7",
+      "name": "Release Operations",
+      "state": "not_verified",
+      "exposure": "requires-route-audit",
+      "evidence": [],
+      "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "servedCommit": null,
+      "remainingFindings": [
+        "Evidence must be recorded for this exact scope"
+      ]
+    }
+  ]
+}

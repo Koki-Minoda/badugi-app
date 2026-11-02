@@ -1,0 +1,659 @@
+{
+  "generatedAt": "2026-11-02T01:56:30.214Z",
+  "sourceHashes": {
+    "docs/design/prototypes/play-comparison.html": "8646cef02116fdf77677c1db6ea5ffcea90a2748ee303d2eefca3540ed07aa0e",
+    "docs/design/prototypes/play-comparison.css": "c0428678b7d22dcc5a9a0411e2fb7a727b9cc3752e97100c755e831945856de6",
+    "docs/design/prototypes/play-comparison.js": "9b5582a3c5d7b91e7fe498abdad9f6b5466a5cdc5eb03a463eab836843c16df8"
+  },
+  "rows": [
+    {
+      "engine": "chromium",
+      "width": 390,
+      "height": 844,
+      "design": "a",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 390,
+      "height": 844,
+      "design": "a",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 390,
+      "height": 844,
+      "design": "a",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 390,
+      "height": 844,
+      "design": "b",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 390,
+      "height": 844,
+      "design": "b",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 390,
+      "height": 844,
+      "design": "b",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 390,
+      "height": 844,
+      "design": "c",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 390,
+      "height": 844,
+      "design": "c",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 390,
+      "height": 844,
+      "design": "c",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 844,
+      "height": 390,
+      "design": "a",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 844,
+      "height": 390,
+      "design": "a",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 844,
+      "height": 390,
+      "design": "a",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 844,
+      "height": 390,
+      "design": "b",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 844,
+      "height": 390,
+      "design": "b",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 844,
+      "height": 390,
+      "design": "b",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 844,
+      "height": 390,
+      "design": "c",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 844,
+      "height": 390,
+      "design": "c",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 844,
+      "height": 390,
+      "design": "c",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 320,
+      "height": 568,
+      "design": "a",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 320,
+      "height": 568,
+      "design": "a",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 320,
+      "height": 568,
+      "design": "a",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 320,
+      "height": 568,
+      "design": "b",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 320,
+      "height": 568,
+      "design": "b",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 320,
+      "height": 568,
+      "design": "b",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 320,
+      "height": 568,
+      "design": "c",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 320,
+      "height": 568,
+      "design": "c",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 320,
+      "height": 568,
+      "design": "c",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 1280,
+      "height": 900,
+      "design": "a",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 1280,
+      "height": 900,
+      "design": "a",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 1280,
+      "height": 900,
+      "design": "a",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 1280,
+      "height": 900,
+      "design": "b",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 1280,
+      "height": 900,
+      "design": "b",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 1280,
+      "height": 900,
+      "design": "b",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 1280,
+      "height": 900,
+      "design": "c",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 1280,
+      "height": 900,
+      "design": "c",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "chromium",
+      "width": 1280,
+      "height": 900,
+      "design": "c",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 390,
+      "height": 844,
+      "design": "a",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 390,
+      "height": 844,
+      "design": "a",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 390,
+      "height": 844,
+      "design": "a",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 390,
+      "height": 844,
+      "design": "b",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 390,
+      "height": 844,
+      "design": "b",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 390,
+      "height": 844,
+      "design": "b",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 390,
+      "height": 844,
+      "design": "c",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 390,
+      "height": 844,
+      "design": "c",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 390,
+      "height": 844,
+      "design": "c",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 844,
+      "height": 390,
+      "design": "a",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 844,
+      "height": 390,
+      "design": "a",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 844,
+      "height": 390,
+      "design": "a",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 844,
+      "height": 390,
+      "design": "b",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 844,
+      "height": 390,
+      "design": "b",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 844,
+      "height": 390,
+      "design": "b",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 844,
+      "height": 390,
+      "design": "c",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 844,
+      "height": 390,
+      "design": "c",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 844,
+      "height": 390,
+      "design": "c",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 320,
+      "height": 568,
+      "design": "a",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 320,
+      "height": 568,
+      "design": "a",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 320,
+      "height": 568,
+      "design": "a",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 320,
+      "height": 568,
+      "design": "b",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 320,
+      "height": 568,
+      "design": "b",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 320,
+      "height": 568,
+      "design": "b",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 320,
+      "height": 568,
+      "design": "c",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 320,
+      "height": 568,
+      "design": "c",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 320,
+      "height": 568,
+      "design": "c",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 1280,
+      "height": 900,
+      "design": "a",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 1280,
+      "height": 900,
+      "design": "a",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 1280,
+      "height": 900,
+      "design": "a",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 1280,
+      "height": 900,
+      "design": "b",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 1280,
+      "height": 900,
+      "design": "b",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 1280,
+      "height": 900,
+      "design": "b",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 1280,
+      "height": 900,
+      "design": "c",
+      "game": "nlh",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 1280,
+      "height": 900,
+      "design": "c",
+      "game": "stud8",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    },
+    {
+      "engine": "webkit",
+      "width": 1280,
+      "height": 900,
+      "design": "c",
+      "game": "draw",
+      "status": "PASS",
+      "scope": "prototype layout and scripted interactions"
+    }
+  ],
+  "releaseGatePassed": false
+}

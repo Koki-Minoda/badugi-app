@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ja">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MGX — Play design comparison</title><link rel="stylesheet" href="play-comparison.css"></head>
+<body>
+<header class="lab-header"><a class="wordmark" href="#">MGX<span>DESIGN LAB</span></a><p>Play Table / 3案比較 <span class="pill">操作デモ</span></p></header>
+<main class="lab">
+<section class="intro"><p class="eyebrow">DECISION, IN FOCUS</p><h1>判断に、静かな集中を。</h1><p>同じ局面を3つの構成で比較。手番、ポット、必要額、操作の分かりやすさを確かめます。</p></section>
+<section class="toolbar" aria-label="比較条件"><div class="segmented" role="group" aria-label="デザイン案"><button data-design="a" aria-pressed="false">A <span>Quiet Table</span></button><button data-design="b" aria-pressed="true">B <span>Decision First</span></button><button data-design="c" aria-pressed="false">C <span>Study Split</span></button></div><label>ゲーム <select id="game"><option value="nlh">NLH</option><option value="stud8">Stud8</option><option value="draw">2-7 Triple Draw</option></select></label><label class="switch"><input id="waiting" type="checkbox"> 相手の手番</label></section>
+<div class="comparison" data-design="b">
+<section class="device" aria-label="Play画面のデモ"><header class="table-header"><div><span class="wordmark">MGX</span><span id="game-title">NL Hold’em</span></div><button id="history-open">履歴 <span>↗</span></button></header>
+<div class="scene"><div class="table-meta"><span id="limit">NO LIMIT</span><span>6 MAX · BB表示</span></div><div class="felt"></div><div id="seats"></div><div class="center"><span class="caption">TOTAL POT</span><strong id="pot">18 <small>BB</small></strong><div id="board" class="cards"></div><span id="street" class="street">FLOP</span></div><div class="hero"><div id="hero-cards" class="cards hero-cards"></div><div class="hero-label"><span>あなた <small id="hero-position">BTN</small></span><strong>88 BB</strong></div></div></div>
+<section class="decision"><div class="turn"><span class="status-dot"></span><strong id="turn-label">あなたの番</strong><span id="call-label">コール 4 BB</span></div><div id="presets" class="presets"></div><div class="action-row"><button id="fold">フォールド</button><button id="call" class="primary">コール <b>4 BB</b></button><button id="raise">レイズ <b id="raise-value">12 BBまで</b></button></div><button id="custom-open" class="text-button">金額を指定</button><div class="reserve" hidden><label><input type="checkbox" id="reserve-check"> チェックを予約</label><span>ベットが入ったら取消</span></div><p id="decision-note" class="decision-note">現在のベット 6 BB · あなたは2 BB投入済み</p><p class="feedback" role="status" aria-live="polite" id="feedback"></p></section>
+</section>
+<aside class="study"><p class="eyebrow">REVIEW LATER</p><h2>いまは、次の判断だけ。</h2><p>結果のあとで、理由を振り返る。</p><div class="study-example"><span>前のハンド</span><strong>Value Bet</strong><p>改善点と根拠は対局後に表示。未認定の局面には点数を付けません。</p><button id="study-history">ハンドの流れを見る</button></div><p class="small">表示は説明用。採点・Solver推奨ではありません。</p></aside>
+</div>
+<section class="rationale"><div><p class="eyebrow" id="option-tag">OPTION B</p><h2 id="option-title">判断情報を、ひとまとまりに。</h2><p id="option-description"></p></div><dl><div><dt>比較すること</dt><dd>手番・Pot・必要Call額を2秒で見分けられるか</dd></div><div><dt>確かめる操作</dt><dd>Call → 金額指定 → 履歴 → 相手手番で予約</dd></div><div><dt>まだ決めないこと</dt><dd>採用確定、戦略採点、実機と初見評価の合格</dd></div></dl></section>
+<p class="footnote">MGX v1 · #293 · 実際の対局や保存処理には接続していません。全案で同じ手札・Pot・手番を表示します。</p>
+</main>
+<dialog id="history"><header><div><p class="eyebrow">CURRENT HAND</p><h2>ハンドの流れ</h2></div><button data-close="history" aria-label="履歴を閉じる">閉じる</button></header><ol id="history-line"></ol><p class="small">卓には現在の判断情報を残し、過去のアクションはここで確認。</p></dialog>
+<dialog id="amount"><header><h2>レイズ額</h2><button data-close="amount">閉じる</button></header><label>レイズ後の合計額（BB）<input id="amount-input" type="number" min="10" max="90" step="1" value="12" inputmode="decimal"></label><p class="small">現在2 BB投入済み。追加額と合計額を区別します。</p><p id="amount-error" role="status"></p><button id="amount-confirm" class="primary">この金額にする</button></dialog>
+<script src="play-comparison.js"></script></body></html>

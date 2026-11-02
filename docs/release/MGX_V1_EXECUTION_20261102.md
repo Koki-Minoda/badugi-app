@@ -59,3 +59,12 @@ Coachの独立戦略評価は別Gateとして残る。
 11:44 JST時点でdispatchの16 QA中15成功、core5-qaが実行中。配備はまだ未確認。
 自作draft PRの旧head CIも実行枠を空けるため中止した。最新headのCIは別runで確認する。
 配備成功、公開SHA照合、公開監査、重複配備のない全nightly成功が揃うまで #291を閉じない。
+
+## 続行：B選定と公開照合
+
+- ユーザーが中間のA回答をB Decision Firstへ訂正し、続行を指示。Bを実装方向として記録。実機・独立利用者の品質測定とは分ける。
+- 本番dispatch41373909127は全16 QA、backup、配備、healthを含め成功。公開SHAは9ee9609bに一致。
+- `reports/production-release/v1-20261102-1302.json` は43 requests / 20 portraits / issues0でPASS。全nightly41384089647は別runで実行中のため #291を解消済みにしない。
+- PR #297 head e3dc15d1、#300 head5e2a379a、#298 head3040b3c7のCI成功。後続commitのCIへは流用しない。
+- ブラウザ長時間QAは17/30ケース成功、4ケースcoverage不合格、Stud系9ケースを別runで検査中。PLOの別seedも不合格で、Hero stack0後の観戦区間が主因。S01も同様。基準や初回記録を変えず #303へ調査を分離。
+- Bの第一段階は #302：desktop/mobile共通の現ハンド履歴Sheet。常時stripを置換し、canonical操作イベントを読む。Appへの変更は参照先・5件制限の解除・handIdの追加のみ。engine/合法手/CPUを変更しない。

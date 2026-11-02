@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "appServedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+  "correctedTestCommit": "2f5b8e70701879ffc7e145828cde21939ed1be6b",
+  "testHashes": {
+    "tests/e2e/all-live-core5-cash-production.spec.ts": "e4847d5c05f5f993cde3376a1f107f78ff70d60a2aafe6136dea791ee227c170",
+    "tests/e2e/helpers/nextCashHandState.js": "2f82c4a31dc5e4aa7eb9bbc185936bac9a910f48a00ad461c16499565418de72"
+  },
+  "notes": "Desktop corrected run started while these exact files were uncommitted; they were committed unchanged shortly after start. SOURCE_COMMIT in the per-hand reports may still show the base commit. Android/iPhone original runs use unchanged base tests. Raw failures retained separately."
+}

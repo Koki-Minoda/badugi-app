@@ -13969,14 +13969,13 @@ export default function App() {
     dealerSeatSrc,
     playersSrc?.length ?? NUM_PLAYERS,
   );
-  const recentTableActions = (currentHandHistoryRef.current?.events ?? [])
+  const recentTableActions = (handHistoryRef.current?.events ?? [])
     .filter(
       (event) =>
         event?.type === "BET_ACTION" ||
         event?.type === "DRAW_ACTION" ||
         event?.type === "PHASE_TRANSITION",
     )
-    .slice(-5)
     .map((event) => {
       if (event.type === "PHASE_TRANSITION") {
         return {
@@ -14009,6 +14008,7 @@ export default function App() {
       };
     });
   const actionPanelInfo = {
+    handId: handIdRef.current,
     currentBet: Math.max(0, Number(controlsCurrentBet) || 0),
     heroBet: heroBetThisRound,
     toCall: heroToCall,

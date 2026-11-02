@@ -1,3 +1,4 @@
+import CurrentHandHistory from '../../components/CurrentHandHistory.jsx';
 import VariantRuleReminder from "../../learning/VariantRuleReminder.jsx";
 import { getWinningHandCue } from "../../learning/learningCatalog.js";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -1334,35 +1335,7 @@ export default function GameLayoutBase({
                       </p>
                     </div>
                   </div>
-                  {actionPanelInfo?.recentActions?.length > 0 && (
-                    <div
-                      data-testid="recent-action-strip"
-                      className={`rounded-xl border border-white/10 bg-black/25 ${useDenseActionPanel ? `${isMobilePortraitMode ? "hidden" : ""} px-2 py-1 min-[641px]:hidden` : "px-3 py-2"}`}
-                    >
-                      <p
-                        className={`${useDenseActionPanel ? "text-[9px]" : "text-[10px]"} uppercase tracking-wide text-slate-500`}
-                      >
-                        {language === "ja" ? "直前の操作" : "Last Actions"}
-                      </p>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {actionPanelInfo.recentActions
-                          .slice(-5)
-                          .map((entry, index) => (
-                            <span
-                              key={`${entry.type}-${entry.seat ?? "table"}-${entry.label}-${index}`}
-                              className={`max-w-full truncate rounded-full border border-white/10 bg-slate-950/70 px-2 py-0.5 font-semibold text-slate-100 ${
-                                useDenseActionPanel
-                                  ? "text-[9px]"
-                                  : "text-[10px]"
-                              }`}
-                              title={entry.label}
-                            >
-                              {entry.label}
-                            </span>
-                          ))}
-                      </div>
-                    </div>
-                  )}
+                  <CurrentHandHistory handId={actionPanelInfo?.handId} actions={actionPanelInfo?.recentActions} language={language} onHistory={headerProps.onNavigateHistory}/>
                   <div>{renderControlsContent()}</div>
                   <div className="flex items-center gap-2">
                   {isMobileLayout && <VariantRuleReminder variantId={gameVariant} language={language} mobile />}

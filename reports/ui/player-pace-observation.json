@@ -1,0 +1,11 @@
+{
+  "generatedAt": "2026-11-02T04:19:04.130Z",
+  "variant": "NLH",
+  "intervals": [
+    391.60000002384186,
+    389.5
+  ],
+  "minimumExpectedMs": 350,
+  "scope": "normal board CPU actions, local Chromium",
+  "releaseGatePassed": false
+}

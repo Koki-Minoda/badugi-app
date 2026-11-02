@@ -44,7 +44,7 @@ describe("npcAutoActionTiming", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("keeps the 250ms timer for non-all-in NPC draw actions", () => {
+  it("adds a readable beat to non-all-in NPC draw actions", () => {
     vi.useFakeTimers();
     const autoResolveCpuDrawIfNeeded = vi.fn();
 
@@ -59,7 +59,7 @@ describe("npcAutoActionTiming", () => {
     expect(autoResolveCpuDrawIfNeeded).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(1);
 
-    vi.advanceTimersByTime(NPC_AUTO_ACTION_DELAY_MS - 1);
+    vi.advanceTimersByTime(449);
     expect(autoResolveCpuDrawIfNeeded).not.toHaveBeenCalled();
 
     vi.advanceTimersByTime(1);

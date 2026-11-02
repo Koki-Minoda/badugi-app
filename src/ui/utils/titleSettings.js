@@ -66,6 +66,10 @@ export function getDefaultTitleSettings() {
   return { ...DEFAULT_SETTINGS };
 }
 
+export function isEmailPlayerName(value) {
+  return typeof value === "string" && /^[^\s@]+@[^\s@]+$/.test(value.trim());
+}
+
 export function resolveHeroPlayerName(playerName, authenticatedUsername) {
   const configuredName =
     typeof playerName === "string" ? playerName.trim() : "";
@@ -74,10 +78,10 @@ export function resolveHeroPlayerName(playerName, authenticatedUsername) {
       ? authenticatedUsername.trim()
       : "";
 
-  // The shipped "You" value is a placeholder, not a deliberate profile
-  // override. Once authentication is hydrated, show the account identity.
-  if (configuredName && configuredName !== DEFAULT_SETTINGS.playerName) {
+  // Authentication currently stores email as the initial account name. Never
+  // use that contact address as a table name or a tournament winner's name.
+  if (configuredName && configuredName !== DEFAULT_SETTINGS.playerName && !isEmailPlayerName(configuredName)) {
     return configuredName;
   }
-  return accountName || configuredName || DEFAULT_SETTINGS.playerName;
+  return accountName && !isEmailPlayerName(accountName) ? accountName : DEFAULT_SETTINGS.playerName;
 }

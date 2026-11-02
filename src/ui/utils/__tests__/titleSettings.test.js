@@ -13,6 +13,14 @@ describe("resolveHeroPlayerName", () => {
     expect(resolveHeroPlayerName("You", "Koki")).toBe("Koki");
   });
 
+  test.each(["player@example.com", "  player+mixed@example.com  "])("does not expose account email %s as a playing name", (email) => {
+    expect(resolveHeroPlayerName("You", email)).toBe("You");
+    expect(resolveHeroPlayerName("", email)).toBe("You");
+    expect(resolveHeroPlayerName("Koki", email)).toBe("Koki");
+    expect(resolveHeroPlayerName(email, email)).toBe("You");
+    expect(resolveHeroPlayerName(email, "Mixed Master")).toBe("Mixed Master");
+  });
+
   test("keeps an explicitly configured player name ahead of the account username", () => {
     expect(resolveHeroPlayerName("Midnight Badugi", "Koki")).toBe(
       "Midnight Badugi",

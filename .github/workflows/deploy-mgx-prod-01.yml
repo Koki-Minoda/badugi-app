@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: mgx-prod-01-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.event_name == 'workflow_dispatch' && 'mgx-production-live' || format('mgx-prod-01-{0}', github.event.pull_request.number || github.ref) }}
   cancel-in-progress: false
 
 jobs:
@@ -35,7 +35,7 @@ jobs:
       - run: npm run test:game:ev
       - run: npm run test:qm:public-games
       - run: npm run test:deploy:static
-      - run: node --test scripts/deploy/public-release-audit.test.mjs
+      - run: node --test scripts/deploy/public-release-audit.test.mjs scripts/deploy/production-concurrency.test.mjs
 
   learning-qa:
     runs-on: ubuntu-latest

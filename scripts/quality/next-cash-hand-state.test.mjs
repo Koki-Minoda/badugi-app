@@ -7,3 +7,4 @@ test('never accepts the previous overlay even if controller and new history adva
 test('requires the rendered result to exist in saved history',()=>assert.equal(classifyCashNextHand({...settled,historyHandIds:['hand79']}),'transitioning'));
 test('missing result ID does not pass',()=>assert.equal(classifyCashNextHand({...settled,resultHandId:null}),'previous'));
 test('normal active next hand does not require a controller-ID change',()=>assert.equal(classifyCashNextHand({...settled,overlayVisible:false}),'active'));
+test('matches canonical result/history IDs rather than the draw engine ID namespace',()=>assert.equal(classifyCashNextHand({overlayVisible:true,previousResultHandId:'deuce_to_seven_triple_draw-h40',resultHandId:'deuce_to_seven_triple_draw-h41',controllerHandId:'d01-hand-41',previousControllerHandId:'d01-hand-40',historyHandIds:['deuce_to_seven_triple_draw-h40','deuce_to_seven_triple_draw-h41']}),'settled'));

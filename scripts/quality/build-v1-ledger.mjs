@@ -5,10 +5,12 @@ import { TOURNAMENT_VARIANTS } from '../../src/config/tournamentUnlocks.js';
 const soakPath='reports/release-v1/engine-soak-20261102.json';
 const soak=fs.existsSync(soakPath)?JSON.parse(fs.readFileSync(soakPath,'utf8')):null;
 const offered=new Set(TOURNAMENT_VARIANTS.map(v=>v.gameVariant));
+// Verified in FriendMatchSetupScreen and backend/app/api/p2p.py on the audited base.
+const p2pSupported=new Set(['D01','D02','D03']);
 const records=CORE_GAMES.flatMap(game=>['cash','tournament','mix','p2p'].flatMap(mode=>Object.entries(RELEASE_GATES).map(([gate,name])=>({
   variantId:game.id,appId:game.appId,game:game.name,mode,gate,name,
-  state:mode==='cash'&&gate==='G1'&&soak?'partial':'not_verified',
-  exposure:mode==='cash'?'public-catalog':mode==='tournament'&&offered.has(({D03:'badugi',D01:'D01',D02:'D02'})[game.id]??game.appId)?'career-menu-listed':'requires-route-audit',
+  state:mode==='p2p'&&!p2pSupported.has(game.id)?'not_applicable':mode==='cash'&&gate==='G1'&&soak?'partial':'not_verified',
+  exposure:mode==='p2p'?(p2pSupported.has(game.id)?'ui-and-api-listed':'api-rejects-unsupported-variant'):mode==='mix'?'catalog-menu-listed':mode==='cash'?'public-catalog':mode==='tournament'&&offered.has(({D03:'badugi',D01:'D01',D02:'D02'})[game.id]??game.appId)?'career-menu-listed':'requires-route-audit',
   evidence:mode==='cash'&&gate==='G1'&&soak?[{path:soakPath,scope:soak.scope,
     sampledHands:soak.rows.filter(row=>row.id===game.id).reduce((sum,row)=>sum+row.completed,0),
     result:soak.rows.filter(row=>row.id===game.id).every(row=>row.status==='PASS')?'sampled-pass':'fail'}]:[],

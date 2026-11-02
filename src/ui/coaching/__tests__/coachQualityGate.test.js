@@ -19,7 +19,7 @@ describe('Strategy Score release contract',()=>{
   it.each([{variantId:'nlh'},{playerCount:2},{betting:'no-limit'},{mode:'tournament'},{street:'draw3'},{action:'raise'}])('rejects scope drift %j',patch=>{
     expect(evaluateCoachQuality(contractFixture(),{...request,...patch}).eligible).toBe(false);
   });
-  it.each(['NaN','missing','experimental','self-review','ai-review','unverified','high-without-solver','major-error','small-sample','wrong-schema'])('fails closed for %s',reason=>{
+  it.each(['NaN','missing','experimental','self-review','ai-review','unverified','high-without-solver','major-error','small-sample','wrong-schema','missing-implementer','empty-reviewer'])('fails closed for %s',reason=>{
     const c=contractFixture();
     if(reason==='NaN')c.quality.expectedCalibrationError=NaN;
     if(reason==='missing')delete c.checks.noPrivateInformation;
@@ -31,6 +31,8 @@ describe('Strategy Score release contract',()=>{
     if(reason==='major-error')c.quality.majorIncorrectAdvice=1;
     if(reason==='small-sample')c.quality.heldoutDecisions=199;
     if(reason==='wrong-schema')c.schemaVersion=2;
+    if(reason==='missing-implementer')delete c.implementer;
+    if(reason==='empty-reviewer')c.independentReview.reviewer=' ';
     expect(evaluateCoachQuality(c,request).eligible).toBe(false);
   });
 });

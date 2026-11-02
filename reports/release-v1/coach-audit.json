@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-02T02:14:03.663Z",
-  "sourceCommit": "921782a159996f9dd916c5e3cf3e84b80c062ee4",
+  "generatedAt": "2026-11-02T02:44:14.099Z",
+  "sourceCommit": "a4cc5c02c16c2d8cfdc9cf3f539c3dee96dee1ec",
   "thresholds": {
     "minimumHeldoutDecisions": 200,
     "minimumAcceptableActionAgreementLower95": 0.95,
@@ -21,6 +21,7 @@
       "score": null,
       "reasons": [
         "invalid-schema",
+        "missing-implementer",
         "missing-version",
         "missing-evidence",
         "unverified-evidence",
@@ -62,6 +63,7 @@
       "score": null,
       "reasons": [
         "invalid-schema",
+        "missing-implementer",
         "missing-version",
         "missing-evidence",
         "unverified-evidence",
@@ -103,6 +105,7 @@
       "score": null,
       "reasons": [
         "invalid-schema",
+        "missing-implementer",
         "missing-version",
         "missing-evidence",
         "unverified-evidence",
@@ -144,6 +147,7 @@
       "score": null,
       "reasons": [
         "invalid-schema",
+        "missing-implementer",
         "missing-version",
         "missing-evidence",
         "unverified-evidence",

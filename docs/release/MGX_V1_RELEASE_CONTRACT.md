@@ -75,3 +75,15 @@ Scoreの新しい利用者は `src/ui/coaching/coachQualityGate.js` で事前確
 Audit→Plan→Issue→Implementation→QA→Review→Next Issue。
 完了条件を満たしたIssueだけ閉じる。コード、モデル、デザインを一括で品質認定しない。
 iPhoneはユーザーが後日確認可能。Androidと初見協力者の実施証拠はまだ別途必要。
+
+## 確認済みの入口と範囲
+
+P2Pは `FriendMatchSetupScreen.jsx` の選択肢と `backend/app/api/p2p.py` の受付がともに
+Badugi、2-7TD、A-5TDの3種目。残りのCore7種目はAPIが422で拒否するため、このモードのGateは
+理由付きでN/Aにする。v1のためにP2P対応種目を増やす必要はない。
+
+MIXの編集画面は `listVariantProfiles` からカタログを列挙するので10 Coreは一覧に存在する。
+これはローテーション途中の動作認定ではない。
+Tournamentのunlock一覧には5種目がある一方、`tournamentStages.js` の実stageはBadugiを使う。
+unlock表示をそのまま5種目のTournament提供証拠にしない。NLH等のfixture/URL経路と通常の利用者入口を
+分けて認定し、v1に新しいTournament展開を暗黙追加しない。

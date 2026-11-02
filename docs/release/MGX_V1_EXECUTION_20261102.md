@@ -17,9 +17,9 @@
 | progress | 180 PASS / 1既知SKIP | 11ファイル。harness人数指定の追加5ケースを含む |
 | tier1 | 2,791 PASS / 1既知SKIP | 実行時点の全tier1 |
 | RL safety | 64 PASS | 既存の入力/adapter安全性。戦略精度の証明ではない |
-| Coach契約 | 18 PASS | 欠損、scope逸脱、NaN、自己承認、Experimental等を保留 |
+| Coach契約 | 20 PASS | 欠損、scope逸脱、NaN、自己承認、Experimental等を保留 |
 | Coach実候補 | 4件監査、認定0 | Badugi / D01 / NLH / PLO。未認定を公開しない |
-| prototype | 72組合せPASS | 2 browser×4寸法×3案×3ゲーム、重なり/overflow/履歴/金額/予約/交換 |
+| prototype | 72組合せPASS | 2 browser×4寸法×3案×3ゲーム、重なり/overflow/44px target/タッチ/キーボード/履歴/金額/予約/交換 |
 | lint | 0 errors / 既存2 warnings | 追加ファイルで新規警告なし |
 | buildとモデル資産 | PASS | requiredモデル資産あり。optional欠落は台帳どおり |
 | 本番排他回帰 | 2 PASS | PR #297の2workflowのlockとdispatch限定配備 |
@@ -43,11 +43,19 @@ SHA固定検査で停止した。製品の対局失敗ではなくローカル�
 
 ## 実行中と未確認
 
-100連続hand×10 Core×3profileの実行を開始。完了reportだけを
-`v1-browser-summary.mjs` が集計し、欠落があればINCOMPLETEを返す。
+100連続hand×10 Core×3profileを検査中。11:44 JST時点で12/30ケース成功。
+Badugi/NLHは3profile、PLO/FLO8はAndroid/iPhone相当、D01はAndroid/iPhone相当で各100handと履歴/replay/cashoutを確認。
+デスクトップPLOは100hand終局したがHero操作43回で基準50回に未達のためFAILを維持し、別固定seedを追加検査する。
+完了reportだけを `v1-browser-summary.mjs` が集計し、欠落はNOT_VERIFIED、失敗記録はFAILにする。
+初回の即時終局ID誤判定は #299 / PR #300へ分離。controllerと履歴の別namespaceを含む回帰6/6。
+修正版のBadugi desktopとD01 Android/iPhoneは通過したが、独立Reviewとmergeは未実施。
+初回ローカルbackend503は保存し、原因確定や修正済みとは扱わない。
 120分連続、全Tournament組合せ、独立勝敗fixture、物理iPhone/Android、初見利用者、
 Coachの独立戦略評価は別Gateとして残る。
 
 公開版は監査開始時4eb38c7f。PR #290のmainは9ee9609b。
-既存push QA run41372489701を維持し、全Gateとbackup付きの本番dispatch41373909127を開始した。
+全Gateとbackup付きの本番dispatch41373909127を開始した。
+同一SHAのpush QA run41372489701は配備dispatchを先行させるため中止し、PASSには数えない。
+11:44 JST時点でdispatchの16 QA中15成功、core5-qaが実行中。配備はまだ未確認。
+自作draft PRの旧head CIも実行枠を空けるため中止した。最新headのCIは別runで確認する。
 配備成功、公開SHA照合、公開監査、重複配備のない全nightly成功が揃うまで #291を閉じない。

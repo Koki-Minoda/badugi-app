@@ -26,6 +26,7 @@ export function evaluateCoachQuality(candidate = {}, request = {}) {
   const requiredChecks = ['runtimeSemantics', 'legalActions', 'noPrivateInformation',
     'heldoutSeparation', 'baselineCompatibility', 'replayLinkage', 'abstention', 'rollback'];
   if (candidate.schemaVersion !== 1) reasons.push('invalid-schema');
+  if (typeof candidate.implementer !== 'string' || !candidate.implementer.trim()) reasons.push('missing-implementer');
   if (!candidate.modelVersion || !candidate.evaluatorVersion) reasons.push('missing-version');
   if (!groundedEvidence(candidate.evidence)) reasons.push('missing-evidence');
   if (candidate.evidenceVerified !== true) reasons.push('unverified-evidence');
@@ -42,7 +43,8 @@ export function evaluateCoachQuality(candidate = {}, request = {}) {
   if (quality.explanationGroundingRate !== 1) reasons.push('explanation-not-grounded');
   const review = candidate.independentReview;
   if (!review || review.status !== 'approved' || review.reviewerType !== 'human' ||
-      !review.reviewer || review.reviewer === candidate.implementer || !groundedEvidence(review.evidence)) reasons.push('independent-review-required');
+      typeof review.reviewer !== 'string' || !review.reviewer.trim() ||
+      review.reviewer === candidate.implementer || !groundedEvidence(review.evidence)) reasons.push('independent-review-required');
   const confidence = candidate.confidence;
   if (!['High Confidence', 'Medium Confidence'].includes(confidence)) reasons.push('experimental-or-unrated');
   if (confidence === 'High Confidence' && !['solver', 'reviewed-exact-rules'].includes(candidate.baselineType)) reasons.push('high-confidence-baseline-unproven');

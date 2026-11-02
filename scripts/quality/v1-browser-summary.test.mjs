@@ -18,3 +18,10 @@ test('wrong served SHA rejects an otherwise complete-looking report',()=>{
   const summary=summarizeV1BrowserEvidence({root,expectedCommit:sha});
   assert.equal(summary.status,'FAIL');assert.deepEqual(summary.rows.find(r=>r.id==='B01'&&r.device==='desktop').failures,['release']);
 });
+test('a recorded failed attempt is FAIL rather than unverified or pass',()=>{
+  const root=fs.mkdtempSync(path.join(os.tmpdir(),'mgx-v1-failed-'));
+  fs.mkdirSync(path.join(root,'browser-android-root'));
+  fs.writeFileSync(path.join(root,'browser-android-root','d01-android-failure.json'),JSON.stringify({error:'next-hand identity mismatch'}));
+  const summary=summarizeV1BrowserEvidence({root,expectedCommit:sha});
+  assert.equal(summary.status,'FAIL');assert.equal(summary.rows.find(r=>r.id==='D01'&&r.device==='android').status,'FAIL');
+});

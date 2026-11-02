@@ -10,7 +10,8 @@ for (const [engine,launcher] of [['chromium',chromium],['webkit',webkit]]) {
   const browser=await launcher.launch();
   try {
     for(const [width,height] of [[390,844],[844,390],[320,568],[1280,900]]) {
-      const page=await browser.newPage({viewport:{width,height}});
+      const touch=width<600||height<500;
+      const page=await browser.newPage({viewport:{width,height},hasTouch:touch});
       const errors=[];page.on('pageerror',e=>errors.push(e.message));
       await page.goto('http://127.0.0.1:8793/play-comparison.html');
       for(const design of ['a','b','c']) for(const game of ['nlh','stud8','draw']) {
@@ -20,9 +21,15 @@ for (const [engine,launcher] of [['chromium',chromium],['webkit',webkit]]) {
         const overlap=await page.evaluate(()=>{const entries=[...document.querySelectorAll('.seat,.hero,.center')].map(el=>({name:el.className,r:el.getBoundingClientRect()}));return entries.flatMap((a,i)=>entries.slice(i+1).filter(b=>Math.min(a.r.right,b.r.right)-Math.max(a.r.left,b.r.left)>2&&Math.min(a.r.bottom,b.r.bottom)-Math.max(a.r.top,b.r.top)>2).map(b=>[a.name,b.name]));});
         if(overlap.length)throw new Error(`${engine} ${width} ${design} ${game}: overlapping information ${JSON.stringify(overlap)}`);
         if(overflow)throw new Error(`${engine} ${width} ${design} ${game}: horizontal overflow`);
-        await page.locator('#history-open').click();
+        const historyButton=page.locator('#history-open');
+        await (touch?historyButton.tap():historyButton.click());
         if(!await page.locator('#history').isVisible())throw new Error('History must open in one tap');
         await page.locator('[data-close=history]').click();
+        await historyButton.focus();await historyButton.press('Enter');
+        await page.keyboard.press('Escape');
+        if(await page.locator('#history').isVisible()||!await historyButton.evaluate(el=>el===document.activeElement))throw new Error('Keyboard close/focus restoration failed');
+        const smallTargets=await page.locator('.device button:visible').evaluateAll(els=>els.filter(el=>!el.disabled).filter(el=>{const r=el.getBoundingClientRect();return r.width<44||r.height<44;}).map(el=>el.id||el.className));
+        if(smallTargets.length)throw new Error(`Tap targets below 44px: ${smallTargets.join(',')}`);
         if(game==='nlh') {
           await page.locator('#custom-open').click();
           await page.locator('#amount-input').fill('9');await page.locator('#amount-confirm').click();
@@ -38,7 +45,7 @@ for (const [engine,launcher] of [['chromium',chromium],['webkit',webkit]]) {
           await page.locator('#hero-cards button').last().click();
           if(await page.locator('#call').textContent()!=='1枚交換')throw new Error('Draw selection mismatch');
         }
-        rows.push({engine,width,height,design,game,status:'PASS',scope:'prototype layout and scripted interactions'});
+        rows.push({engine,width,height,design,game,status:'PASS',scope:'prototype geometry, 44px targets, touch and keyboard interactions'});
         if(engine==='webkit'&&design==='b'&&game==='stud8')await page.locator('.device').screenshot({path:`${screenshots}/b-stud8-${width}x${height}.png`});
       }
       if(errors.length)throw new Error(errors.join('\n'));

@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-11-02T01:56:30.214Z",
+  "generatedAt": "2026-11-02T02:38:24.052Z",
   "sourceHashes": {
-    "docs/design/prototypes/play-comparison.html": "8646cef02116fdf77677c1db6ea5ffcea90a2748ee303d2eefca3540ed07aa0e",
-    "docs/design/prototypes/play-comparison.css": "c0428678b7d22dcc5a9a0411e2fb7a727b9cc3752e97100c755e831945856de6",
+    "docs/design/prototypes/play-comparison.html": "7e080b68e5da997edfc80a9904a2ba362fb6838d99201f65fc03cdfaeab3241c",
+    "docs/design/prototypes/play-comparison.css": "70f3e8a4900e7a9cce59fdaae1994e6e1ad7d73597d4d2c599c5b5ad17a6cf52",
     "docs/design/prototypes/play-comparison.js": "9b5582a3c5d7b91e7fe498abdad9f6b5466a5cdc5eb03a463eab836843c16df8"
   },
   "rows": [
@@ -13,7 +13,7 @@
       "design": "a",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -22,7 +22,7 @@
       "design": "a",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -31,7 +31,7 @@
       "design": "a",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -40,7 +40,7 @@
       "design": "b",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -49,7 +49,7 @@
       "design": "b",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -58,7 +58,7 @@
       "design": "b",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -67,7 +67,7 @@
       "design": "c",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -76,7 +76,7 @@
       "design": "c",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -85,7 +85,7 @@
       "design": "c",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -94,7 +94,7 @@
       "design": "a",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -103,7 +103,7 @@
       "design": "a",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -112,7 +112,7 @@
       "design": "a",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -121,7 +121,7 @@
       "design": "b",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -130,7 +130,7 @@
       "design": "b",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -139,7 +139,7 @@
       "design": "b",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -148,7 +148,7 @@
       "design": "c",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -157,7 +157,7 @@
       "design": "c",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -166,7 +166,7 @@
       "design": "c",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -175,7 +175,7 @@
       "design": "a",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -184,7 +184,7 @@
       "design": "a",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -193,7 +193,7 @@
       "design": "a",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -202,7 +202,7 @@
       "design": "b",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -211,7 +211,7 @@
       "design": "b",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -220,7 +220,7 @@
       "design": "b",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -229,7 +229,7 @@
       "design": "c",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -238,7 +238,7 @@
       "design": "c",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -247,7 +247,7 @@
       "design": "c",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -256,7 +256,7 @@
       "design": "a",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -265,7 +265,7 @@
       "design": "a",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -274,7 +274,7 @@
       "design": "a",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -283,7 +283,7 @@
       "design": "b",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -292,7 +292,7 @@
       "design": "b",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -301,7 +301,7 @@
       "design": "b",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -310,7 +310,7 @@
       "design": "c",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -319,7 +319,7 @@
       "design": "c",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "chromium",
@@ -328,7 +328,7 @@
       "design": "c",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -337,7 +337,7 @@
       "design": "a",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -346,7 +346,7 @@
       "design": "a",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -355,7 +355,7 @@
       "design": "a",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -364,7 +364,7 @@
       "design": "b",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -373,7 +373,7 @@
       "design": "b",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -382,7 +382,7 @@
       "design": "b",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -391,7 +391,7 @@
       "design": "c",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -400,7 +400,7 @@
       "design": "c",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -409,7 +409,7 @@
       "design": "c",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -418,7 +418,7 @@
       "design": "a",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -427,7 +427,7 @@
       "design": "a",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -436,7 +436,7 @@
       "design": "a",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -445,7 +445,7 @@
       "design": "b",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -454,7 +454,7 @@
       "design": "b",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -463,7 +463,7 @@
       "design": "b",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -472,7 +472,7 @@
       "design": "c",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -481,7 +481,7 @@
       "design": "c",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -490,7 +490,7 @@
       "design": "c",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -499,7 +499,7 @@
       "design": "a",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -508,7 +508,7 @@
       "design": "a",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -517,7 +517,7 @@
       "design": "a",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -526,7 +526,7 @@
       "design": "b",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -535,7 +535,7 @@
       "design": "b",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -544,7 +544,7 @@
       "design": "b",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -553,7 +553,7 @@
       "design": "c",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -562,7 +562,7 @@
       "design": "c",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -571,7 +571,7 @@
       "design": "c",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -580,7 +580,7 @@
       "design": "a",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -589,7 +589,7 @@
       "design": "a",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -598,7 +598,7 @@
       "design": "a",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -607,7 +607,7 @@
       "design": "b",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -616,7 +616,7 @@
       "design": "b",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -625,7 +625,7 @@
       "design": "b",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -634,7 +634,7 @@
       "design": "c",
       "game": "nlh",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -643,7 +643,7 @@
       "design": "c",
       "game": "stud8",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     },
     {
       "engine": "webkit",
@@ -652,7 +652,7 @@
       "design": "c",
       "game": "draw",
       "status": "PASS",
-      "scope": "prototype layout and scripted interactions"
+      "scope": "prototype geometry, 44px targets, touch and keyboard interactions"
     }
   ],
   "releaseGatePassed": false

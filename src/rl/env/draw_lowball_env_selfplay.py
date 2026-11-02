@@ -63,11 +63,11 @@ class DualAgentDrawLowballEnv:
         """
         Args:
             opp_epsilon: Exploration rate applied to the frozen opponent agent.
-                0.0 (default) = fully greedy → pure GTO self-play.
+                0.0 (default) = fully greedy actions from the frozen opponent.
                 0.05–0.15 = adds stochastic diversity to opponent actions,
-                making the hero more robust to loose/aggressive play patterns
-                without explicitly encoding personality types. Does not move
-                toward Nash equilibrium as cleanly as the default.
+                without explicitly encoding personality types. Robustness requires
+                separate evaluation. Neither setting alone establishes GTO
+                quality or convergence to a Nash equilibrium.
         """
         if family not in {"low-27", "low-a5"}:
             raise ValueError(f"Unsupported draw family: {family!r}")

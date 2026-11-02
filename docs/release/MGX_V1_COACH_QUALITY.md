@@ -39,3 +39,18 @@ NLHとPLOはtraining fixtureの整備だけでは十分でなく、適合するs
 `evaluateCoachQuality` は新規Score利用者のための前提条件で、まだ全既存画面への接続は行っていない。
 次の実装Issueは、認定できる局面datasetとbaselineを固定し、Whyの根拠をレビューできる状態にすること。
 理由生成は「結論→何を残し何を失うか→次回の見分け方→Replay」の順にし、根拠にない戦略を補わない。
+
+## 現行ソースの追加確認
+
+- `src/ai/pro/strategies/badugiProStrategy.js` はmade four-card BadugiのPatに
+  `confidence: 0.96` を直接付けている。これは分岐に付けた定数で、助言が正しい確率の校正結果ではない。
+- `src/ui/coaching/scoreCoachingLessonPriority.js` はconfidence欠損時に0.95を使う。
+  レッスンの並べ替え用の内部値であり、Strategy ScoreのConfidenceへ転記しない。
+- `src/rl/training/evaluate_board_onnx.py` の `selectedEV / bestEV` はfixture内の
+  `ev` mapから読み出す値。solverでその局面を解いたaction EVと同一視しない。
+- `draw_lowball_env_selfplay.py` とself-play trainerの説明に、相手epsilon=0を
+  “pure GTO”と呼ぶ箇所がある。実際に示すのは凍結相手のgreedy actionであり、
+  Nash収束やexploitabilityの認定ではない。公開CoachのGTO根拠には使用しない。
+
+これらの値や内部表現を新しい採点へ持ち込まないことが、現在の4候補保留の具体的な理由。
+既存モデルの重み・学習・推論経路をこの確認で変更していない。

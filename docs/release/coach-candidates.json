@@ -2,9 +2,89 @@
   "schemaVersion": 1,
   "status": "No candidate certified for Strategy Score",
   "candidates": [
-    { "id": "badugi-v1", "scope": { "variantId": "badugi" }, "request": { "variantId": "badugi", "playerCount": 6, "betting": "fixed-limit", "mode": "cash", "street": "draw2", "action": "pat" }, "confidence": "Experimental", "limitations": ["E11 inference is availability evidence, not scoring calibration", "Runtime/training semantics issue #186 remains open", "No independently reviewed action-quality and explanation dataset"] },
-    { "id": "d01-v1", "scope": { "variantId": "deuce_to_seven_triple_draw" }, "request": { "variantId": "deuce_to_seven_triple_draw", "playerCount": 2, "betting": "fixed-limit", "mode": "cash", "street": "draw1", "action": "draw" }, "confidence": "Experimental", "limitations": ["Local value-calibration report: VALUE_ESTIMATOR_READY=NO", "Controlled RL report has no accepted candidate", "HU research cannot certify six-max or tournament", "Observation consistency issue #184 and open PR #283/#284"] },
-    { "id": "nlh-v1", "scope": { "variantId": "nlh" }, "request": { "variantId": "nlh", "playerCount": 6, "betting": "no-limit", "mode": "cash", "street": "flop", "action": "call" }, "confidence": "Experimental", "limitations": ["Training fixtures and synthetic reward do not establish action EV", "No scoped solver baseline, confidence calibration or independent strategic review supplied", "Board fixture correction PR #281 is not model qualification"] },
-    { "id": "plo-v1", "scope": { "variantId": "plo" }, "request": { "variantId": "plo", "playerCount": 6, "betting": "pot-limit", "mode": "cash", "street": "flop", "action": "call" }, "confidence": "Experimental", "limitations": ["Model availability and legal play do not certify strategy quality", "No scoped solver baseline, confidence calibration or independent strategic review supplied", "Validate exactly-two-hole-card semantics and pot-limit action amounts before evaluation"] }
+    {
+      "id": "badugi-v1",
+      "scope": {
+        "variantId": "badugi"
+      },
+      "request": {
+        "variantId": "badugi",
+        "playerCount": 6,
+        "betting": "fixed-limit",
+        "mode": "cash",
+        "street": "draw2",
+        "action": "pat"
+      },
+      "confidence": "Experimental",
+      "limitations": [
+        "E11 inference is availability evidence, not scoring calibration",
+        "Runtime/training semantics issue #186 remains open",
+        "No independently reviewed action-quality and explanation dataset",
+        "Pro strategy confidence 0.96 is a heuristic constant, not calibrated correctness probability"
+      ]
+    },
+    {
+      "id": "d01-v1",
+      "scope": {
+        "variantId": "deuce_to_seven_triple_draw"
+      },
+      "request": {
+        "variantId": "deuce_to_seven_triple_draw",
+        "playerCount": 2,
+        "betting": "fixed-limit",
+        "mode": "cash",
+        "street": "draw1",
+        "action": "draw"
+      },
+      "confidence": "Experimental",
+      "limitations": [
+        "Local value-calibration report: VALUE_ESTIMATOR_READY=NO",
+        "Controlled RL report has no accepted candidate",
+        "HU research cannot certify six-max or tournament",
+        "Observation consistency issue #184 and open PR #283/#284"
+      ]
+    },
+    {
+      "id": "nlh-v1",
+      "scope": {
+        "variantId": "nlh"
+      },
+      "request": {
+        "variantId": "nlh",
+        "playerCount": 6,
+        "betting": "no-limit",
+        "mode": "cash",
+        "street": "flop",
+        "action": "call"
+      },
+      "confidence": "Experimental",
+      "limitations": [
+        "Training fixtures and synthetic reward do not establish action EV",
+        "No scoped solver baseline, confidence calibration or independent strategic review supplied",
+        "Board fixture correction PR #281 is not model qualification",
+        "Board evaluation selectedEV/bestEV are fixture ev-map values, not independently solved action values"
+      ]
+    },
+    {
+      "id": "plo-v1",
+      "scope": {
+        "variantId": "plo"
+      },
+      "request": {
+        "variantId": "plo",
+        "playerCount": 6,
+        "betting": "pot-limit",
+        "mode": "cash",
+        "street": "flop",
+        "action": "call"
+      },
+      "confidence": "Experimental",
+      "limitations": [
+        "Model availability and legal play do not certify strategy quality",
+        "No scoped solver baseline, confidence calibration or independent strategic review supplied",
+        "Validate exactly-two-hole-card semantics and pot-limit action amounts before evaluation",
+        "Board evaluation selectedEV/bestEV are fixture ev-map values, not independently solved action values"
+      ]
+    }
   ]
 }

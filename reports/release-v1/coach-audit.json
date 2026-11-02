@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-02T01:49:38.643Z",
-  "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+  "generatedAt": "2026-11-02T02:14:03.663Z",
+  "sourceCommit": "921782a159996f9dd916c5e3cf3e84b80c062ee4",
   "thresholds": {
     "minimumHeldoutDecisions": 200,
     "minimumAcceptableActionAgreementLower95": 0.95,
@@ -12,7 +12,8 @@
       "limitations": [
         "E11 inference is availability evidence, not scoring calibration",
         "Runtime/training semantics issue #186 remains open",
-        "No independently reviewed action-quality and explanation dataset"
+        "No independently reviewed action-quality and explanation dataset",
+        "Pro strategy confidence 0.96 is a heuristic constant, not calibrated correctness probability"
       ],
       "eligible": false,
       "scoreName": "MGX Strategy Score",
@@ -93,7 +94,8 @@
       "limitations": [
         "Training fixtures and synthetic reward do not establish action EV",
         "No scoped solver baseline, confidence calibration or independent strategic review supplied",
-        "Board fixture correction PR #281 is not model qualification"
+        "Board fixture correction PR #281 is not model qualification",
+        "Board evaluation selectedEV/bestEV are fixture ev-map values, not independently solved action values"
       ],
       "eligible": false,
       "scoreName": "MGX Strategy Score",
@@ -133,7 +135,8 @@
       "limitations": [
         "Model availability and legal play do not certify strategy quality",
         "No scoped solver baseline, confidence calibration or independent strategic review supplied",
-        "Validate exactly-two-hole-card semantics and pot-limit action amounts before evaluation"
+        "Validate exactly-two-hole-card semantics and pot-limit action amounts before evaluation",
+        "Board evaluation selectedEV/bestEV are fixture ev-map values, not independently solved action values"
       ],
       "eligible": false,
       "scoreName": "MGX Strategy Score",

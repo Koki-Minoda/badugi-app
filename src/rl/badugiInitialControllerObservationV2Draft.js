@@ -4,6 +4,7 @@ import {
   BADUGI_CONTROLLER_OBSERVATION_V2_DRAFT,
   buildBadugiControllerObservationV2Draft,
 } from './badugiControllerObservationV2Draft.js';
+import { deriveBadugiControllerPublicChipStateV2Draft } from './badugiControllerPublicChipStateV2Draft.js';
 
 export function buildBadugiInitialControllerObservationV2Draft({
   controller, state, seatIndex, isTournament,
@@ -14,11 +15,9 @@ export function buildBadugiInitialControllerObservationV2Draft({
   }
   const snapshot = controller.getUiSnapshot(state);
   const players = snapshot?.players;
-  const bigBlind = Number(controller.config?.betSize);
   if (!Array.isArray(players) || ![2, 3, 6].includes(players.length) ||
       snapshot.phase !== 'BET' || Number(snapshot.drawRound ?? snapshot.drawRoundIndex) !== 0 ||
-      !Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex >= players.length ||
-      !Number.isFinite(bigBlind) || bigBlind <= 0) {
+      !Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex >= players.length) {
     throw new TypeError('v2 initial probe requires a 2/3/6-seat first BET decision');
   }
   const actor = players[seatIndex];
@@ -29,9 +28,8 @@ export function buildBadugiInitialControllerObservationV2Draft({
     throw new TypeError('v2 initial probe requires unplayed controller history');
   }
   const dealerIndex = snapshot.dealerIdx ?? snapshot.dealerSeat ?? snapshot.metadata?.dealerIdx;
-  const currentBet = Math.max(...players.map((player) => Number(player?.betThisRound) || 0));
-  const pot = players.reduce((sum, player) => sum + Number(player?.totalInvested ?? 0), 0);
-  const raiseCount = Number(snapshot.raiseCountThisRound ?? snapshot.metadata?.raiseCountThisRound ?? 0);
+  const { bigBlind, currentBet, pot, raiseCount } =
+    deriveBadugiControllerPublicChipStateV2Draft(controller, snapshot);
   return buildBadugiControllerObservationV2Draft({
     schemaVersion: BADUGI_CONTROLLER_OBSERVATION_V2_DRAFT,
     players: players.map((player) => ({

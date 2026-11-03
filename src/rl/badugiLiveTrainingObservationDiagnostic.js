@@ -43,17 +43,33 @@ export function deriveBadugiTrainingRaiseCountFromEvents(events, currentRound) {
   return raises;
 }
 
+export function deriveBadugiTrainingLegalActions({
+  phase, drawRoundIndex, stack, toCall, raiseCount,
+}) {
+  if (phase === 'DRAW') return ['draw_0', 'draw_1', 'draw_2', 'draw_3'];
+  if (phase !== 'BET' || !Number.isInteger(drawRoundIndex) ||
+      !Number.isFinite(stack) || !Number.isFinite(toCall) ||
+      !Number.isInteger(raiseCount)) {
+    throw new TypeError('Badugi diagnostic requires a valid training action state');
+  }
+  const betSize = drawRoundIndex >= 2 ? 4 : 2;
+  if (toCall > 0) {
+    return ['FOLD', ...(stack > 0 ? ['CALL'] : []),
+      ...(raiseCount < 4 && stack >= toCall + betSize ? ['RAISE'] : [])];
+  }
+  return ['CHECK', ...(stack >= betSize ? ['BET'] : [])];
+}
+
 export function buildBadugiLiveTrainingObservationDiagnostic({
   players, events, seatIndex, phase, drawRoundIndex, dealerIndex,
-  bigBlind, currentBet, legalActions,
+  bigBlind, currentBet,
 }) {
   if (!Array.isArray(players) || players.length !== 6 || !Array.isArray(events) ||
       !Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex >= 6 ||
       !Number.isInteger(dealerIndex) || dealerIndex < 0 || dealerIndex >= 6 ||
       !Number.isInteger(drawRoundIndex) || drawRoundIndex < 0 || drawRoundIndex > 3 ||
       !['BET', 'DRAW'].includes(phase) || !Number.isFinite(bigBlind) || bigBlind <= 0 ||
-      !Number.isFinite(currentBet) ||
-      !Array.isArray(legalActions)) {
+      !Number.isFinite(currentBet)) {
     throw new TypeError('Badugi diagnostic requires a complete six-seat decision state');
   }
   const opened = Array.from({ length: 6 }, () => [false, false, false, false]);
@@ -109,16 +125,24 @@ export function buildBadugiLiveTrainingObservationDiagnostic({
       discardedCards: seat === seatIndex ? discardedOwn : [],
     };
   });
+  const trainingRaiseCount = deriveBadugiTrainingRaiseCountFromEvents(events, drawRoundIndex);
   const state = {
     players: mappedPlayers,
     phase,
     drawRoundIndex,
     dealerIndex,
     currentBet: currentBet * scale,
-    raiseCount: deriveBadugiTrainingRaiseCountFromEvents(events, drawRoundIndex),
+    raiseCount: trainingRaiseCount,
     pot: players.reduce((sum, player) => sum + player.totalInvested, 0) * scale,
     betQueue: phase === 'BET' ? [seatIndex] : [],
   };
+  const hero = mappedPlayers[seatIndex];
+  const trainingCurrentBet = phase === 'BET' ? state.currentBet : 0;
+  const legalActions = deriveBadugiTrainingLegalActions({
+    phase, drawRoundIndex, stack: hero.stack,
+    toCall: Math.max(0, trainingCurrentBet - hero.betThisRound),
+    raiseCount: trainingRaiseCount,
+  });
   const vector = buildBadugiTrainingObservationV1({ state, seatIndex, legalActions });
   if (vector.length !== 96 || !vector.every(Number.isFinite)) {
     throw new TypeError('Badugi diagnostic produced an invalid 96-slot observation');

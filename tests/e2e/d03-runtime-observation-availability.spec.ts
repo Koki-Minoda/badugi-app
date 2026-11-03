@@ -51,7 +51,6 @@ function captureAtInference(source: string) {
             seatIndex: ${actor}, phase: ${JSON.stringify(phase)}, drawRoundIndex: drawRound,
             dealerIndex: dealerIdx, bigBlind: BB,
             currentBet: maxBetThisRound(${players}),
-            legalActions: ${phase === 'DRAW' ? 'drawLegalActions' : 'onnxLegalActions'},
           });
           return { ready: true, vectorLength: vector.length,
             maskCount: vector.slice(32, 38).filter(value => value === 1).length,

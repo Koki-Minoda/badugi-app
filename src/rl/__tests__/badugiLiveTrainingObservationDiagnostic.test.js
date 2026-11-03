@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildBadugiLiveTrainingObservationDiagnostic,
+  deriveBadugiTrainingLegalActions,
   deriveBadugiTrainingRaiseCountFromEvents,
 } from '../badugiLiveTrainingObservationDiagnostic.js';
 
@@ -31,7 +32,6 @@ function input() {
     ],
     seatIndex: 0, phase: 'BET', drawRoundIndex: 1, dealerIndex: 5,
     bigBlind: 20, currentBet: 0,
-    legalActions: ['CHECK', 'BET'],
   };
 }
 
@@ -69,5 +69,16 @@ describe('Badugi live training observation diagnostic', () => {
     expect(deriveBadugiTrainingRaiseCountFromEvents(events.slice(0, 1), 0)).toBe(1);
     expect(deriveBadugiTrainingRaiseCountFromEvents(events, 1)).toBe(1);
     expect(deriveBadugiTrainingRaiseCountFromEvents(events.slice(0, 3), 1)).toBe(0);
+  });
+
+  it('uses trainer stack and fixed-limit rules for the observation mask', () => {
+    expect(deriveBadugiTrainingLegalActions({
+      phase: 'BET', drawRoundIndex: 3, stack: 3, toCall: 2, raiseCount: 0,
+    })).toEqual(['FOLD', 'CALL']);
+    expect(deriveBadugiTrainingLegalActions({
+      phase: 'BET', drawRoundIndex: 1, stack: 1, toCall: 0, raiseCount: 0,
+    })).toEqual(['CHECK']);
+    expect(deriveBadugiTrainingLegalActions({ phase: 'DRAW' }))
+      .toEqual(['draw_0', 'draw_1', 'draw_2', 'draw_3']);
   });
 });

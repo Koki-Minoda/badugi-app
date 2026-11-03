@@ -87,6 +87,13 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     expect(buildBadugiOnnxFeatures(evRangeEntry, payload)[58]).toBeGreaterThan(0);
   });
 
+  it("rejects an unimplemented six-max training schema before ONNX inference", () => {
+    expect(() => buildBadugiOnnxFeatures({
+      inputShape: [96],
+      featureSet: "badugi-sixmax-selfplay-20261024-v1",
+    }, { observation: new Array(96).fill(0) })).toThrow(/Unsupported Badugi ONNX feature set/);
+  });
+
   it("builds exact-shape draw ONNX feature tensors and selects variant models", () => {
     expect(selectModelForVariant({ variantId: "D01", tierId: "beginner" })?.id).toBe(
       "model-27draw-beginner-dqn-v1",

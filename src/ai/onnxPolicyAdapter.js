@@ -47,6 +47,14 @@ function getLegalActions(payload = {}) {
 }
 
 export function buildBadugiOnnxFeatures(entry, payload = {}) {
+  const featureSet = entry?.featureSet;
+  if (featureSet != null && ![
+    "badugi-observation-v1",
+    "badugi-observation-v1-ev",
+    "badugi-observation-v1-ev-range",
+  ].includes(featureSet)) {
+    throw new Error(`Unsupported Badugi ONNX feature set: ${featureSet}`);
+  }
   const vector = buildBadugiObservationVector(payload.observation ?? payload);
   if (entry?.featureSet !== "badugi-observation-v1-ev" && entry?.featureSet !== "badugi-observation-v1-ev-range") {
     for (let idx = 48; idx <= 55; idx += 1) {

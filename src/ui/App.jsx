@@ -4594,19 +4594,19 @@ export default function App() {
         return false;
       const snap = roster.map(clonePlayerState).filter(Boolean);
       const seatBefore = snap[seat] ? { ...snap[seat] } : null;
+      const forcedCurrentBet = snap.reduce(
+        (max, player) => Math.max(max, Number(player?.betThisRound) || 0),
+        0,
+      );
+      const forcedToCall = Math.max(
+        0,
+        forcedCurrentBet - Math.max(0, Number(seatBefore?.betThisRound) || 0),
+      );
       if (isControllerDrivenSingleTable || isDrawLowballControllerGame) {
         const actionType = payload?.type ?? "call";
-        const forcedCurrentBet = snap.reduce(
-          (max, player) => Math.max(max, Number(player?.betThisRound) || 0),
-          0,
-        );
         const callAmount =
           String(actionType).toLowerCase() === "call" && payload?.amount == null
-            ? Math.max(
-                0,
-                forcedCurrentBet -
-                  Math.max(0, Number(seatBefore?.betThisRound) || 0),
-              )
+            ? forcedToCall
             : (payload?.amount ?? 0);
         const controllerOutcome = helpers.tryControllerBetAction({
           actionType,
@@ -4645,6 +4645,7 @@ export default function App() {
             metadata: {
               ...(payload?.metadata ?? {}),
               ...payload,
+              toCall: forcedToCall,
             },
             playersAfterSnapshot: actionPlayers,
           });
@@ -4739,6 +4740,7 @@ export default function App() {
         metadata: {
           ...(payload?.metadata ?? {}),
           ...payload,
+          toCall: forcedToCall,
         },
       });
 

@@ -248,6 +248,10 @@ for (const { sessionId, modelTier, seats, mode, handCount, seed, heroPolicy = 'h
     const observedHandIds = new Set(hands.map(hand => hand.handId));
     expect(decisionRows.every(row => observedHandIds.has(row.handId))).toBe(true);
     expect(decisionRows.every(row => Boolean(row.inferenceTrace?.status))).toBe(true);
+    expect(decisionRows.filter(row => row.phase === 'BET').every(row =>
+      row.legalActions.includes('call')
+        ? row.toCall > 0
+        : row.legalActions.includes('check') && row.toCall === 0)).toBe(true);
     expect(decisionRows.some(row => String(row.fallbackReason ?? '').includes('FL_RAISE_CAP'))).toBe(false);
     expect(others.every(row => row.inferenceTrace?.status !== 'used')).toBe(true);
     expect(target.every(row => modelTier

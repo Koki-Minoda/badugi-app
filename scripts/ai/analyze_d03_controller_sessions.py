@@ -32,11 +32,16 @@ def describe(values):
     average = mean(values)
     if count < 2:
         return {"sessions": count, "mean": average, "sd": None,
-                "se": None, "descriptive95": None}
+                "se": None, "sessionRange": [min(values), max(values)],
+                "descriptive95": None}
     sd = stdev(values)
     se = sd / math.sqrt(count)
+    # A normal interval from a few, often high-variance, poker sessions is
+    # misleadingly narrow. Keep the observed spread visible until larger cells.
     return {"sessions": count, "mean": average, "sd": sd, "se": se,
-            "descriptive95": [average - 1.96 * se, average + 1.96 * se]}
+            "sessionRange": [min(values), max(values)],
+            "descriptive95": ([average - 1.96 * se, average + 1.96 * se]
+                              if count >= 30 else None)}
 
 
 def analyze(manifest_path, reports_dir):
@@ -180,7 +185,7 @@ def analyze(manifest_path, reports_dir):
                                 "modelTier": tier, "status": "missing-teacher"})
             continue
         difference = mean(values) - mean(teacher)
-        if len(values) < 2 or len(teacher) < 2:
+        if len(values) < 30 or len(teacher) < 30:
             interval = None
         else:
             halfwidth = 1.96 * math.sqrt(stdev(values) ** 2 / len(values)
@@ -189,16 +194,19 @@ def analyze(manifest_path, reports_dir):
         comparisons.append({"seats": seats, "mode": mode, "opponent": opponent,
                             "modelTier": tier, "modelSessions": len(values),
                             "teacherSessions": len(teacher), "difference": difference,
+                            "modelSessionRange": [min(values), max(values)],
+                            "teacherSessionRange": [min(teacher), max(teacher)],
                             "descriptive95": interval, "status": "pilot-only-no-strength-decision"})
     return {"status": "VALID_PILOT_NO_STRENGTH_DECISION",
             "analysisUnit": "independent-session",
             "primaryMetric": "target total chip delta / planned hand count",
-            "uncertainty": "descriptive unpaired normal 95% intervals when each arm has >=2 sessions",
+            "uncertainty": "session SD/range; descriptive unpaired normal 95% intervals only when each arm has >=30 sessions",
             "manifestSha256": manifest_hash, "sourceHead": source_heads.pop(),
             "modelHashes": model_hashes, "sessions": session_summaries,
             "cells": cell_summaries, "comparisons": comparisons,
             "limitations": ["Pilot-only scripted opponents and API mock",
                             "No causal pairing from equal initial seeds",
+                            "No normal 95% interval for cells with fewer than 30 independent sessions",
                             "No automatic model promotion or tier-strength certification"]}
 
 

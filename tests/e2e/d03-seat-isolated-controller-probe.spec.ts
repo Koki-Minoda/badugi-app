@@ -125,7 +125,8 @@ for (const { sessionId, modelTier, seats, mode, handCount, seed, heroPolicy = 'h
       await expect(page.getByTestId('tournament-hud')).toBeVisible();
     }
     const hands: Array<{ handId: unknown; initialHandDigest: string; targetDelta: number; chipSum: number;
-      actionEvents: unknown[];
+      actionEvents: Array<{ type: string; action: string | null; amount: number | null;
+        stackBefore: number | null; stackAfter: number | null }>;
       seats: Array<{ seat: number; name: string; startStack: number; finalStack: number; delta: number }> }> = [];
     let stopReason = 'planned-hand-count';
     for (let handIndex = 0; handIndex < handCount; handIndex += 1) {
@@ -172,6 +173,12 @@ for (const { sessionId, modelTier, seats, mode, handCount, seed, heroPolicy = 'h
           finalStack: Number(finalStacks.find(entry => entry.seat === seat.seat)?.stack),
           delta: deltas[index] })) });
       expect(hands[handIndex].chipSum).toBe(0);
+      expect(hands[handIndex].actionEvents
+        .filter(event => event.type === 'BET_ACTION' && event.action !== 'collect')
+        .every(event => Number.isFinite(event.amount)
+          && Number.isFinite(event.stackBefore) && Number.isFinite(event.stackAfter)
+          && event.amount === Math.max(0,
+            Number(event.stackBefore) - Number(event.stackAfter)))).toBe(true);
       if (mode === 'tournament') {
         const hud = await page.evaluate(() => window.__BADUGI_E2E__.getTournamentHudState());
         if (hud?.isFinished || hud?.heroBusted) {

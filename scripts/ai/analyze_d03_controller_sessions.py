@@ -89,6 +89,15 @@ def analyze(manifest_path, reports_dir):
             target = next((seat for seat in hand.get("seats", []) if seat.get("seat") == 1), None)
             require(target is not None and target.get("delta") == hand.get("targetDelta"),
                     f"{session_id}: target seat delta mismatch")
+            for event in hand.get("actionEvents", []):
+                if event.get("type") != "BET_ACTION" or event.get("action") == "collect":
+                    continue
+                before, after, amount = (event.get(key) for key in
+                                         ("stackBefore", "stackAfter", "amount"))
+                require(all(isinstance(value, (int, float)) and math.isfinite(value)
+                            for value in (before, after, amount))
+                        and amount == max(0, before - after),
+                        f"{session_id}: wager amount disagrees with stack movement")
         total = sum(hand["targetDelta"] for hand in hands)
         require(report.get("targetTotalChipDelta") == total,
                 f"{session_id}: target total mismatch")

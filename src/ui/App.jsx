@@ -4427,10 +4427,9 @@ export default function App() {
     let canonicalActionMetadata = nextEntry.metadata;
     if (idx !== null && currentHandHistoryRef.current) {
       const historyType = normalizeHandHistoryType(type);
-      const amountDelta = Math.max(
-        0,
-        (resolvedBetAfter ?? 0) - (resolvedBetBefore ?? 0),
-      );
+      // The controller can reset betThisRound when this action closes a round.
+      // Stack movement still records the chips actually paid by this action.
+      const amountDelta = resolvedPaid;
       const totalInvestedValue =
         seatSnapshot?.totalInvested ??
         playerState?.totalInvested ??
@@ -4533,10 +4532,7 @@ export default function App() {
         });
       } else {
         const normalizedType = normalizeHandHistoryType(type);
-        const amountDelta = Math.max(
-          0,
-          (resolvedBetAfter ?? 0) - (resolvedBetBefore ?? 0),
-        );
+        const amountDelta = resolvedPaid;
         appendCanonicalHandEvent({
           type: "BET_ACTION",
           seat: idx,

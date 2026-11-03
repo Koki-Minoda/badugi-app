@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { GAME_VARIANTS } from '../../games/core/variants.js';
 import {
   buildBadugiLiveTrainingObservationDiagnostic,
   deriveBadugiTrainingLegalActions,
@@ -80,5 +81,34 @@ describe('Badugi live training observation diagnostic', () => {
     })).toEqual(['CHECK']);
     expect(deriveBadugiTrainingLegalActions({ phase: 'DRAW' }))
       .toEqual(['draw_0', 'draw_1', 'draw_2', 'draw_3']);
+  });
+
+  it('keeps the trainer mask distinct from the live short-stack raise rule', () => {
+    const controller = GAME_VARIANTS.badugi.controllerFactory({
+      seatConfig: ['HERO', 'CPU', 'CPU', 'CPU', 'CPU', 'CPU'],
+      startingStack: 500, blindStructure: [{ sb: 10, bb: 20, ante: 0 }],
+    });
+    const initial = controller.createInitialState({
+      seatConfig: ['HERO', 'CPU', 'CPU', 'CPU', 'CPU', 'CPU'],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const seeded = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot, phase: 'BET', turn: 0, nextTurn: 0,
+        players: snapshot.players.map((player, seat) => ({
+          ...player,
+          stack: seat === 0 ? 15 : 500,
+          betThisRound: seat === 1 ? 20 : 0,
+          folded: false, hasFolded: false, seatOut: false,
+        })),
+      },
+      context: state?.context ?? null, handIndex: state?.handIndex ?? 0,
+    });
+    const controllerActions = controller.getLegalActions(seeded, 0).map((action) => action.type);
+    expect(controllerActions).toContain('RAISE');
+    expect(deriveBadugiTrainingLegalActions({
+      phase: 'BET', drawRoundIndex: 0, stack: 1.5, toCall: 2, raiseCount: 0,
+    })).toEqual(['FOLD', 'CALL']);
   });
 });

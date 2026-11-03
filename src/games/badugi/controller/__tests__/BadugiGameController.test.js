@@ -670,6 +670,32 @@ describe("BadugiGameController – syncFromSnapshot null turn handling", () => {
 });
 
 describe("BadugiGameController – draw", () => {
+  it("accepts a four-card exchange from an eligible seat", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    let state = controller.createNewHandState(initial, {
+      drawCardsForSeat: () => ["AS", "2H", "3D", "4C"],
+    });
+    state = ensureDrawPhase(controller, state, 0);
+
+    const hand = controller.getUiSnapshot(state).players[0].hand;
+    expect(hand).toHaveLength(4);
+    const { state: nextState, events } = controller.applyAction(state, {
+      seatIndex: 0,
+      payload: {
+        type: "draw",
+        drawCount: 4,
+        drawIndexes: [0, 1, 2, 3],
+        handAfter: [...hand],
+      },
+    });
+
+    expect(events.some((event) => event.type === "invalidAction")).toBe(false);
+    expect(controller.getUiSnapshot(nextState).players[0].lastDrawCount).toBe(4);
+  });
+
   it("marks players as having drawn with correct count", () => {
     const controller = createController();
     const initial = controller.createInitialState({

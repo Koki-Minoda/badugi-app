@@ -68,6 +68,8 @@ def analyze(manifest_path, reports_dir):
     source_heads = set()
     model_hashes = {}
     session_summaries = []
+    bet_to_call_mismatches = 0
+    bet_decisions = 0
     for spec in specs:
         session_id = spec["sessionId"]
         report = json.loads((reports_dir / f"{session_id}.json").read_text())
@@ -130,6 +132,17 @@ def analyze(manifest_path, reports_dir):
         require(len(decisions) == report.get("decisions")
                 and all(row.get("handId") in hand_ids for row in decisions),
                 f"{session_id}: controller decision cannot be linked to a completed hand")
+        for row in decisions:
+            if row.get("phase") != "BET":
+                continue
+            bet_decisions += 1
+            legal = row.get("legalActions") or []
+            to_call = row.get("toCall")
+            facing_bet_mismatch = ("call" in legal and
+                                   (not isinstance(to_call, (int, float)) or to_call <= 0))
+            free_action_mismatch = "check" in legal and to_call != 0
+            if facing_bet_mismatch or free_action_mismatch:
+                bet_to_call_mismatches += 1
         status_counts = Counter(row.get("status") for row in target_statuses)
         if tier:
             asset = report.get("modelAsset") or {}
@@ -167,6 +180,8 @@ def analyze(manifest_path, reports_dir):
                                       if row.get("status") != "used")) if tier else {},
                                   "targetChipPerPlannedHand": total / spec["handCount"]})
     require(len(source_heads) == 1, "Reports span different source commits")
+    require(not manifest.get("requireBetToCallTelemetry") or bet_to_call_mismatches == 0,
+            "BET to-call telemetry disagrees with legal actions")
     require(set(frozen_model_hashes).issubset(MODEL_IDS),
             "Frozen manifest lists unknown model tier")
 
@@ -197,17 +212,24 @@ def analyze(manifest_path, reports_dir):
                             "modelSessionRange": [min(values), max(values)],
                             "teacherSessionRange": [min(teacher), max(teacher)],
                             "descriptive95": interval, "status": "pilot-only-no-strength-decision"})
-    return {"status": "VALID_PILOT_NO_STRENGTH_DECISION",
+    status = ("VALID_CHIP_PILOT_TELEMETRY_INCOMPLETE_NO_STRENGTH_DECISION"
+              if bet_to_call_mismatches else "VALID_PILOT_NO_STRENGTH_DECISION")
+    limitations = ["Pilot-only scripted opponents and API mock",
+                   "No causal pairing from equal initial seeds",
+                   "No normal 95% interval for cells with fewer than 30 independent sessions",
+                   "No automatic model promotion or tier-strength certification"]
+    if bet_to_call_mismatches:
+        limitations.append("BET to-call telemetry inconsistent; facing-bet action diagnosis is invalid")
+    return {"status": status,
             "analysisUnit": "independent-session",
             "primaryMetric": "target total chip delta / planned hand count",
             "uncertainty": "session SD/range; descriptive unpaired normal 95% intervals only when each arm has >=30 sessions",
             "manifestSha256": manifest_hash, "sourceHead": source_heads.pop(),
             "modelHashes": model_hashes, "sessions": session_summaries,
+            "betToCallTelemetry": {"betDecisions": bet_decisions,
+                                   "mismatchedRows": bet_to_call_mismatches},
             "cells": cell_summaries, "comparisons": comparisons,
-            "limitations": ["Pilot-only scripted opponents and API mock",
-                            "No causal pairing from equal initial seeds",
-                            "No normal 95% interval for cells with fewer than 30 independent sessions",
-                            "No automatic model promotion or tier-strength certification"]}
+            "limitations": limitations}
 
 
 def main():

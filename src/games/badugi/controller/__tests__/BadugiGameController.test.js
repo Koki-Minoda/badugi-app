@@ -551,6 +551,50 @@ describe("BadugiGameController – betting", () => {
     ]);
   });
 
+  it("documents short-stack Raise resolving as an all-in Call", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const seeded = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot,
+        phase: "BET",
+        turn: 0,
+        nextTurn: 0,
+        currentBet: 10,
+        raiseCountThisRound: 0,
+        players: snapshot.players.map((player, seatIndex) => ({
+          ...player,
+          stack: seatIndex === 0 ? 5 : 490,
+          betThisRound: seatIndex === 1 ? 10 : 0,
+          totalInvested: seatIndex === 1 ? 10 : 0,
+          folded: seatIndex > 1,
+          hasFolded: seatIndex > 1,
+          seatOut: false,
+          isBusted: false,
+          allIn: false,
+          hasActedThisRound: seatIndex !== 0,
+        })),
+      },
+      context: state?.context ?? null,
+      handIndex: state?.handIndex ?? 0,
+    });
+
+    expect(controller.getLegalActions(seeded, 0).map((action) => action.type)).toContain("RAISE");
+    const { state: nextState, events } = controller.applyAction(seeded, {
+      seatIndex: 0,
+      payload: { type: "raise" },
+    });
+    expect(events.some((event) => event.type === "invalidAction")).toBe(false);
+    const next = controller.getUiSnapshot(nextState);
+    expect(next.players[0]).toMatchObject({ stack: 0, totalInvested: 5, allIn: true });
+    expect(next.players[0].lastAction).toBe("Call");
+    expect(next.raiseCountThisRound).toBe(0);
+  });
+
   it("keeps Raise available when one active opponent can still respond", () => {
     const controller = createController();
     const initial = controller.createInitialState({

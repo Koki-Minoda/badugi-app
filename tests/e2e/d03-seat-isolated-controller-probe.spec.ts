@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { join } from 'node:path';
 import { APP_URL, enterTitleIfPresent, selectGameVariantFromSelector } from './authHelper';
 import { getProgressState, invokeE2E, performSafeAction, waitForE2EDriver } from './helpers/gameProgressHelper.js';
 import { installSoakSeed } from './helpers/gameplaySoakHarness';
@@ -37,6 +39,16 @@ const MODEL_IDS = {
   iron: 'model-badugi-iron-v1',
   worldmaster: 'model-badugi-worldmaster-v1',
 } as const;
+const sourceHead = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+const registry = JSON.parse(readFileSync(join(process.cwd(), 'src/config/ai/modelRegistry.json'), 'utf8'));
+const modelAssets = Object.fromEntries(Object.entries(MODEL_IDS).map(([tier, id]) => {
+  const entry = registry.find(model => model.id === id);
+  if (!entry?.onnx) throw new Error(`D03 model missing from registry: ${id}`);
+  const sha256 = createHash('sha256')
+    .update(readFileSync(join(process.cwd(), 'public', entry.onnx))).digest('hex');
+  if (sha256 !== entry.checksumSha256) throw new Error(`D03 model checksum mismatch: ${id}`);
+  return [tier, { id, sha256, inputShape: entry.inputShape, outputShape: entry.outputShape }];
+}));
 
 type SessionCase = { sessionId?: string; modelTier: null | keyof typeof MODEL_IDS;
   seats: number; mode: 'cash' | 'tournament'; handCount: number;
@@ -181,6 +193,7 @@ for (const { sessionId, modelTier, seats, mode, handCount, seed, heroPolicy = 'h
     const report = { purpose: 'controller-instrumentation-only',
       sessionDesign: manifest?.purpose ?? 'default-functional-probe',
       manifestSha256, sessionId: sessionId ?? null, modelTier, seats, mode,
+      sourceHead, modelAsset: modelTier ? modelAssets[modelTier] : null,
       plannedHandCount: handCount, observedHandCount: hands.length, stopReason,
       targetZeroStackAtEnd: hands.at(-1)?.seats.find(seat => seat.seat === 1)?.finalStack === 0,
       opponentStructure: { seatZero: heroPolicy, otherCpuSeats: 'teacher' },

@@ -4341,6 +4341,9 @@ export default function App() {
         : Number.isFinite(metadata?.paid)
           ? metadata.paid
           : Math.max(0, (resolvedBetAfter ?? 0) - (resolvedBetBefore ?? 0));
+    const resolvedHandId =
+      handIdRef.current ?? currentHandHistoryRef.current?.handId ??
+      metadata?.handId ?? null;
     const resolvedToCall = Number.isFinite(metadata?.toCall)
       ? metadata.toCall
       : null;
@@ -4354,7 +4357,7 @@ export default function App() {
       drawRound: resolvedDrawRound,
       betRound: resolvedBetRound,
       actionType: type,
-      metadata: mergedMeta,
+      metadata: { ...mergedMeta, handId: resolvedHandId },
       toCall: resolvedToCall,
       currentBet,
       pot: potAfter ?? totalPotRef.current,
@@ -4385,7 +4388,7 @@ export default function App() {
     );
 
     const nextEntry = {
-      handId: handIdRef.current ?? metadata?.handId ?? null,
+      handId: resolvedHandId,
       playerId:
         seatSnapshot?.playerId ??
         seatSnapshot?.tournamentPlayerId ??

@@ -84,6 +84,9 @@ def analyze(manifest_path, reports_dir):
         hands = report.get("hands")
         require(isinstance(hands, list) and hands,
                 f"{session_id}: no completed hand records")
+        hand_ids = {hand.get("handId") for hand in hands}
+        require(None not in hand_ids and len(hand_ids) == len(hands),
+                f"{session_id}: hand IDs missing or duplicated")
         observed = len(hands)
         require(report.get("observedHandCount") == observed,
                 f"{session_id}: observed hands mismatch")
@@ -114,6 +117,14 @@ def analyze(manifest_path, reports_dir):
         tier = spec["modelTier"]
         target_statuses = report.get("targetStatuses", [])
         require(target_statuses, f"{session_id}: no target decisions")
+        require(len(target_statuses) == report.get("targetDecisions")
+                and all(row.get("handId") in hand_ids for row in target_statuses),
+                f"{session_id}: target decision cannot be linked to a completed hand")
+        decisions = [row for row in report.get("decisionTrace", [])
+                     if row.get("phase") in ("BET", "DRAW")]
+        require(len(decisions) == report.get("decisions")
+                and all(row.get("handId") in hand_ids for row in decisions),
+                f"{session_id}: controller decision cannot be linked to a completed hand")
         status_counts = Counter(row.get("status") for row in target_statuses)
         if tier:
             asset = report.get("modelAsset") or {}

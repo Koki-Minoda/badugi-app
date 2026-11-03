@@ -227,7 +227,8 @@ for (const { sessionId, modelTier, seats, mode, handCount, seed, heroPolicy = 'h
       traceRows: rows.length, decisions: decisionRows.length,
       nonDecisionRows: nonDecisionRows.length,
       targetDecisions: target.length, otherDecisions: others.length,
-      targetStatuses: target.map(row => ({ phase: row.phase, status: row.inferenceTrace?.status,
+      targetStatuses: target.map(row => ({ handId: row.handId,
+        phase: row.phase, status: row.inferenceTrace?.status,
         model: row.inferenceTrace?.usedModelId,
         requestedModel: row.inferenceTrace?.requestedModelId,
         selectedModel: row.inferenceTrace?.selectedModelId,
@@ -244,6 +245,8 @@ for (const { sessionId, modelTier, seats, mode, handCount, seed, heroPolicy = 'h
       && /^collect /i.test(String(row.finalAction)) && row.legalActions?.length === 0)).toBe(true);
     expect(target.length).toBeGreaterThan(0);
     if (seats > 2) expect(others.length).toBeGreaterThan(0);
+    const observedHandIds = new Set(hands.map(hand => hand.handId));
+    expect(decisionRows.every(row => observedHandIds.has(row.handId))).toBe(true);
     expect(decisionRows.every(row => Boolean(row.inferenceTrace?.status))).toBe(true);
     expect(decisionRows.some(row => String(row.fallbackReason ?? '').includes('FL_RAISE_CAP'))).toBe(false);
     expect(others.every(row => row.inferenceTrace?.status !== 'used')).toBe(true);

@@ -30,6 +30,16 @@ function captureAtInference(source: string) {
         sbAmount: event.sbAmount, bbAmount: event.bbAmount,
         from: event.from, to: event.to,
       })),
+      actorDrawCountFromEvents: (handHistoryRef.current?.events ?? [])
+        .filter(event => event.type === 'DRAW_ACTION' && event.seat === ${actor})
+        .reduce((sum, event) => sum + (Number(event.drawCount) || 0), 0),
+      actorDiscardCountFromEvents: (handHistoryRef.current?.events ?? [])
+        .filter(event => event.type === 'DRAW_ACTION' && event.seat === ${actor})
+        .reduce((sum, event) => sum + (Array.isArray(event.replacedCards) ? event.replacedCards.length : 0), 0),
+      actorDiscardCardShapes: (handHistoryRef.current?.events ?? [])
+        .filter(event => event.type === 'DRAW_ACTION' && event.seat === ${actor})
+        .flatMap(event => Array.isArray(event.replacedCards) ? event.replacedCards : [])
+        .map(entry => typeof entry.oldCard === 'string' && /^(?:[2-9]|10|[AJQK])[CDHS]$/.test(entry.oldCard)),
       actorCardTypes: (${players}[${actor}]?.hand ?? []).map(card => typeof card),
       players: ${players}.map(player => ({
         stack: player?.stack, betThisRound: player?.betThisRound,
@@ -112,5 +122,8 @@ for (const mode of ['cash', 'tournament'] as const) {
       (mode === 'cash' ? 3000 : 12000))).toBe(true);
     expect(rows.some(row => row.publicEvents.some(event => event.type === 'BET_ACTION'))).toBe(true);
     expect(rows.some(row => row.publicEvents.some(event => event.type === 'DRAW_ACTION'))).toBe(true);
+    expect(rows.every(row => row.actorDiscardCountFromEvents === row.actorDrawCountFromEvents)).toBe(true);
+    expect(rows.every(row => row.actorDiscardCardShapes.every(Boolean))).toBe(true);
+    expect(rows.some(row => row.actorDiscardCountFromEvents > 0)).toBe(true);
   });
 }

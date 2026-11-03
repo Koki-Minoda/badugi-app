@@ -1,0 +1,10 @@
+{
+  "purpose": "pilot-only",
+  "sessions": [
+    { "sessionId": "pilot-teacher-6cash-stay-20261114", "modelTier": null, "seats": 6, "mode": "cash", "handCount": 2, "seed": 20261114, "heroPolicy": "heroStay" },
+    { "sessionId": "pilot-standard-6cash-stay-20261115", "modelTier": "standard", "seats": 6, "mode": "cash", "handCount": 2, "seed": 20261115, "heroPolicy": "heroStay" },
+    { "sessionId": "pilot-teacher-6cash-aggressive-20261116", "modelTier": null, "seats": 6, "mode": "cash", "handCount": 2, "seed": 20261116, "heroPolicy": "heroAggressive" },
+    { "sessionId": "pilot-standard-6cash-aggressive-20261117", "modelTier": "standard", "seats": 6, "mode": "cash", "handCount": 2, "seed": 20261117, "heroPolicy": "heroAggressive" },
+    { "sessionId": "pilot-standard-2mtt-stay-20261118", "modelTier": "standard", "seats": 2, "mode": "tournament", "handCount": 1, "seed": 20261118, "heroPolicy": "heroStay" }
+  ]
+}

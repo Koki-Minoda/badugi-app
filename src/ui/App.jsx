@@ -202,6 +202,7 @@ import {
 } from "../ai/onnxInferenceDeadline.js";
 import { buildBadugiObservationPayload } from "../rl/badugiObservationSchema.js";
 import { selectBadugiTrainingDiscardIndexes } from "../rl/badugiTrainingDrawSelection.js";
+import { canBadugiTrainingModelIncreaseBet } from "../rl/badugiTrainingBetEligibility.js";
 import { chooseProAction } from "../ai/pro/proDecisionOverlay.js";
 import { useGameEngine } from "./engine/useGameEngine.js";
 import { mergeEngineSnapshot } from "./utils/engineSnapshotUtils.js";
@@ -13131,9 +13132,13 @@ export default function App() {
             return;
           }
           onnxInferencePendingRef.current = pendingInference;
+          const canModelIncreaseBet = canBadugiTrainingModelIncreaseBet({
+            stack: me.stack, toCall, liveBetSize: betSize,
+            trainerBetSize: drawRound >= 2 ? BB * 2 : BB, canRaise,
+          });
           const onnxLegalActions = toCall > 0
-            ? ["FOLD", "CALL", ...(canRaise ? ["RAISE"] : [])]
-            : ["CHECK", ...(canRaise ? ["BET"] : [])];
+            ? ["FOLD", "CALL", ...(canModelIncreaseBet ? ["RAISE"] : [])]
+            : ["CHECK", ...(canModelIncreaseBet ? ["BET"] : [])];
           const observation = buildBadugiObservationPayload({
             state: {
               variantId: "D03",

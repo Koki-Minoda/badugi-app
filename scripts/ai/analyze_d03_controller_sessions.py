@@ -46,6 +46,11 @@ def analyze(manifest_path, reports_dir):
     specs = manifest.get("sessions")
     require(manifest.get("purpose") == "pilot-only" and isinstance(specs, list) and specs,
             "Only explicit pilot manifests are accepted")
+    frozen_head = manifest.get("sourceHead")
+    frozen_model_hashes = manifest.get("modelHashes", {})
+    require(frozen_head is None or isinstance(frozen_head, str) and len(frozen_head) == 40,
+            "Frozen source commit must be a full SHA")
+    require(isinstance(frozen_model_hashes, dict), "Frozen model hashes must be a map")
     ids = [spec.get("sessionId") for spec in specs]
     seeds = [spec.get("seed") for spec in specs]
     require(len(ids) == len(set(ids)) and all(ids), "Session IDs must be unique")
@@ -73,6 +78,8 @@ def analyze(manifest_path, reports_dir):
             "seatZero": spec.get("heroPolicy", "heroStay"), "otherCpuSeats": "teacher"},
             f"{session_id}: opponent structure mismatch")
         require(report.get("sourceHead"), f"{session_id}: source commit missing")
+        require(frozen_head is None or report["sourceHead"] == frozen_head,
+                f"{session_id}: source commit differs from frozen manifest")
         source_heads.add(report["sourceHead"])
         hands = report.get("hands")
         require(isinstance(hands, list) and hands,
@@ -117,6 +124,9 @@ def analyze(manifest_path, reports_dir):
                 require(model_hashes[tier] == asset["sha256"],
                         f"{session_id}: model hash changed")
             model_hashes[tier] = asset["sha256"]
+            require(not frozen_model_hashes
+                    or frozen_model_hashes.get(tier) == asset["sha256"],
+                    f"{session_id}: model differs from frozen manifest")
             require(all(row.get("status") in
                         ("used", "fallback", "failed", "not-connected")
                         and (row.get("model") == MODEL_IDS[tier] if row.get("status") == "used"
@@ -141,6 +151,8 @@ def analyze(manifest_path, reports_dir):
                                       if row.get("status") != "used")) if tier else {},
                                   "targetChipPerPlannedHand": total / spec["handCount"]})
     require(len(source_heads) == 1, "Reports span different source commits")
+    require(set(frozen_model_hashes).issubset(MODEL_IDS),
+            "Frozen manifest lists unknown model tier")
 
     cell_summaries = []
     for (seats, mode, opponent, tier), values in sorted(

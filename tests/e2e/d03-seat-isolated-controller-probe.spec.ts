@@ -69,7 +69,16 @@ const manifestSha256 = manifestSource
 if (manifest) {
   if (manifest.purpose !== 'pilot-only' || !Array.isArray(manifest.sessions)
     || manifest.sessions.length === 0) throw new Error('Invalid D03 pilot manifest');
+  if (manifest.sourceHead && manifest.sourceHead !== sourceHead) {
+    throw new Error('D03 pilot source commit differs from frozen manifest');
+  }
+  for (const [tier, expectedHash] of Object.entries(manifest.modelHashes ?? {})) {
+    if (!Object.hasOwn(modelAssets, tier) || modelAssets[tier].sha256 !== expectedHash) {
+      throw new Error(`D03 pilot model hash differs from frozen manifest: ${tier}`);
+    }
+  }
   const ids = new Set<string>();
+  const seeds = new Set<number | undefined>();
   for (const session of manifest.sessions as SessionCase[]) {
     if (!session.sessionId || ids.has(session.sessionId)
       || (session.modelTier !== null && !(session.modelTier in MODEL_IDS))
@@ -77,10 +86,14 @@ if (manifest) {
       || !['cash', 'tournament'].includes(session.mode)
       || !Number.isInteger(session.handCount) || session.handCount < 1
       || !Number.isInteger(session.seed) || session.seed < 1
+      || seeds.has(session.seed)
+      || (session.modelTier && Object.keys(manifest.modelHashes ?? {}).length > 0
+        && !manifest.modelHashes[session.modelTier])
       || !['heroStay', 'heroAggressive'].includes(session.heroPolicy ?? 'heroStay')) {
       throw new Error(`Invalid D03 pilot session: ${session.sessionId ?? '<missing id>'}`);
     }
     ids.add(session.sessionId);
+    seeds.add(session.seed);
   }
 }
 const CASES: SessionCase[] = manifest ? manifest.sessions : DEFAULT_CASES;

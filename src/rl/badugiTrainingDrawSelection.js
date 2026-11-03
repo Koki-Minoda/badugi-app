@@ -1,6 +1,6 @@
-// Offline diagnostic for the six-max trainer's draw-count to card-selection
-// rule. Keep separate from the published ONNX path until live-session evidence
-// supports a new model/input/action contract.
+// Match the six-max trainer's draw-count to card-selection rule. This fixes
+// the card choice for a model's requested count; model strength still needs
+// independent live-session evaluation before any promotion.
 const RANKS = 'A23456789TJQK';
 const SUITS = 'CDHS';
 
@@ -24,7 +24,7 @@ function betterRanks(candidate, best) {
   return false;
 }
 
-export function selectBadugiTrainingDiscardIndexesDiagnostic(hand, drawCount) {
+export function selectBadugiTrainingDiscardIndexes(hand, drawCount) {
   if (!Array.isArray(hand) || hand.length !== 4 ||
       !Number.isInteger(drawCount) || drawCount < 0 || drawCount > 3) {
     throw new TypeError('Badugi draw diagnostic requires four cards and 0–3 draws');

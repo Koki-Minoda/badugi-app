@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { selectBadugiTrainingDiscardIndexesDiagnostic as select } from '../badugiTrainingDrawSelectionDiagnostic.js';
+import { selectBadugiTrainingDiscardIndexes as select } from '../badugiTrainingDrawSelection.js';
 
-describe('six-max Badugi training draw selection diagnostic', () => {
+describe('six-max Badugi training draw selection', () => {
   it('breaks a made hand by discarding the highest cards, not aces', () => {
     expect(select(['AC', '2D', '3H', '4S'], 0)).toEqual([]);
     expect(select(['AC', '2D', '3H', '4S'], 1)).toEqual([3]);

@@ -201,6 +201,7 @@ import {
   runTracedOnnxInferenceWithDeadline,
 } from "../ai/onnxInferenceDeadline.js";
 import { buildBadugiObservationPayload } from "../rl/badugiObservationSchema.js";
+import { selectBadugiTrainingDiscardIndexes } from "../rl/badugiTrainingDrawSelection.js";
 import { chooseProAction } from "../ai/pro/proDecisionOverlay.js";
 import { useGameEngine } from "./engine/useGameEngine.js";
 import { mergeEngineSnapshot } from "./utils/engineSnapshotUtils.js";
@@ -3154,6 +3155,7 @@ export default function App() {
       let drawInferenceTrace = null;
       let onnxDrawDecision = null;
       let onnxDrawTimedOut = false;
+      let onnxDrawSelectionFailed = false;
       if (shouldUseOnnx) {
         const inferenceHandId = handIdRef.current;
         const pendingInference = {
@@ -3208,6 +3210,27 @@ export default function App() {
         drawInferenceTrace = inferenceResult.inferenceTrace;
         onnxDrawDecision = inferenceResult.decision;
         onnxDrawTimedOut = inferenceResult.timedOut;
+        if (onnxDrawDecision) {
+          try {
+            onnxDrawDecision = {
+              ...onnxDrawDecision,
+              discardIndexes: selectBadugiTrainingDiscardIndexes(
+                me.hand,
+                onnxDrawDecision.drawCount,
+              ),
+            };
+          } catch (error) {
+            console.warn("[ONNX] invalid Badugi draw card selection", error);
+            onnxDrawSelectionFailed = true;
+            onnxDrawDecision = null;
+            drawInferenceTrace = {
+              ...drawInferenceTrace,
+              usedModelId: null,
+              status: "fallback",
+              reason: "draw-card-selection-invalid",
+            };
+          }
+        }
         const liveSeat = playersRef.current?.[seatToAct];
         if (
           phaseRef.current !== "DRAW" ||
@@ -3260,7 +3283,9 @@ export default function App() {
                   tierId: onnxTier,
                   fallbackReason: onnxDrawTimedOut
                     ? "ONNX_INFERENCE_TIMEOUT"
-                    : "ONNX_INFERENCE_UNAVAILABLE",
+                    : onnxDrawSelectionFailed
+                      ? "ONNX_DRAW_CARD_SELECTION_INVALID"
+                      : "ONNX_INFERENCE_UNAVAILABLE",
                 }
               : standardDrawDecision;
       const fallbackDrawCount = npcAutoDrawCount(drawEvaluator);

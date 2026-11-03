@@ -22,6 +22,18 @@ function forceRegisteredOnnxInTest(source: string) {
   return patched;
 }
 
+function captureDrawCardSelection(source: string) {
+  const marker = 'const drawCount = discardIndexes.length;';
+  expect(source.split(marker)).toHaveLength(2);
+  return source.replace(marker, `${marker}
+    if (onnxDrawDecision) window.__D03_MODEL_DRAW_SELECTION_AUDIT__.push({
+      seat: seatToAct, drawRound,
+      requestedDrawCount,
+      expectedIndexes: selectBadugiTrainingDiscardIndexes(me.hand, requestedDrawCount),
+      plannedIndexes: [...discardIndexes],
+    });`);
+}
+
 for (const [tier, expectedModelId] of Object.entries(MODELS)) {
   for (const mode of ['cash', 'tournament'] as const) {
     test(`D03 ${tier} registered ONNX completes a ${mode} controller hand in isolation`, async ({ page }, testInfo) => {
@@ -33,8 +45,8 @@ for (const [tier, expectedModelId] of Object.entries(MODELS)) {
         const response = await route.fetch();
         const body = await response.text();
         patchedApp += 1;
-        await route.fulfill({ response, body: tier === 'beginner' || tier === 'standard'
-          ? body : forceRegisteredOnnxInTest(body) });
+        await route.fulfill({ response, body: captureDrawCardSelection(tier === 'beginner' || tier === 'standard'
+          ? body : forceRegisteredOnnxInTest(body)) });
       });
       await page.route('**/api/**', route => route.fulfill({
         status: 200, contentType: 'application/json',
@@ -48,6 +60,7 @@ for (const [tier, expectedModelId] of Object.entries(MODELS)) {
           user: { id: 9303, username: 'QA Hero' }, isAuthenticated: true,
         }));
         window.__MGX_CPU_DECISION_TRACE__ = [];
+        window.__D03_MODEL_DRAW_SELECTION_AUDIT__ = [];
       }, tier);
       await page.goto(`${APP_URL}?variant=D03&mode=cash&mgxQa=mobile`);
       await enterTitleIfPresent(page);
@@ -65,6 +78,7 @@ for (const [tier, expectedModelId] of Object.entries(MODELS)) {
         await expect(page.getByTestId('tournament-hud')).toBeVisible();
       }
       await page.evaluate(() => { window.__MGX_CPU_DECISION_TRACE__ = []; });
+      await page.evaluate(() => { window.__D03_MODEL_DRAW_SELECTION_AUDIT__ = []; });
       for (let step = 0; step < 120; step += 1) {
         const progress = await getProgressState(page);
         if (progress.isTerminal) break;
@@ -82,7 +96,8 @@ for (const [tier, expectedModelId] of Object.entries(MODELS)) {
         const currentId = window.__BADUGI_E2E__.getStateSnapshot().handId;
         const hand = [...window.__BADUGI_E2E__.getHandHistory()].reverse().find(record =>
           record.handId === currentId && record.events?.some(event => event.type === 'HAND_END'));
-        return { rows: window.__MGX_CPU_DECISION_TRACE__ ?? [], hand };
+        return { rows: window.__MGX_CPU_DECISION_TRACE__ ?? [],
+          drawSelections: window.__D03_MODEL_DRAW_SELECTION_AUDIT__ ?? [], hand };
       });
       const used = evidence.rows.filter(row => row.inferenceTrace?.status === 'used');
       const invalid = evidence.rows.filter(row => row.illegalActionRejected
@@ -92,6 +107,15 @@ for (const [tier, expectedModelId] of Object.entries(MODELS)) {
         seat: seat.seat,
         delta: finalStacks.find(entry => entry.seat === seat.seat)?.stack - seat.startStack,
       }));
+      const drawSelectionMatches = evidence.drawSelections.map(selection => {
+        const event = evidence.hand.events.find(candidate => candidate.type === 'DRAW_ACTION'
+          && candidate.seat === selection.seat
+          && candidate.drawRoundIndex === selection.drawRound);
+        const actualIndexes = event?.replacedCards?.map(entry => entry.index) ?? null;
+        return JSON.stringify(selection.expectedIndexes) === JSON.stringify(selection.plannedIndexes)
+          && JSON.stringify(selection.plannedIndexes) === JSON.stringify(actualIndexes)
+          && selection.requestedDrawCount === selection.plannedIndexes.length;
+      });
       const report = {
         sourceHead: process.env.GITHUB_SHA ?? null,
         tier, mode, apiStubbed: true,
@@ -110,6 +134,8 @@ for (const [tier, expectedModelId] of Object.entries(MODELS)) {
           usedModelId: row.inferenceTrace?.usedModelId ?? null,
           reason: row.inferenceTrace?.reason ?? null,
         })),
+        drawSelectionDecisions: evidence.drawSelections.length,
+        drawSelectionMatches: drawSelectionMatches.filter(Boolean).length,
         stackDeltas, pageErrors,
       };
       await writeFile(testInfo.outputPath('d03-model-probe.json'), JSON.stringify(report, null, 2));
@@ -134,6 +160,8 @@ for (const [tier, expectedModelId] of Object.entries(MODELS)) {
           String(action).toLowerCase() === String(row.finalAction).toLowerCase())),
       JSON.stringify(report.traceStatuses)).toBe(true);
       expect(invalid).toEqual([]);
+      expect(evidence.drawSelections.length).toBeGreaterThan(0);
+      expect(drawSelectionMatches.every(Boolean)).toBe(true);
       expect(stackDeltas.every(entry => Number.isFinite(entry.delta))).toBe(true);
       expect(stackDeltas.reduce((sum, entry) => sum + entry.delta, 0)).toBe(0);
     });

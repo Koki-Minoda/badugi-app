@@ -123,6 +123,8 @@ describe('Badugi controller event projection v2 draft', () => {
       ...base, publicEvents,
     });
     expect(() => invoke(base.publicEvents.slice(0, 3))).toThrow(/complete public draw events/);
+    expect(() => invoke(base.publicEvents.filter((event) =>
+      event !== base.publicEvents[2]))).toThrow(/complete public draw events/);
     expect(() => invoke([...base.publicEvents, base.publicEvents[2]])).toThrow(/one valid public draw/);
     expect(() => invoke([...base.publicEvents, {
       type: 'DRAW_ACTION', seat: 1, drawRoundIndex: 1, betRoundIndex: 1,

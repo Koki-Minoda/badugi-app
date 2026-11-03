@@ -75,9 +75,15 @@ export function buildBadugiControllerEventObservationV2Draft({
   if (!Array.isArray(actor?.hand) || actor.hand.length !== 4) {
     throw new TypeError('v2 draft requires the actor\'s four cards');
   }
-  for (let round = 0; round < Math.min(drawRoundIndex, 3); round += 1) {
-    if (!drawSeen[seatIndex][round]) {
-      throw new TypeError('v2 draft requires the actor\'s complete public draw events');
+  for (let seat = 0; seat < players.length; seat += 1) {
+    const player = players[seat];
+    const stillInHand = player && !(player.seatOut || player.sittingOut ||
+      player.isBusted || player.busted || player.folded || player.hasFolded);
+    if (!stillInHand) continue;
+    for (let round = 0; round < Math.min(drawRoundIndex, 3); round += 1) {
+      if (!drawSeen[seat][round]) {
+        throw new TypeError('v2 draft requires complete public draw events for live seats');
+      }
     }
   }
   const dealerIndex = snapshot.dealerIdx ?? snapshot.dealerSeat ?? snapshot.metadata?.dealerIdx;

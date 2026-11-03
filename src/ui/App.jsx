@@ -4677,7 +4677,10 @@ export default function App() {
           ? controller.applyPlayerAction({
               seatIndex: seat,
               payload,
-              betSize,
+              // Badugi's legacy controller accepts the base blind and applies
+              // the larger fixed-limit unit on later streets itself.
+              betSize:
+                normalizedGameVariant === APP_VARIANT_IDS.BADUGI ? BB : betSize,
               players: snap,
             })
           : applyForcedBetActionSnapshot({
@@ -4737,6 +4740,8 @@ export default function App() {
     [
       phase,
       betSize,
+      BB,
+      normalizedGameVariant,
       raiseCountThisRound,
       setBetHead,
       setLastAggressor,

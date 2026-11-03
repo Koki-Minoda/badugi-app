@@ -15,24 +15,30 @@ function captureAtInference(source: string) {
       throw new Error(`D03 ${phase} inference site unavailable`);
     }
     const capture = `window.__D03_RUNTIME_OBSERVATION_AUDIT__.push({
-      phase: ${JSON.stringify(phase)}, seat: ${actor}, isTournament,
+      phase: ${JSON.stringify(phase)}, seat: ${actor}, isTournament, drawRound,
       handId: handIdRef.current, playerCount: ${players}.length, bb: BB,
       stack: observation.features.stack, maxStack: observation.features.maxStack,
       potFromObservation: observation.features.pot,
       settledPot: (potsRef.current ?? []).reduce((sum, pot) => sum + (Number(pot?.amount) || 0), 0),
       unsettledBets: ${players}.reduce((sum, player) => sum + (Number(player?.betThisRound) || 0), 0),
       totalInvested: ${players}.reduce((sum, player) => sum + (Number(player?.totalInvested) || 0), 0),
+      totalStacks: ${players}.reduce((sum, player) => sum + (Number(player?.stack) || 0), 0),
       publicEvents: (handHistoryRef.current?.events ?? []).map(event => ({
         type: event.type, seat: event.seat, action: event.action,
         amount: event.amount, drawCount: event.drawCount,
+        sbSeat: event.sbSeat, bbSeat: event.bbSeat,
+        sbAmount: event.sbAmount, bbAmount: event.bbAmount,
         from: event.from, to: event.to,
       })),
       actorCardTypes: (${players}[${actor}]?.hand ?? []).map(card => typeof card),
       players: ${players}.map(player => ({
+        stack: player?.stack, betThisRound: player?.betThisRound,
+        totalInvested: player?.totalInvested,
+        folded: Boolean(player?.folded ?? player?.hasFolded),
         betHistory: Array.isArray(player?.betHistory) ? player.betHistory.length : null,
         drawHistory: Array.isArray(player?.drawHistory) ? player.drawHistory.length : null,
         openedCurrentRound: typeof player?.openedCurrentRound,
-        lastDrawCount: typeof player?.lastDrawCount,
+        lastDrawCount: Number.isInteger(player?.lastDrawCount) ? player.lastDrawCount : null,
         discardedCards: Array.isArray(player?.discardedCards) ? player.discardedCards.length : null,
       })),
     });
@@ -102,6 +108,8 @@ for (const mode of ['cash', 'tournament'] as const) {
     expect(rows.some(row => row.phase === 'DRAW')).toBe(true);
     expect(rows.every(row => row.playerCount === 6 && row.bb > 0 && row.stack >= 0)).toBe(true);
     expect(rows.every(row => row.totalInvested > 0 && row.publicEvents.length > 0)).toBe(true);
+    expect(rows.every(row => row.totalStacks + row.totalInvested ===
+      (mode === 'cash' ? 3000 : 12000))).toBe(true);
     expect(rows.some(row => row.publicEvents.some(event => event.type === 'BET_ACTION'))).toBe(true);
     expect(rows.some(row => row.publicEvents.some(event => event.type === 'DRAW_ACTION'))).toBe(true);
   });

@@ -114,7 +114,8 @@ for (const { sessionId, modelTier, seats, mode, handCount, seed, heroPolicy = 'h
     }
     const hands: Array<{ handId: unknown; initialHandDigest: string; targetDelta: number; chipSum: number;
       actionEvents: unknown[];
-      seats: Array<{ seat: number; startStack: number; finalStack: number; delta: number }> }> = [];
+      seats: Array<{ seat: number; name: string; startStack: number; finalStack: number; delta: number }> }> = [];
+    let stopReason = 'planned-hand-count';
     for (let handIndex = 0; handIndex < handCount; handIndex += 1) {
       for (let step = 0; step < 120; step += 1) {
         const progress = await getProgressState(page);
@@ -123,7 +124,14 @@ for (const { sessionId, modelTier, seats, mode, handCount, seed, heroPolicy = 'h
         if (!action.acted && action.reason === 'terminal') break;
         expect(action.acted, JSON.stringify(action)).toBe(true);
       }
-      await expect(page.getByTestId('hand-result-overlay')).toBeVisible();
+      await expect.poll(async () => {
+        if (await page.getByTestId('hand-result-overlay').isVisible().catch(() => false)) return 'hand-result';
+        if (mode === 'tournament') {
+          const hud = await page.evaluate(() => window.__BADUGI_E2E__.getTournamentHudState());
+          if (hud?.isFinished || hud?.heroBusted) return 'tournament-ended';
+        }
+        return 'pending';
+      }, { timeout: 10000 }).not.toBe('pending');
       const hand = await page.evaluate(() => {
         const currentId = window.__BADUGI_E2E__.getStateSnapshot().handId;
         return [...window.__BADUGI_E2E__.getHandHistory()].reverse().find(record =>
@@ -147,10 +155,18 @@ for (const { sessionId, modelTier, seats, mode, handCount, seed, heroPolicy = 'h
             stackAfter: event.stackAfter ?? null, potAfter: event.potAfter ?? null,
             drawCount: event.drawCount ?? null })),
         seats: hand.seats.map((seat, index) => ({ seat: seat.seat,
+          name: String(seat.name ?? ''),
           startStack: Number(seat.startStack),
           finalStack: Number(finalStacks.find(entry => entry.seat === seat.seat)?.stack),
           delta: deltas[index] })) });
       expect(hands[handIndex].chipSum).toBe(0);
+      if (mode === 'tournament') {
+        const hud = await page.evaluate(() => window.__BADUGI_E2E__.getTournamentHudState());
+        if (hud?.isFinished || hud?.heroBusted) {
+          stopReason = hud.isFinished ? 'tournament-finished' : 'hero-busted';
+          break;
+        }
+      }
       if (handIndex + 1 < handCount) {
         await page.getByRole('button', { name: /next hand|次のハンド/i }).first().click();
         await expect.poll(() => page.evaluate(() =>
@@ -165,11 +181,16 @@ for (const { sessionId, modelTier, seats, mode, handCount, seed, heroPolicy = 'h
     const report = { purpose: 'controller-instrumentation-only',
       sessionDesign: manifest?.purpose ?? 'default-functional-probe',
       manifestSha256, sessionId: sessionId ?? null, modelTier, seats, mode,
-      plannedHandCount: handCount,
+      plannedHandCount: handCount, observedHandCount: hands.length, stopReason,
+      targetZeroStackAtEnd: hands.at(-1)?.seats.find(seat => seat.seat === 1)?.finalStack === 0,
       opponentStructure: { seatZero: heroPolicy, otherCpuSeats: 'teacher' },
       sessionSeed: Number.isInteger(sessionSeed) && sessionSeed > 0 ? sessionSeed : null,
-      hands, targetChipPerHand:
-      hands.reduce((sum, hand) => sum + hand.targetDelta, 0) / hands.length,
+      hands, targetTotalChipDelta: hands.reduce((sum, hand) => sum + hand.targetDelta, 0),
+      targetActiveHands: hands.filter(hand => hand.seats.find(seat => seat.seat === 1)?.startStack > 0).length,
+      targetChipPerHand:
+        hands.reduce((sum, hand) => sum + hand.targetDelta, 0) / hands.length,
+      targetChipPerPlannedHand:
+        hands.reduce((sum, hand) => sum + hand.targetDelta, 0) / handCount,
       traceRows: rows.length, decisions: decisionRows.length,
       nonDecisionRows: nonDecisionRows.length,
       targetDecisions: target.length, otherDecisions: others.length,

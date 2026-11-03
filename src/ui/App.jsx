@@ -4510,6 +4510,8 @@ export default function App() {
         appendCanonicalHandEvent({
           type: "DRAW_ACTION",
           seat: idx,
+          drawRoundIndex: drawRoundTracker.current,
+          betRoundIndex: betRoundTracker.current,
           actionSeq: historyAction?.seq ?? null,
           drawCount: normalizedDrawInfo.drawCount ?? 0,
           discarded: Array.isArray(normalizedDrawInfo.drawIndexes)
@@ -4539,6 +4541,8 @@ export default function App() {
         appendCanonicalHandEvent({
           type: "BET_ACTION",
           seat: idx,
+          drawRoundIndex: drawRoundTracker.current,
+          betRoundIndex: betRoundTracker.current,
           action: normalizedType,
           actionSeq: historyAction?.seq ?? null,
           amount: amountDelta,

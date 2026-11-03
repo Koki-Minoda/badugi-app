@@ -26,6 +26,8 @@ def audit_snapshot(row, previous_events, expected_total_chips):
     last_draw = [None] * 6
     opened_by_round = [[False] * 6 for _ in range(4)]
     draw_history = [[0] * 3 for _ in range(6)]
+    round_tag_count = 0
+    round_tag_matches = 0
     for event in events:
         kind = event["type"]
         if kind == "BLINDS_POSTED":
@@ -36,6 +38,11 @@ def audit_snapshot(row, previous_events, expected_total_chips):
             if previous_action_phase == "DRAW":
                 draw_round += 1
             previous_action_phase = "BET"
+            round_tag_count += 1
+            if event.get("drawRoundIndex") == draw_round and event.get("betRoundIndex") == draw_round:
+                round_tag_matches += 1
+            else:
+                problems.append(f"BET action round tag differs at event {round_tag_count}")
             event_invested += event.get("amount") or 0
             seat = event.get("seat")
             if isinstance(seat, int) and 0 <= seat < 6 and draw_round < 4:
@@ -43,6 +50,11 @@ def audit_snapshot(row, previous_events, expected_total_chips):
                     opened_by_round[draw_round][seat] = True
         elif kind == "DRAW_ACTION":
             previous_action_phase = "DRAW"
+            round_tag_count += 1
+            if event.get("drawRoundIndex") == draw_round and event.get("betRoundIndex") == draw_round:
+                round_tag_matches += 1
+            else:
+                problems.append(f"DRAW action round tag differs at event {round_tag_count}")
             seat = event.get("seat")
             if isinstance(seat, int) and 0 <= seat < 6:
                 last_draw[seat] = event.get("drawCount")
@@ -58,12 +70,30 @@ def audit_snapshot(row, previous_events, expected_total_chips):
         if last_draw[seat] != player["lastDrawCount"]:
             problems.append(f"seat {seat} last draw differs")
 
+    # The trainer saves a round's opening flag on BET -> DRAW and clears the
+    # current flag. A BET action in the active round is not yet bet_history.
+    completed_bet_history = [[False] * 3 for _ in range(6)]
+    opened_current_round = [False] * 6
+    for seat in range(6):
+        for round_index in range(3):
+            completed = round_index < row["drawRound"] or (
+                row["phase"] == "DRAW" and round_index == row["drawRound"]
+            )
+            if completed:
+                completed_bet_history[seat][round_index] = opened_by_round[round_index][seat]
+        if row["phase"] == "BET" and row["drawRound"] < 4:
+            opened_current_round[seat] = opened_by_round[row["drawRound"]][seat]
+
     return problems, {
         "eventInvested": event_invested,
         "eventDrawRound": expected_round,
         "lastDraw": last_draw,
         "openedByBetRound": opened_by_round,
+        "completedBetHistory": completed_bet_history,
+        "openedCurrentRound": opened_current_round,
         "drawHistory": draw_history,
+        "roundTagCount": round_tag_count,
+        "roundTagMatches": round_tag_matches,
     }
 
 
@@ -98,6 +128,8 @@ def audit_report(path):
                                      for fields, row in zip(reconstructed, rows)),
         "lastDrawSeatMatches": sum(fields["lastDraw"][seat] == row["players"][seat]["lastDrawCount"]
                                    for fields, row in zip(reconstructed, rows) for seat in range(6)),
+        "roundTagMatches": sum(fields["roundTagMatches"] for fields in reconstructed),
+        "roundTagCount": sum(fields["roundTagCount"] for fields in reconstructed),
         "issues": issues,
     }
 
@@ -117,8 +149,8 @@ def main():
                          for path in args.reports],
         "observations": observations,
         "limitations": [
-            "Only sampled hands and reached states were checked; skipped/zero-action rounds may need separate handling.",
-            "Bet-history flags can be derived but were not checked against live ground truth; actor discarded-card values were not captured.",
+            "Only sampled hands and reached states were checked; skipped/zero-action rounds may need separate handling even though action round tags are now explicit.",
+            "Trainer-style completed bet-history and current opening flags are derived from public actions but were not checked against independent live ground truth; actor discarded-card values were not captured.",
             "Training stack, blind, bet-size and opponent distributions differ from current live cash/MTT play.",
         ],
     }

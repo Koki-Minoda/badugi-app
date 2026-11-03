@@ -25,6 +25,7 @@ function captureAtInference(source: string) {
       totalStacks: ${players}.reduce((sum, player) => sum + (Number(player?.stack) || 0), 0),
       publicEvents: (handHistoryRef.current?.events ?? []).map(event => ({
         type: event.type, seat: event.seat, action: event.action,
+        drawRoundIndex: event.drawRoundIndex, betRoundIndex: event.betRoundIndex,
         amount: event.amount, drawCount: event.drawCount,
         sbSeat: event.sbSeat, bbSeat: event.bbSeat,
         sbAmount: event.sbAmount, bbAmount: event.bbAmount,

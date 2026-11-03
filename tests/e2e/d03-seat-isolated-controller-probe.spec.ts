@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { APP_URL, enterTitleIfPresent, selectGameVariantFromSelector } from './authHelper';
 import { getProgressState, invokeE2E, performSafeAction, waitForE2EDriver } from './helpers/gameProgressHelper.js';
+import { installSoakSeed } from './helpers/gameplaySoakHarness';
 
 // Served-source isolation for evaluation development. It does not change shipped routing.
 function isolateSeatOne(source: string, modelTier: string | null, seats: number) {
@@ -49,6 +51,8 @@ for (const { modelTier, seats, mode, handCount } of CASES) {
     test.setTimeout(180000);
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
+    const sessionSeed = Number(process.env.D03_PROBE_SEED);
+    if (Number.isInteger(sessionSeed) && sessionSeed > 0) await installSoakSeed(page, sessionSeed);
     await page.route('**/src/ui/App.jsx*', async route => {
       const response = await route.fetch();
       await route.fulfill({ response, body: isolateSeatOne(await response.text(), modelTier, seats) });
@@ -81,7 +85,9 @@ for (const { modelTier, seats, mode, handCount } of CASES) {
       });
       await expect(page.getByTestId('tournament-hud')).toBeVisible();
     }
-    const hands: Array<{ handId: unknown; targetDelta: number; chipSum: number }> = [];
+    const hands: Array<{ handId: unknown; initialHandDigest: string; targetDelta: number; chipSum: number;
+      actionEvents: unknown[];
+      seats: Array<{ seat: number; startStack: number; finalStack: number; delta: number }> }> = [];
     for (let handIndex = 0; handIndex < handCount; handIndex += 1) {
       for (let step = 0; step < 120; step += 1) {
         const progress = await getProgressState(page);
@@ -101,8 +107,22 @@ for (const { modelTier, seats, mode, handCount } of CASES) {
       const deltas = hand.seats.map(seat =>
         Number(finalStacks.find(entry => entry.seat === seat.seat)?.stack) - Number(seat.startStack));
       expect(deltas.every(Number.isFinite)).toBe(true);
-      hands.push({ handId: hand.handId, targetDelta: deltas[1],
-        chipSum: deltas.reduce((sum, value) => sum + value, 0) });
+      const initialHandDigest = createHash('sha256').update(JSON.stringify(
+        hand.seats.map(seat => ({ seat: seat.seat, initialHand: seat.initialHand })))).digest('hex');
+      hands.push({ handId: hand.handId, initialHandDigest, targetDelta: deltas[1],
+        chipSum: deltas.reduce((sum, value) => sum + value, 0),
+        actionEvents: hand.events
+          .filter(event => /BET|DRAW|ACTION/i.test(String(event.type)))
+          .map(event => ({ type: event.type, actionSeq: event.actionSeq,
+            seat: event.seat, action: event.action ?? null,
+            amount: event.amount ?? null, betBefore: event.betBefore ?? null,
+            betAfter: event.betAfter ?? null, stackBefore: event.stackBefore ?? null,
+            stackAfter: event.stackAfter ?? null, potAfter: event.potAfter ?? null,
+            drawCount: event.drawCount ?? null })),
+        seats: hand.seats.map((seat, index) => ({ seat: seat.seat,
+          startStack: Number(seat.startStack),
+          finalStack: Number(finalStacks.find(entry => entry.seat === seat.seat)?.stack),
+          delta: deltas[index] })) });
       expect(hands[handIndex].chipSum).toBe(0);
       if (handIndex + 1 < handCount) {
         await page.getByRole('button', { name: /next hand|次のハンド/i }).first().click();
@@ -113,7 +133,10 @@ for (const { modelTier, seats, mode, handCount } of CASES) {
     const rows = await page.evaluate(() => window.__MGX_CPU_DECISION_TRACE__ ?? []);
     const target = rows.filter(row => row.actorSeat === 1);
     const others = rows.filter(row => row.actorSeat !== 1);
-    const report = { modelTier, seats, mode, hands, targetChipPerHand:
+    const report = { purpose: 'controller-instrumentation-only', modelTier, seats, mode,
+      opponentStructure: { seatZero: 'heroStay', otherCpuSeats: 'teacher' },
+      sessionSeed: Number.isInteger(sessionSeed) && sessionSeed > 0 ? sessionSeed : null,
+      hands, targetChipPerHand:
       hands.reduce((sum, hand) => sum + hand.targetDelta, 0) / hands.length,
       decisions: rows.length, targetDecisions: target.length, otherDecisions: others.length,
       targetStatuses: target.map(row => ({ phase: row.phase, status: row.inferenceTrace?.status,
@@ -122,12 +145,14 @@ for (const { modelTier, seats, mode, handCount } of CASES) {
         fallbackReason: row.fallbackReason ?? row.inferenceTrace?.reason ?? null })),
       otherStatuses: others.map(row => ({ seat: row.actorSeat, phase: row.phase,
         status: row.inferenceTrace?.status, action: row.finalAction,
-        fallbackReason: row.fallbackReason ?? row.inferenceTrace?.reason ?? null })), errors };
+        fallbackReason: row.fallbackReason ?? row.inferenceTrace?.reason ?? null })),
+      decisionTrace: rows, errors };
     await writeFile(testInfo.outputPath('d03-seat-isolation.json'), JSON.stringify(report, null, 2));
     expect(errors).toEqual([]);
     expect(target.length).toBeGreaterThan(0);
     if (seats > 2) expect(others.length).toBeGreaterThan(0);
     expect(rows.every(row => Boolean(row.inferenceTrace?.status))).toBe(true);
+    expect(rows.some(row => String(row.fallbackReason ?? '').includes('FL_RAISE_CAP'))).toBe(false);
     expect(others.every(row => row.inferenceTrace?.status !== 'used')).toBe(true);
     expect(target.every(row => row.inferenceTrace?.status === (modelTier ? 'used' : 'not-connected'))).toBe(true);
     if (modelTier) {

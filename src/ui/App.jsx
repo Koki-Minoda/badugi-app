@@ -13044,7 +13044,6 @@ export default function App() {
         const madeCards = Array.isArray(evalResult?.ranks)
           ? evalResult.ranks.length
           : 0;
-        const canRaise = !me.allIn && raiseCountThisRound < 4;
         const activeOpponents = snap.filter(
           (player, seatIndex) =>
             seatIndex !== activeSeat &&
@@ -13052,6 +13051,21 @@ export default function App() {
             !isFoldedOrOut(player) &&
             !player.allIn,
         ).length;
+        const badugiControllerSnapshot =
+          normalizedGameVariant === APP_VARIANT_IDS.BADUGI
+            ? sessionControllerRef.current?.getUiSnapshot?.(
+                sessionControllerStateRef.current,
+              )
+            : null;
+        const effectiveRaiseCount = badugiControllerSnapshot
+          ? Number(badugiControllerSnapshot.raiseCountThisRound ?? 0)
+          : raiseCountThisRound;
+        const effectiveRaiseCap = badugiControllerSnapshot
+          ? Number(badugiControllerSnapshot.raiseCap ?? 4)
+          : 4;
+        const canRaise =
+          !me.allIn && me.stack > 0 && activeOpponents > 0 &&
+          effectiveRaiseCount < effectiveRaiseCap;
         const standardBetDecision = computeBetDecision({
           context: getAiDecisionContextForActor(me),
           toCall,
@@ -13302,6 +13316,7 @@ export default function App() {
     debugLog,
     getAiDecisionContextForActor,
     activeAiTierConfig,
+    normalizedGameVariant,
     applyForcedBetAction,
     autoResolveCpuDrawIfNeeded,
     checkIfOneLeftThenEnd,

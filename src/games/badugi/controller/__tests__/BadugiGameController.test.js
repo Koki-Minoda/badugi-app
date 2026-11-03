@@ -181,7 +181,7 @@ describe("BadugiGameController – betting", () => {
     expect(controller.getUiSnapshot(result.state).players[0].lastAction).toBe("Check");
   });
 
-  it("does not double an already doubled post-draw raise unit from the UI", () => {
+  it("uses the small bet after draw one and the big bet after draw two", () => {
     const controller = createSixMaxController();
     const initial = controller.createInitialState({
       seatConfig: ["HERO", "CPU", "CPU", "CPU", "CPU", "CPU"],
@@ -210,12 +210,26 @@ describe("BadugiGameController – betting", () => {
       handIndex: 5,
     });
 
-    const result = controller.applyAction(state, {
+    const first = controller.applyAction(state, {
       seatIndex: 0,
-      betSize: 40,
-      payload: { type: "raise", amount: 40 },
+      betSize: 20,
+      payload: { type: "raise", amount: 20 },
     });
+    expect(first.events.some((event) => event.type === "invalidAction")).toBe(false);
+    expect(controller.getUiSnapshot(first.state).players[0].betThisRound).toBe(20);
 
+    const later = controller.syncFromExternalState({
+      snapshot: { ...snapshot, phase: "BET", drawRound: 2, betRoundIndex: 2,
+        currentBet: 0, turn: 0, nextTurn: 0,
+        players: snapshot.players.map((player, seatIndex) => ({
+          ...player, betThisRound: 0, bet: 0, folded: seatIndex > 1,
+          hasFolded: seatIndex > 1, hasActedThisRound: seatIndex > 1,
+        })) },
+      handIndex: 6,
+    });
+    const result = controller.applyAction(later, {
+      seatIndex: 0, betSize: 40, payload: { type: "raise", amount: 40 },
+    });
     expect(result.events.some((event) => event.type === "invalidAction")).toBe(false);
     expect(controller.getUiSnapshot(result.state).players[0].betThisRound).toBe(40);
   });

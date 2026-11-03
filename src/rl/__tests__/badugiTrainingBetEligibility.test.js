@@ -12,7 +12,7 @@ describe('Badugi ONNX fixed-limit eligibility', () => {
   });
 
   it('requires the larger live increment when street schedules differ', () => {
-    expect(getFixedLimitBetSize({ baseBet: 20, drawRound: 1 })).toBe(40);
+    expect(getFixedLimitBetSize({ baseBet: 20, drawRound: 1, firstBigBetRound: 1 })).toBe(40);
     expect(eligible(30, 0, 40, 20)).toBe(false);
     expect(eligible(40, 0, 40, 20)).toBe(true);
     expect(eligible(40, 20, 40, 20)).toBe(false);

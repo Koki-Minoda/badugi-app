@@ -948,8 +948,9 @@ export default function App() {
         baseBet: BB,
         drawRound,
         betRound: betRoundIndex,
+        firstBigBetRound: normalizedDrawVariantForRounds === APP_VARIANT_IDS.BADUGI ? 2 : 1,
       }),
-    [BB, drawRound, betRoundIndex],
+    [BB, drawRound, betRoundIndex, normalizedDrawVariantForRounds],
   );
   const FAST_FORWARD_SLEEP_MS = 5;
   const [players, setPlayers] = useState(() =>
@@ -14004,6 +14005,7 @@ export default function App() {
       effectiveControllerSnapshot?.betRoundIndex ??
       effectiveControllerSnapshot?.metadata?.betRoundIndex ??
       betRoundIndexSrc,
+    firstBigBetRound: normalizedGameVariant === APP_VARIANT_IDS.BADUGI ? 2 : 1,
   });
   const variableBettingStructure = getVariableBettingStructure(
     normalizedGameVariant,

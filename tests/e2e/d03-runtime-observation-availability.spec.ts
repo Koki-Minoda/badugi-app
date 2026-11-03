@@ -74,6 +74,7 @@ function captureAtInference(source: string) {
           : ['CHECK', ...(scaledStack >= trainerBetSize ? ['BET'] : [])];
         return {
           toCall, stack: actor?.stack,
+          liveBetSize: betSize,
           legacyRaiseCount: raiseCountThisRound,
           effectiveRaiseCount, effectiveRaiseCap,
           trainerRaiseCount,
@@ -170,5 +171,10 @@ for (const mode of ['cash', 'tournament'] as const) {
     expect(rows.some(row => row.actorDiscardCountFromEvents > 0)).toBe(true);
     expect(rows.every(row => row.trainingDiagnostic.ready &&
       row.trainingDiagnostic.vectorLength === 96 && row.trainingDiagnostic.maskCount > 0)).toBe(true);
+    const bettingRows = rows.filter(row => row.phase === 'BET');
+    expect(bettingRows.some(row => row.drawRound === 1)).toBe(true);
+    expect(bettingRows.some(row => row.drawRound >= 2)).toBe(true);
+    expect(bettingRows.every(row => row.actionMaskDiagnostic.liveBetSize ===
+      (row.drawRound >= 2 ? row.bb * 2 : row.bb))).toBe(true);
   });
 }

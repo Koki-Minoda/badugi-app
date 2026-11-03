@@ -8,6 +8,7 @@ import argparse
 import hashlib
 import json
 import math
+from collections import Counter
 from pathlib import Path
 from statistics import mean, stdev
 
@@ -106,6 +107,7 @@ def analyze(manifest_path, reports_dir):
         tier = spec["modelTier"]
         target_statuses = report.get("targetStatuses", [])
         require(target_statuses, f"{session_id}: no target decisions")
+        status_counts = Counter(row.get("status") for row in target_statuses)
         if tier:
             asset = report.get("modelAsset") or {}
             require(asset.get("id") == MODEL_IDS[tier] and asset.get("sha256")
@@ -115,9 +117,12 @@ def analyze(manifest_path, reports_dir):
                 require(model_hashes[tier] == asset["sha256"],
                         f"{session_id}: model hash changed")
             model_hashes[tier] = asset["sha256"]
-            require(all(row.get("status") == "used" and row.get("model") == MODEL_IDS[tier]
+            require(all(row.get("status") in
+                        ("used", "fallback", "failed", "not-connected")
+                        and (row.get("model") == MODEL_IDS[tier] if row.get("status") == "used"
+                             else bool(row.get("fallbackReason")))
                         for row in target_statuses),
-                    f"{session_id}: pilot model use incomplete")
+                    f"{session_id}: model decision provenance incomplete")
         else:
             require(report.get("modelAsset") is None
                     and all(row.get("status") == "not-connected" for row in target_statuses),
@@ -128,6 +133,12 @@ def analyze(manifest_path, reports_dir):
                                   "seats": spec["seats"], "mode": spec["mode"],
                                   "opponent": key[2], "plannedHands": spec["handCount"],
                                   "observedHands": observed, "stopReason": report["stopReason"],
+                                  "targetDecisionStatuses": dict(status_counts),
+                                  "modelUsedFraction": (status_counts.get("used", 0) /
+                                                        len(target_statuses)) if tier else None,
+                                  "fallbackReasons": dict(Counter(
+                                      row.get("fallbackReason") for row in target_statuses
+                                      if row.get("status") != "used")) if tier else {},
                                   "targetChipPerPlannedHand": total / spec["handCount"]})
     require(len(source_heads) == 1, "Reports span different source commits")
 

@@ -19,6 +19,14 @@ def audit_snapshot(row, previous_events, expected_total_chips):
         problems.append("not a six-seat snapshot")
     if row["totalStacks"] + row["totalInvested"] != expected_total_chips:
         problems.append("stack plus invested chip conservation failed")
+    diagnostic = row.get("trainingDiagnostic")
+    expected_pot_slot = min(row["totalInvested"] * 2 / row["bb"], 400) / 400
+    if not diagnostic or diagnostic.get("ready") is not True or diagnostic.get("vectorLength") != 96:
+        problems.append("training-shaped input was not constructible")
+    elif diagnostic.get("maskCount", 0) < 1:
+        problems.append("training-shaped input has no legal action")
+    elif abs(diagnostic.get("potSlot", -1) - expected_pot_slot) > 1e-9:
+        problems.append("training-shaped pot slot differs from invested chips")
 
     event_invested = 0
     draw_round = 0
@@ -130,6 +138,8 @@ def audit_report(path):
                                    for fields, row in zip(reconstructed, rows) for seat in range(6)),
         "roundTagMatches": sum(fields["roundTagMatches"] for fields in reconstructed),
         "roundTagCount": sum(fields["roundTagCount"] for fields in reconstructed),
+        "trainingInputReady": sum(row.get("trainingDiagnostic", {}).get("ready") is True
+                                  for row in rows),
         "issues": issues,
     }
 
@@ -141,23 +151,24 @@ def main():
     args = parser.parse_args()
     observations = [audit_report(path) for path in args.reports]
     report = {
-        "status": "PUBLIC_EVENT_RECONSTRUCTION_MATCH_PILOT_ONLY" if all(
+        "status": "PUBLIC_INPUT_CONSTRUCTIBLE_PILOT_ONLY" if all(
             not observation["issues"] for observation in observations
-        ) else "PUBLIC_EVENT_RECONSTRUCTION_MISMATCH",
-        "scope": "Pre-inference public event and chip reconstruction for the supplied hands only; no model-strength inference.",
+        ) else "PUBLIC_INPUT_RECONSTRUCTION_MISMATCH",
+        "scope": "Pre-inference public event, chip, and training-shaped input construction for the supplied hands only; no model-strength inference.",
         "inputReports": [{"path": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
                          for path in args.reports],
         "observations": observations,
         "limitations": [
             "Only sampled hands and reached states were checked; skipped/zero-action rounds may need separate handling even though action round tags are now explicit.",
             "Trainer-style completed bet-history and current opening flags are derived from public actions but were not checked against independent live ground truth; actor discarded-card values were not captured.",
+            "The BB-to-training-chip normalization is a diagnostic choice, not a validated model input policy or evidence of strength.",
             "Training stack, blind, bet-size and opponent distributions differ from current live cash/MTT play.",
         ],
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps({"status": report["status"], "observations": observations}))
-    return 0 if report["status"] == "PUBLIC_EVENT_RECONSTRUCTION_MATCH_PILOT_ONLY" else 1
+    return 0 if report["status"] == "PUBLIC_INPUT_CONSTRUCTIBLE_PILOT_ONLY" else 1
 
 
 if __name__ == "__main__":

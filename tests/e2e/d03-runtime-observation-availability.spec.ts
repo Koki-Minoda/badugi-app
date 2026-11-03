@@ -5,7 +5,7 @@ import { getProgressState, invokeE2E, performSafeAction, waitForE2EDriver } from
 import { installSoakSeed } from './helpers/gameplaySoakHarness';
 
 function captureAtInference(source: string) {
-  let patched = source;
+  let patched = `import { buildBadugiLiveTrainingObservationDiagnostic } from '../rl/badugiLiveTrainingObservationDiagnostic.js';\n${source}`;
   for (const [phase, actor, players, name] of [
     ['DRAW', 'seatToAct', 'snapshot', 'inferDrawDecisionWithOnnx'],
     ['BET', 'activeSeat', 'snap', 'inferBetActionWithOnnx'],
@@ -41,6 +41,22 @@ function captureAtInference(source: string) {
         .filter(event => event.type === 'DRAW_ACTION' && event.seat === ${actor})
         .flatMap(event => Array.isArray(event.replacedCards) ? event.replacedCards : [])
         .map(entry => typeof entry.oldCard === 'string' && /^(?:[2-9]|10|[AJQK])[CDHS]$/.test(entry.oldCard)),
+      trainingDiagnostic: (() => {
+        try {
+          const vector = buildBadugiLiveTrainingObservationDiagnostic({
+            players: ${players}, events: handHistoryRef.current?.events ?? [],
+            seatIndex: ${actor}, phase: ${JSON.stringify(phase)}, drawRoundIndex: drawRound,
+            dealerIndex: dealerIdx, bigBlind: BB, raiseCount: raiseCountThisRound,
+            currentBet: maxBetThisRound(${players}),
+            legalActions: ${phase === 'DRAW' ? 'drawLegalActions' : 'onnxLegalActions'},
+          });
+          return { ready: true, vectorLength: vector.length,
+            maskCount: vector.slice(32, 38).filter(value => value === 1).length,
+            potSlot: vector[11] };
+        } catch (error) {
+          return { ready: false, error: String(error?.message ?? error) };
+        }
+      })(),
       actorCardTypes: (${players}[${actor}]?.hand ?? []).map(card => typeof card),
       players: ${players}.map(player => ({
         stack: player?.stack, betThisRound: player?.betThisRound,
@@ -126,5 +142,7 @@ for (const mode of ['cash', 'tournament'] as const) {
     expect(rows.every(row => row.actorDiscardCountFromEvents === row.actorDrawCountFromEvents)).toBe(true);
     expect(rows.every(row => row.actorDiscardCardShapes.every(Boolean))).toBe(true);
     expect(rows.some(row => row.actorDiscardCountFromEvents > 0)).toBe(true);
+    expect(rows.every(row => row.trainingDiagnostic.ready &&
+      row.trainingDiagnostic.vectorLength === 96 && row.trainingDiagnostic.maskCount > 0)).toBe(true);
   });
 }

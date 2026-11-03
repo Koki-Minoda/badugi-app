@@ -29,7 +29,9 @@ def _row(phase="DRAW", draw_round=0):
     players = [{"lastDrawCount": 2 if seat == 1 else None} for seat in range(6)]
     return {"publicEvents": events, "playerCount": 6, "players": players,
             "totalStacks": 600 - invested, "totalInvested": invested,
-            "phase": phase, "drawRound": draw_round}
+            "phase": phase, "drawRound": draw_round, "bb": 20,
+            "trainingDiagnostic": {"ready": True, "vectorLength": 96,
+                                   "maskCount": 2, "potSlot": invested * 0.1 / 400}}
 
 
 class PublicHistoryAuditTests(unittest.TestCase):

@@ -5,7 +5,10 @@ import { getProgressState, invokeE2E, performSafeAction, waitForE2EDriver } from
 import { installSoakSeed } from './helpers/gameplaySoakHarness';
 
 function captureAtInference(source: string) {
-  let patched = `import { buildBadugiLiveTrainingObservationDiagnostic } from '../rl/badugiLiveTrainingObservationDiagnostic.js';\n${source}`;
+  let patched = `import {
+    buildBadugiLiveTrainingObservationDiagnostic,
+    deriveBadugiTrainingRaiseCountFromEvents,
+  } from '../rl/badugiLiveTrainingObservationDiagnostic.js';\n${source}`;
   for (const [phase, actor, players, name] of [
     ['DRAW', 'seatToAct', 'snapshot', 'inferDrawDecisionWithOnnx'],
     ['BET', 'activeSeat', 'snap', 'inferBetActionWithOnnx'],
@@ -46,17 +49,41 @@ function captureAtInference(source: string) {
           const vector = buildBadugiLiveTrainingObservationDiagnostic({
             players: ${players}, events: handHistoryRef.current?.events ?? [],
             seatIndex: ${actor}, phase: ${JSON.stringify(phase)}, drawRoundIndex: drawRound,
-            dealerIndex: dealerIdx, bigBlind: BB, raiseCount: raiseCountThisRound,
+            dealerIndex: dealerIdx, bigBlind: BB,
             currentBet: maxBetThisRound(${players}),
             legalActions: ${phase === 'DRAW' ? 'drawLegalActions' : 'onnxLegalActions'},
           });
           return { ready: true, vectorLength: vector.length,
             maskCount: vector.slice(32, 38).filter(value => value === 1).length,
-            potSlot: vector[11] };
+            potSlot: vector[11], trainerRaiseCountSlot: vector[15] };
         } catch (error) {
           return { ready: false, error: String(error?.message ?? error) };
         }
       })(),
+      actionMaskDiagnostic: ${phase === 'BET' ? `(() => {
+        const actor = ${players}[${actor}];
+        const currentBet = maxBetThisRound(${players});
+        const toCall = Math.max(0, currentBet - (Number(actor?.betThisRound) || 0));
+        const scaledStack = (Number(actor?.stack) || 0) * 2 / BB;
+        const scaledToCall = toCall * 2 / BB;
+        const trainerBetSize = drawRound >= 2 ? 4 : 2;
+        const trainerRaiseCount = deriveBadugiTrainingRaiseCountFromEvents(
+          handHistoryRef.current?.events ?? [], drawRound);
+        const trainer = toCall > 0
+          ? ['FOLD', ...(scaledStack > 0 ? ['CALL'] : []),
+            ...(trainerRaiseCount < 4 && scaledStack >= scaledToCall + trainerBetSize ? ['RAISE'] : [])]
+          : ['CHECK', ...(scaledStack >= trainerBetSize ? ['BET'] : [])];
+        return {
+          toCall, stack: actor?.stack,
+          legacyRaiseCount: raiseCountThisRound,
+          effectiveRaiseCount, effectiveRaiseCap,
+          trainerRaiseCount,
+          trainer,
+          app: onnxLegalActions,
+          controller: sessionControllerRef.current?.getLegalActions?.(
+            sessionControllerStateRef.current, ${actor})?.map(action => action.type) ?? [],
+        };
+      })()` : 'null'},
       actorCardTypes: (${players}[${actor}]?.hand ?? []).map(card => typeof card),
       players: ${players}.map(player => ({
         stack: player?.stack, betThisRound: player?.betThisRound,

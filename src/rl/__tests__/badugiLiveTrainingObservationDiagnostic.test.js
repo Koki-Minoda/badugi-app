@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildBadugiLiveTrainingObservationDiagnostic } from '../badugiLiveTrainingObservationDiagnostic.js';
+import {
+  buildBadugiLiveTrainingObservationDiagnostic,
+  deriveBadugiTrainingRaiseCountFromEvents,
+} from '../badugiLiveTrainingObservationDiagnostic.js';
 
 function input() {
   const players = Array.from({ length: 6 }, (_, seat) => ({
@@ -27,7 +30,7 @@ function input() {
         drawCount: 1, replacedCards: [{ oldCard: 'KC', newCard: 'AC' }] },
     ],
     seatIndex: 0, phase: 'BET', drawRoundIndex: 1, dealerIndex: 5,
-    bigBlind: 20, raiseCount: 0, currentBet: 0,
+    bigBlind: 20, currentBet: 0,
     legalActions: ['CHECK', 'BET'],
   };
 }
@@ -54,5 +57,17 @@ describe('Badugi live training observation diagnostic', () => {
     withoutDiscard.events[2].replacedCards = [];
     expect(() => buildBadugiLiveTrainingObservationDiagnostic(withoutDiscard))
       .toThrow(/discarded-card history/);
+  });
+
+  it('treats the first post-draw live raise as the trainer opening bet', () => {
+    const events = [
+      { type: 'BET_ACTION', seat: 0, action: 'raise', drawRoundIndex: 0, betRoundIndex: 0 },
+      { type: 'BET_ACTION', seat: 1, action: 'check', drawRoundIndex: 1, betRoundIndex: 1 },
+      { type: 'BET_ACTION', seat: 2, action: 'raise', drawRoundIndex: 1, betRoundIndex: 1 },
+      { type: 'BET_ACTION', seat: 3, action: 'raise', drawRoundIndex: 1, betRoundIndex: 1 },
+    ];
+    expect(deriveBadugiTrainingRaiseCountFromEvents(events.slice(0, 1), 0)).toBe(1);
+    expect(deriveBadugiTrainingRaiseCountFromEvents(events, 1)).toBe(1);
+    expect(deriveBadugiTrainingRaiseCountFromEvents(events.slice(0, 3), 1)).toBe(0);
   });
 });

@@ -23,16 +23,36 @@ function actionRound(event, currentRound) {
   return round;
 }
 
+// The trainer starts post-draw betting with no open bet. The live controller
+// records that first wager as `raise`, so it is a trainer BET, not a RAISE.
+export function deriveBadugiTrainingRaiseCountFromEvents(events, currentRound) {
+  if (!Array.isArray(events) || !Number.isInteger(currentRound) ||
+      currentRound < 0 || currentRound > 3) {
+    throw new TypeError('Badugi diagnostic requires a valid betting round');
+  }
+  let opened = currentRound === 0; // The big blind opens the first round.
+  let raises = 0;
+  for (const event of events) {
+    if (event?.type !== 'BET_ACTION') continue;
+    if (actionRound(event, currentRound) !== currentRound) continue;
+    if (event.action === 'bet' || event.action === 'raise') {
+      if (opened && event.action === 'raise') raises += 1;
+      opened = true;
+    }
+  }
+  return raises;
+}
+
 export function buildBadugiLiveTrainingObservationDiagnostic({
   players, events, seatIndex, phase, drawRoundIndex, dealerIndex,
-  bigBlind, raiseCount, currentBet, legalActions,
+  bigBlind, currentBet, legalActions,
 }) {
   if (!Array.isArray(players) || players.length !== 6 || !Array.isArray(events) ||
       !Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex >= 6 ||
       !Number.isInteger(dealerIndex) || dealerIndex < 0 || dealerIndex >= 6 ||
       !Number.isInteger(drawRoundIndex) || drawRoundIndex < 0 || drawRoundIndex > 3 ||
       !['BET', 'DRAW'].includes(phase) || !Number.isFinite(bigBlind) || bigBlind <= 0 ||
-      !Number.isFinite(raiseCount) || !Number.isFinite(currentBet) ||
+      !Number.isFinite(currentBet) ||
       !Array.isArray(legalActions)) {
     throw new TypeError('Badugi diagnostic requires a complete six-seat decision state');
   }
@@ -95,7 +115,7 @@ export function buildBadugiLiveTrainingObservationDiagnostic({
     drawRoundIndex,
     dealerIndex,
     currentBet: currentBet * scale,
-    raiseCount,
+    raiseCount: deriveBadugiTrainingRaiseCountFromEvents(events, drawRoundIndex),
     pot: players.reduce((sum, player) => sum + player.totalInvested, 0) * scale,
     betQueue: phase === 'BET' ? [seatIndex] : [],
   };

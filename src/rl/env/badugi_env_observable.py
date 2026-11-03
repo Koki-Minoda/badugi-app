@@ -10,6 +10,7 @@ from rl.env.badugi_env import BadugiEnv
 
 
 class ObservableBadugiEnv(BadugiEnv):
+  teacher_observable_only = True
   NEUTRAL_AGGRESSION = 0.35
   NEUTRAL_FOLDABILITY = 0.30
   NEUTRAL_BLUFF_FREQUENCY = 0.05

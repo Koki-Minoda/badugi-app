@@ -5,6 +5,7 @@ import pytest
 
 from rl.env.badugi_env import BadugiEnv, OPPONENT_PROFILES
 from rl.env.badugi_env_observable import ObservableBadugiEnv
+from rl.training.badugi_starting_ranges import teacher_action
 
 
 @pytest.mark.parametrize("table_size", [2, 3, 6])
@@ -26,6 +27,7 @@ def test_profile_changes_do_not_change_observation(table_size, phase, observed_a
 
     baseline_mask = env.legal_action_mask().copy()
     baseline = env._get_obs().copy()
+    baseline_teacher = teacher_action(env)
     assert baseline.shape == (96,)
     assert np.isfinite(baseline).all()
     assert baseline[47] == pytest.approx(env.NEUTRAL_BLUFF_FREQUENCY)
@@ -33,6 +35,7 @@ def test_profile_changes_do_not_change_observation(table_size, phase, observed_a
         env.set_opponent_profile(profile)
         np.testing.assert_array_equal(env.legal_action_mask(), baseline_mask)
         np.testing.assert_array_equal(env._get_obs(), baseline)
+        assert teacher_action(env) == baseline_teacher
 
 
 def test_legacy_observation_exposes_hidden_profile_before_any_action():
@@ -52,3 +55,14 @@ def test_private_opponent_cards_and_deck_do_not_change_observation():
     env.opponent_hand = [(0, 0), (1, 1), (2, 2), (3, 3)]
     env.deck = [(12, 3)] * 44
     np.testing.assert_array_equal(env._get_obs(), baseline)
+
+
+def test_observable_teacher_does_not_inspect_private_profile():
+    class ProfileTrap:
+        def __getattr__(self, name):
+            raise AssertionError(f"Teacher read private profile field: {name}")
+
+    env = ObservableBadugiEnv(table_size=6, hero_position=5)
+    env.reset(seed=113)
+    env.opponent_profile = ProfileTrap()
+    assert env.legal_action_mask()[teacher_action(env)] > 0

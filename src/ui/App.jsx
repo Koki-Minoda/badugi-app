@@ -51,6 +51,7 @@ import {
   recordBadugiBetToDrawTransitionTrace,
 } from "../games/badugi/auditBadugiBetToDrawTransition.js";
 import { recordBrowserCpuDecisionTrace } from "../ai/qa/cpuDecisionTraceCore.js";
+import { buildControllerRaiseFallbackPayload } from "../ai/qa/controllerRaiseFallback.js";
 import {
   buildCpuDecisionTelemetry,
   mergeCpuDecisionTelemetry,
@@ -4652,9 +4653,18 @@ export default function App() {
           helpers.syncLegacyFromControllerSnapshot(controllerOutcome.snapshot, {
             seatIndex: seat,
           });
+          lastControllerActionFailureRef.current = null;
           return true;
         }
         if (controllerOutcome?.rejected) {
+          lastControllerActionFailureRef.current = {
+            seat,
+            payload,
+            code: controllerOutcome.code ?? "controller-action-rejected",
+            message: controllerOutcome.message ?? "action rejected",
+            events: Array.isArray(controllerOutcome.events)
+              ? controllerOutcome.events : [],
+          };
           const isForcedInstantFold =
             payload?.__forceInstant === true &&
             String(actionType).toLowerCase() === "fold";
@@ -4690,6 +4700,13 @@ export default function App() {
               betSize,
             });
       if (!result.success) {
+        lastControllerActionFailureRef.current = {
+          seat,
+          payload,
+          code: result.reason ?? "legacy-action-rejected",
+          message: result.reason ?? "legacy action rejected",
+          events: [],
+        };
         forcedSeatActionsRef.current.delete(seat);
         return false;
       }
@@ -4735,6 +4752,7 @@ export default function App() {
       }
 
       helpers.afterBetActionWithSnapshot(updatedPlayers, seat);
+      lastControllerActionFailureRef.current = null;
       return true;
     },
     [
@@ -13241,15 +13259,16 @@ export default function App() {
           ...badugiValueTelemetry,
         };
 
+        lastControllerActionFailureRef.current = null;
         if (applyForcedBetAction(activeSeat, actionPayload)) {
           return;
         }
         if (actionPayload?.type === "raise") {
-          const fallbackPayload = {
-            type: toCall === 0 ? "check" : "call",
-            amount: toCall,
-            __forceInstant: true,
-          };
+          const fallbackPayload = buildControllerRaiseFallbackPayload(
+            actionPayload,
+            toCall,
+            lastControllerActionFailureRef.current?.code ?? null,
+          );
           if (applyForcedBetAction(activeSeat, fallbackPayload)) {
             return;
           }

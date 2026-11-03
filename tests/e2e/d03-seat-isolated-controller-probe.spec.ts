@@ -118,13 +118,16 @@ for (const { modelTier, seats, mode, handCount } of CASES) {
       decisions: rows.length, targetDecisions: target.length, otherDecisions: others.length,
       targetStatuses: target.map(row => ({ phase: row.phase, status: row.inferenceTrace?.status,
         model: row.inferenceTrace?.usedModelId, action: row.finalAction,
-        legalActions: row.legalActions, elapsedMs: row.inferenceTrace?.elapsedMs })),
+        legalActions: row.legalActions, elapsedMs: row.inferenceTrace?.elapsedMs,
+        fallbackReason: row.fallbackReason ?? row.inferenceTrace?.reason ?? null })),
       otherStatuses: others.map(row => ({ seat: row.actorSeat, phase: row.phase,
-        status: row.inferenceTrace?.status, action: row.finalAction })), errors };
+        status: row.inferenceTrace?.status, action: row.finalAction,
+        fallbackReason: row.fallbackReason ?? row.inferenceTrace?.reason ?? null })), errors };
     await writeFile(testInfo.outputPath('d03-seat-isolation.json'), JSON.stringify(report, null, 2));
     expect(errors).toEqual([]);
     expect(target.length).toBeGreaterThan(0);
     if (seats > 2) expect(others.length).toBeGreaterThan(0);
+    expect(rows.every(row => Boolean(row.inferenceTrace?.status))).toBe(true);
     expect(others.every(row => row.inferenceTrace?.status !== 'used')).toBe(true);
     expect(target.every(row => row.inferenceTrace?.status === (modelTier ? 'used' : 'not-connected'))).toBe(true);
     if (modelTier) {

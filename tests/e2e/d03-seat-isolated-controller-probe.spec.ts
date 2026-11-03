@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { APP_URL, enterTitleIfPresent, selectGameVariantFromSelector } from './authHelper';
-import { getProgressState, performSafeAction, waitForE2EDriver } from './helpers/gameProgressHelper.js';
+import { getProgressState, invokeE2E, performSafeAction, waitForE2EDriver } from './helpers/gameProgressHelper.js';
 
 // Served-source isolation for evaluation development. It does not change shipped routing.
-function isolateSeatOne(source: string, modelTier: string | null) {
+function isolateSeatOne(source: string, modelTier: string | null, seats: number) {
   const drawTier = 'const onnxTier = activeAiTierConfig?.id;';
   expect(source.split(drawTier)).toHaveLength(3);
   let patched = source.replace(drawTier,
@@ -16,7 +16,15 @@ function isolateSeatOne(source: string, modelTier: string | null) {
   patched = patched.replaceAll(guard, 'const shouldUseOnnx = onnxTier !== "teacher";');
   const proOverlay = /activeAiTierConfig\?\.id === "pro"(\s*\?\s*chooseProAction\()/g;
   expect([...patched.matchAll(proOverlay)]).toHaveLength(2);
-  return patched.replace(proOverlay, 'false$1');
+  patched = patched.replace(proOverlay, 'false$1');
+  if (seats < 6) {
+    const initialSeats = 'const [seatConfig, setSeatConfig] = useState(() => [...DEFAULT_SEAT_TYPES]);';
+    expect(patched.split(initialSeats)).toHaveLength(2);
+    const blueprint = ['HUMAN', ...Array(seats - 1).fill('CPU'), ...Array(6 - seats).fill('EMPTY')];
+    patched = patched.replace(initialSeats,
+      `const [seatConfig, setSeatConfig] = useState(() => ${JSON.stringify(blueprint)});`);
+  }
+  return patched;
 }
 
 const MODEL_IDS = {
@@ -27,14 +35,23 @@ const MODEL_IDS = {
   worldmaster: 'model-badugi-worldmaster-v1',
 } as const;
 
-for (const modelTier of [null, ...Object.keys(MODEL_IDS)] as Array<null | keyof typeof MODEL_IDS>) {
-  test(`D03 ${modelTier ?? 'teacher'} seat-one isolation over two cash hands`, async ({ page }, testInfo) => {
+const CASES: Array<{ modelTier: null | keyof typeof MODEL_IDS; seats: number;
+  mode: 'cash' | 'tournament'; handCount: number }> = [
+  ...([null, ...Object.keys(MODEL_IDS)] as Array<null | keyof typeof MODEL_IDS>)
+    .map(modelTier => ({ modelTier, seats: 6, mode: 'cash' as const, handCount: 2 })),
+  { modelTier: 'standard', seats: 2, mode: 'cash', handCount: 2 },
+  { modelTier: 'standard', seats: 3, mode: 'cash', handCount: 2 },
+  { modelTier: 'standard', seats: 6, mode: 'tournament', handCount: 1 },
+];
+
+for (const { modelTier, seats, mode, handCount } of CASES) {
+  test(`D03 ${modelTier ?? 'teacher'} seat-one isolation over ${handCount} ${mode} hands at ${seats} seats`, async ({ page }, testInfo) => {
     test.setTimeout(180000);
     const errors: string[] = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.route('**/src/ui/App.jsx*', async route => {
       const response = await route.fetch();
-      await route.fulfill({ response, body: isolateSeatOne(await response.text(), modelTier) });
+      await route.fulfill({ response, body: isolateSeatOne(await response.text(), modelTier, seats) });
     });
     await page.route('**/api/**', route => route.fulfill({
       status: 200, contentType: 'application/json',
@@ -54,8 +71,18 @@ for (const modelTier of [null, ...Object.keys(MODEL_IDS)] as Array<null | keyof 
     await page.getByTestId('menu-ring').click();
     await selectGameVariantFromSelector(page, 'badugi');
     await waitForE2EDriver(page);
+    if (mode === 'tournament') {
+      await invokeE2E(page, 'startTournamentMTT', {
+        id: 'd03-seat-isolated-probe', name: 'D03 Seat Isolated Probe',
+        tables: 1, seatsPerTable: 6, totalPlayers: 6, startingStack: 2000,
+        gameVariant: 'badugi', gameRotation: ['badugi'], rotationPolicy: 'fixed',
+        levels: [{ levelIndex: 1, smallBlind: 25, bigBlind: 50, ante: 0, handsThisLevel: 999 }],
+        payouts: [{ place: 1, percent: 100 }],
+      });
+      await expect(page.getByTestId('tournament-hud')).toBeVisible();
+    }
     const hands: Array<{ handId: unknown; targetDelta: number; chipSum: number }> = [];
-    for (let handIndex = 0; handIndex < 2; handIndex += 1) {
+    for (let handIndex = 0; handIndex < handCount; handIndex += 1) {
       for (let step = 0; step < 120; step += 1) {
         const progress = await getProgressState(page);
         if (progress.isTerminal) break;
@@ -77,7 +104,7 @@ for (const modelTier of [null, ...Object.keys(MODEL_IDS)] as Array<null | keyof 
       hands.push({ handId: hand.handId, targetDelta: deltas[1],
         chipSum: deltas.reduce((sum, value) => sum + value, 0) });
       expect(hands[handIndex].chipSum).toBe(0);
-      if (handIndex === 0) {
+      if (handIndex + 1 < handCount) {
         await page.getByRole('button', { name: /next hand|次のハンド/i }).first().click();
         await expect.poll(() => page.evaluate(() =>
           window.__BADUGI_E2E__.getStateSnapshot().handId)).not.toBe(hand.handId);
@@ -86,7 +113,7 @@ for (const modelTier of [null, ...Object.keys(MODEL_IDS)] as Array<null | keyof 
     const rows = await page.evaluate(() => window.__MGX_CPU_DECISION_TRACE__ ?? []);
     const target = rows.filter(row => row.actorSeat === 1);
     const others = rows.filter(row => row.actorSeat !== 1);
-    const report = { modelTier, hands, targetChipPerHand:
+    const report = { modelTier, seats, mode, hands, targetChipPerHand:
       hands.reduce((sum, hand) => sum + hand.targetDelta, 0) / hands.length,
       decisions: rows.length, targetDecisions: target.length, otherDecisions: others.length,
       targetStatuses: target.map(row => ({ phase: row.phase, status: row.inferenceTrace?.status,
@@ -97,7 +124,7 @@ for (const modelTier of [null, ...Object.keys(MODEL_IDS)] as Array<null | keyof 
     await writeFile(testInfo.outputPath('d03-seat-isolation.json'), JSON.stringify(report, null, 2));
     expect(errors).toEqual([]);
     expect(target.length).toBeGreaterThan(0);
-    expect(others.length).toBeGreaterThan(0);
+    if (seats > 2) expect(others.length).toBeGreaterThan(0);
     expect(others.every(row => row.inferenceTrace?.status !== 'used')).toBe(true);
     expect(target.every(row => row.inferenceTrace?.status === (modelTier ? 'used' : 'not-connected'))).toBe(true);
     if (modelTier) {

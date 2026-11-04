@@ -56,7 +56,8 @@ export function buildBadugiControllerEventObservationV2Draft({
       }
       continue;
     }
-    if (round >= 3 || round >= drawRoundIndex ||
+    if (round >= 3 || round > drawRoundIndex ||
+        (round === drawRoundIndex && phase !== 'DRAW') ||
         !Number.isInteger(event.drawCount) ||
         event.drawCount < 0 || event.drawCount > 4 || drawSeen[seat][round]) {
       throw new TypeError('v2 draft requires one valid public draw per seat and round');
@@ -93,7 +94,7 @@ export function buildBadugiControllerEventObservationV2Draft({
     const occupied = !(player?.seatOut || player?.sittingOut || player?.isBusted || player?.busted);
     const inHand = occupied && !(player?.folded || player?.hasFolded);
     const knownRound = drawSeen[seat].findLastIndex((seen, round) =>
-      seen && round < drawRoundIndex);
+      seen && (round < drawRoundIndex || phase === 'DRAW' && round === drawRoundIndex));
     const lastDrawKnown = knownRound >= 0;
     const lastDrawCount = lastDrawKnown ? drawHistory[seat][knownRound] : 0;
     const reportedLastDraw = player?.lastDrawCount;

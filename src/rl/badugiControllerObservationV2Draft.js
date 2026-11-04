@@ -10,7 +10,7 @@ const ratio = (value, limit) => clamp01(value / limit);
 
 function cardTuple(card) {
   const match = typeof card === 'string'
-    ? card.trim().toUpperCase().match(/^([2-9]|10|[AJQK])([CDHS])$/)
+    ? card.trim().toUpperCase().match(/^(10|[2-9TAJQK])([CDHS])$/)
     : null;
   if (!match) throw new TypeError('v2 draft requires valid acting-player cards');
   return [RANKS.indexOf(match[1] === '10' ? 'T' : match[1]), SUITS.indexOf(match[2])];

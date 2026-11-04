@@ -61,6 +61,16 @@ describe('Badugi controller observation v2 draft', () => {
     expect([...vector.slice(32, 38)]).toEqual([1, 1, 1, 1, 1, 0]);
   });
 
+  it('treats T and 10 card labels as the same rank', () => {
+    const shortLabel = buildBadugiControllerObservationV2Draft(decision(2, {
+      ownCards: ['TS', '2H', '3D', '4C'],
+    }));
+    const longLabel = buildBadugiControllerObservationV2Draft(decision(2, {
+      ownCards: ['10S', '2H', '3D', '4C'],
+    }));
+    expect([...shortLabel]).toEqual([...longLabel]);
+  });
+
   it('fails closed on missing schema and incomplete public history', () => {
     expect(() => buildBadugiControllerObservationV2Draft(decision(2, {
       schemaVersion: 'badugi-observation-v1',

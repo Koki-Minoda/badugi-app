@@ -135,17 +135,29 @@ def estimates(point, samples, cells):
 def audit_browser(directory, manifest):
     directory = Path(directory)
     evidence = {}
+    product_matrix = manifest.get('browserEvidenceMatrix') == 'cash-6-mtt-2-3-6-both-engines'
     for engine in ('chromium', 'webkit'):
-        for mode in ('cash', 'tournament'):
-            name = f'{engine}-{mode}.json'
+        normal_cases = [('cash', 6, f'{engine}-cash.json')]
+        if product_matrix:
+            normal_cases += [('tournament', entrants, f'{engine}-tournament-{entrants}.json')
+                             for entrants in (2, 3, 6)]
+        else:
+            normal_cases += [('tournament', None, f'{engine}-tournament.json')]
+        for mode, entrants, name in normal_cases:
             data = json.loads((directory / name).read_text())
-            if (data['onnxSha256'] != manifest['onnxSha256'] or
+            if (sha256(directory / name) != manifest['browserEvidenceSha256'][name] or
+                    data['onnxSha256'] != manifest['onnxSha256'] or
                     data['mode'] != mode or len(data['hands']) != 3 or
+                    (entrants is not None and data['entrants'] != entrants) or
                     not data['target'] or data['errors'] or
                     any(sum(hand['chipDelta']) != 0 for hand in data['hands']) or
                     any(row['inferenceTrace']['status'] != 'used' or
                         row['inferenceTrace']['usedModelId'] != manifest['browserModelId'] or
                         row['inferenceTrace']['elapsedMs'] >= 8000
+                        for row in data['target']) or
+                    any(row['phase'] == 'BET' and
+                        str(row['finalAction']).lower() not in
+                        {str(action).lower() for action in row['legalActions']}
                         for row in data['target'])):
                 raise ValueError(f'normal browser evidence failed: {name}')
             evidence[name] = {'sha256': sha256(directory / name),
@@ -153,12 +165,17 @@ def audit_browser(directory, manifest):
                               'hands': len(data['hands'])}
         name = f'{engine}-timeout.json'
         data = json.loads((directory / name).read_text())
-        if (data['onnxSha256'] != manifest['onnxSha256'] or
+        if (sha256(directory / name) != manifest['browserEvidenceSha256'][name] or
+                data['onnxSha256'] != manifest['onnxSha256'] or
                 sum(data['chipDelta']) != 0 or
                 not any(row['inferenceTrace']['status'] == 'fallback' and
                         row['inferenceTrace']['reason'] == 'inference-timeout' and
                         row['inferenceTrace']['usedModelId'] is None
-                        for row in data['target'])):
+                        for row in data['target']) or
+                any(row['phase'] == 'BET' and
+                    str(row['finalAction']).lower() not in
+                    {str(action).lower() for action in row['legalActions']}
+                    for row in data['target'])):
             raise ValueError(f'timeout browser evidence failed: {name}')
         evidence[name] = {'sha256': sha256(directory / name),
                           'fallbackDecisions': sum(row['inferenceTrace']['status'] == 'fallback'

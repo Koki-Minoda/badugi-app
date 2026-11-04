@@ -1,5 +1,5 @@
 {
-  "status": "FROZEN_FOR_STANDARD_INITIAL_RUN",
+  "status": "FROZEN_FOR_STANDARD_CAUSE_BASED_RETRY",
   "game": "D03 Badugi fixed-limit only",
   "schemaVersion": "badugi-controller-observation-v2-draft",
   "observationLength": 96,
@@ -8,11 +8,12 @@
   "initialCheckpointSha256": "c1d7a335953c188ba6edd512c6596cf0803a84a8405bc33fbd4e3b505d0a2322",
   "trainingEnvironment": "real BadugiGameController through JSONL Python bridge",
   "firstTrainingRunHands": 200,
+  "explorationEpsilon": 0.1,
   "trainingSeedBase": 1230040001,
   "trainingSessionHands": 20,
   "trainingGroups": ["2/2-cash", "3/3-cash", "6/6-cash", "6/2-cash", "6/3-cash", "2/2-MTT", "3/3-MTT", "6/6-MTT", "6/2-MTT", "6/3-MTT"],
   "opponentProfiles": ["passive", "pressure", "draw_heavy", "random_legal"],
-  "diagnosticRule": "Stop after exactly 200 hands. Inspect chip conservation, legal actions and amounts, fold/pat action mix, and unused-seed session results. No automatic extension at 5k.",
+  "diagnosticRule": "The initial 200-hand warm-start used the generic near-1.0 exploratory epsilon and the held-out 240-session diagnostic lost to Beginner, especially against pressure, with FOLD collapsing from 754 to 3. Retry exactly 200 hands from the unchanged evaluated Beginner checkpoint with epsilon 0.1. Inspect chip conservation, legal actions and amounts, fold/pat mix and new unused-seed session results. No automatic extension at 5k.",
   "productEvaluation": {
     "candidateSeedBase": 1330040001,
     "beginnerSeedBase": 1430040001,

@@ -210,6 +210,8 @@ def require_go_manifest(path, tier, hands, init_model=None):
         if (init_model is None or not init_model.is_file() or
                 manifest.get("initialModelSha256") != hashlib.sha256(init_model.read_bytes()).hexdigest() or
                 tier_plan.get("initialCheckpointSha256") != manifest.get("initialModelSha256") or
+                manifest.get("explorationEpsilon") != tier_plan.get("explorationEpsilon") or
+                not 0 <= manifest.get("explorationEpsilon", -1) <= 1 or
                 manifest.get("tierPlanSha256") != hashlib.sha256(STANDARD_PLAN.read_bytes()).hexdigest()):
             raise ValueError("Standard requires the frozen v2 Beginner initial model and tier plan")
     elif init_model is not None:
@@ -312,7 +314,8 @@ def main():
                     if not eligible:
                         raise ValueError("controller bridge has no eligible target seat")
                     hero_seat = eligible[(completed + session_index) % len(eligible)]
-                    epsilon = (max(0.05, 0.2 - (len(results) - args.bootstrap_hands) * 0.15 /
+                    epsilon = (manifest["explorationEpsilon"] if args.train and args.tier == "standard" else
+                               max(0.05, 0.2 - (len(results) - args.bootstrap_hands) * 0.15 /
                                    max(1, args.hands - args.bootstrap_hands)) if args.bootstrap_hands else
                                max(0.05, 1.0 - len(results) / 5000)) if args.train else 0.0
                     outcome = run_hand(bridge, response, agent, rng, hero_seat, profile,
@@ -344,6 +347,7 @@ def main():
               "schemaVersion": SCHEMA,
               "initialModelSha256": (hashlib.sha256(args.init_model.read_bytes()).hexdigest()
                                      if args.init_model else None),
+              "explorationEpsilon": manifest.get("explorationEpsilon") if args.train else None,
               "bridgeSha256": hashlib.sha256(BRIDGE.read_bytes()).hexdigest(),
               "contractSha256": contract_hash(),
               "hands": len(results), "decisions": sum(row["decisions"] for row in results),

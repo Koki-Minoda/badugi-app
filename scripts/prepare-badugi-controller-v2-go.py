@@ -54,7 +54,7 @@ def main():
     code_sha, dirty = checkout_identity()
     require(not dirty, "training checkout must be committed and clean")
     plan = load(STANDARD_PLAN if args.tier == "standard" else PLAN)
-    expected_status = ("FROZEN_FOR_STANDARD_INITIAL_RUN" if args.tier == "standard" else
+    expected_status = ("FROZEN_FOR_STANDARD_CAUSE_BASED_RETRY" if args.tier == "standard" else
                        "FROZEN_FOR_REFERENCE_ANCHOR_RUN" if args.anchor else
                        "FROZEN_FOR_CAUSE_BASED_BOOTSTRAP_RUN" if args.followup else
                        "FROZEN_FOR_FIRST_MAC_RUN")
@@ -152,7 +152,7 @@ def main():
     require(free >= 20 * 1024 ** 3 and mem >= 16 * 1024 ** 3,
             "Mac resource floor for first run not met")
     followup_evidence = None
-    if args.followup or args.anchor:
+    if args.followup or args.anchor or args.tier == "standard":
         require(all((args.diagnosis_run, args.candidate_validation,
                      args.reference_validation)), "followup requires training and both validation reports")
         prior = load(args.diagnosis_run / "run-summary.json")
@@ -168,7 +168,14 @@ def main():
                       for row in rows if row["profile"] == "pressure"]
             return sum(values) / len(values)
         expected_hands = 2000 if args.anchor else 200
+        prior_action_ok = (
+            sum(row["heroActions"].get("BET:0", 0) for row in candidate_rows) <
+            sum(row["heroActions"].get("BET:0", 0) for row in reference_rows) / 10
+            if args.tier == "standard" else
+            "BET:0" not in candidate_actions and
+            (args.anchor or "DRAW:0" not in candidate_actions))
         require(prior.get("status") == "TRAINING_CHECKPOINT" and
+                prior.get("tier") == args.tier and
                 prior.get("trained") and prior.get("hands") == expected_hands and
                 prior.get("optimizerSteps", 0) > 0 and
                 prior.get("zeroSumHands") == expected_hands and
@@ -177,8 +184,7 @@ def main():
                 candidate_summary.get("hands") == reference_summary.get("hands") == 4800 and
                 candidate_summary.get("zeroSumSessions") == 240 and
                 reference_summary.get("zeroSumSessions") == 240 and
-                "BET:0" not in candidate_actions and
-                (args.anchor or "DRAW:0" not in candidate_actions) and
+                prior_action_ok and
                 pressure_mean(candidate_rows) < 0 and
                 pressure_mean(reference_rows) > pressure_mean(candidate_rows),
                 "followup cause evidence does not match the documented action collapse")
@@ -210,6 +216,7 @@ def main():
         "tierPlanSha256": digest(STANDARD_PLAN) if args.tier == "standard" else None,
         "initialModelSha256": initial_model_sha,
         "initialModelPath": str(args.init_model) if args.init_model else None,
+        "explorationEpsilon": plan["explorationEpsilon"] if args.tier == "standard" else None,
         "independentSlotAuditPassed": True, "uiEventAuditPassed": True,
         "controllerActionAuditPassed": True, "seedAndOpponentPlanFrozen": True,
         "macResourcePassed": True, "preparedAtUtc": datetime.now(timezone.utc).isoformat(),

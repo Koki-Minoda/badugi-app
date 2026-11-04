@@ -101,6 +101,44 @@ for (const [mode, entrants] of [['cash', 6], ['tournament', 2], ['tournament', 3
   });
 }
 
+test('custom practice MTT selects Beginner through the public tournament UI', async ({ page }, testInfo) => {
+  test.setTimeout(180000);
+  await installSoakSeed(page, 2026110411);
+  await page.route('**/api/**', route => route.fulfill({
+    status: 200, contentType: 'application/json',
+    body: JSON.stringify({ id: 9303, username: 'QA Hero', email: 'qa@mgx-e2e.test' }),
+  }));
+  await page.addInitScript(() => {
+    localStorage.setItem('mgx.previewVariants', 'true');
+    localStorage.setItem('mgx_auth', JSON.stringify({
+      accessToken: 'test', tokenType: 'Bearer',
+      user: { id: 9303, username: 'QA Hero' }, isAuthenticated: true,
+    }));
+    window.__MGX_CPU_DECISION_TRACE__ = [];
+  });
+  await page.goto(`${APP_URL}?variant=D03&mode=cash&mgxQa=mobile`);
+  await enterTitleIfPresent(page);
+  await page.getByTestId('menu-tournament').click();
+  await page.getByLabel(/custom practice tournament|自分で設定した練習大会/i).check();
+  await page.getByTestId('badugi-practice-tier').selectOption('beginner');
+  await page.getByTestId('tournament-start').click();
+  await expect(page.getByTestId('tournament-hud')).toBeVisible();
+  await waitForE2EDriver(page);
+  for (let step = 0; step < 120; step += 1) {
+    if ((await getProgressState(page)).isTerminal) break;
+    const action = await performSafeAction(page, { autoCpu: true, policy: 'heroStay' });
+    if (!action.acted && action.reason === 'terminal') break;
+    expect(action.acted, JSON.stringify(action)).toBe(true);
+  }
+  const target = await page.evaluate(() => (window.__MGX_CPU_DECISION_TRACE__ ?? [])
+    .filter(row => row.actorSeat !== 0 && ['BET', 'DRAW'].includes(row.phase)));
+  await writeFile(testInfo.outputPath('d03-v2-beginner-practice-ui.json'),
+    JSON.stringify({ onnxSha256, modelId, target }, null, 2));
+  expect(target.length).toBeGreaterThan(0);
+  expect(target.every(row => row.inferenceTrace?.status === 'used' &&
+    row.inferenceTrace?.usedModelId === modelId && row.aiTier === 'beginner')).toBe(true);
+});
+
 test('registered D03 Beginner model times out into a legal real-controller fallback',
   async ({ page }, testInfo) => {
     test.setTimeout(180000);

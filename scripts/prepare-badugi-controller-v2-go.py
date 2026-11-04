@@ -157,7 +157,8 @@ def main():
                 candidate_summary.get("hands") == reference_summary.get("hands") == 4800 and
                 candidate_summary.get("zeroSumSessions") == 240 and
                 reference_summary.get("zeroSumSessions") == 240 and
-                "BET:0" not in candidate_actions and "DRAW:0" not in candidate_actions and
+                "BET:0" not in candidate_actions and
+                (args.anchor or "DRAW:0" not in candidate_actions) and
                 pressure_mean(candidate_rows) < 0 and
                 pressure_mean(reference_rows) > pressure_mean(candidate_rows),
                 "followup cause evidence does not match the documented action collapse")

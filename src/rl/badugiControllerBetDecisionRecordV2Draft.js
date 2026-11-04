@@ -46,17 +46,21 @@ export function applyBadugiControllerBetDecisionV2Draft({
   }
   const after = controller.getUiSnapshot(result.state);
   const actorAfter = after.players?.[seatIndex];
+  const terminal = controller.isHandFinished(result.state);
   const expectedLabel = actionIndex >= 3 ? 'Raise' :
     requestedAction[0].toUpperCase() + requestedAction.slice(1);
-  if (!actorAfter || actorAfter.lastAction !== expectedLabel) {
-    throw new TypeError('v2 draft requested action differs from the applied controller action');
+  if (!actorAfter || !terminal && actorAfter.lastAction !== expectedLabel) {
+    throw new TypeError(`v2 draft requested ${expectedLabel} but controller applied ${actorAfter?.lastAction}`);
   }
   const amount = actorAfter.totalInvested - actorBefore.totalInvested;
   const expectedAmount = actionIndex === 2 ? Math.min(actorBefore.stack, toCall) :
     actionIndex >= 3 ? toCall + unit : 0;
   if (!Number.isFinite(amount) || amount !== expectedAmount ||
-      actorAfter.stack !== actorBefore.stack - amount) {
-    throw new TypeError('v2 draft controller contribution differs from fixed-limit action');
+      !terminal && actorAfter.stack !== actorBefore.stack - amount) {
+    throw new TypeError(`v2 draft contribution differs: requested=${requestedAction}, ` +
+      `amount=${amount}, expected=${expectedAmount}, ` +
+      `stack=${actorBefore.stack}->${actorAfter.stack}, ` +
+      `round=${before.drawRound}, bb=${bigBlind}, currentBet=${currentBet}`);
   }
   const event = {
     type: 'BET_ACTION', seat: seatIndex,
@@ -70,5 +74,6 @@ export function applyBadugiControllerBetDecisionV2Draft({
   return {
     state: result.state, controllerEvents: result.events,
     observation, legalMask, actionIndex, event,
+    terminalActionLabelOverwritten: terminal && actorAfter.lastAction !== expectedLabel,
   };
 }

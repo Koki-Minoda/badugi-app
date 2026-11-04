@@ -53,6 +53,37 @@ function ensureDrawPhase(controller, state, seatIndex = 0) {
 }
 
 describe("BadugiGameController – new hand", () => {
+  it("uses the active MTT blind level for the controller's fixed-limit raise", () => {
+    const seatConfig = ["HERO", "CPU"];
+    const controller = createController({
+      seatConfig, startingStack: 800,
+      blindStructure: [
+        { sb: 5, bb: 10, ante: 0, hands: 1 },
+        { sb: 20, bb: 40, ante: 0, hands: 10 },
+      ],
+      lastStructureIndex: 1,
+    });
+    const initial = controller.createInitialState({ seatConfig });
+    const state = controller.createNewHandState(initial, {
+      blindState: { blindLevelIndex: 1, handsInLevel: 1 },
+      drawCardsForSeat: () => ["AS", "2H", "3D", "4C"],
+    });
+    const before = controller.getUiSnapshot(state);
+    const seatIndex = before.turn ?? before.nextTurn;
+    const actorBefore = before.players[seatIndex];
+    const toCall = Math.max(0,
+      ...before.players.map((player) => player.betThisRound)) - actorBefore.betThisRound;
+    expect(before.blindLevelIndex).toBe(1);
+    expect(controller.config.betSize).toBe(40);
+    const result = controller.applyAction(state, {
+      seatIndex, payload: { type: "raise" },
+    });
+    expect(result.events.some((event) => event.type === "invalidAction")).toBe(false);
+    const after = controller.getUiSnapshot(result.state);
+    expect(after.players[seatIndex].totalInvested - actorBefore.totalInvested)
+      .toBe(toCall + 40);
+  });
+
   it("provides the legacy-compatible UI surface from the canonical controller path", () => {
     const controller = new BadugiGameController({
       numSeats: 2,

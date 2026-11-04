@@ -202,6 +202,7 @@ export class BadugiGameController extends GameController {
 
   startNewHand(options = {}) {
     const result = this.legacy.startNewHand(options);
+    this.config.betSize = result.blindValues?.bb ?? this.config.betSize;
     this._lastState = this._buildControllerState({
       handIndex: (this._lastState?.handIndex ?? 0) + 1,
       context: result,
@@ -251,6 +252,7 @@ export class BadugiGameController extends GameController {
         Math.max(0, (this.config.blindStructure?.length ?? DEFAULT_BLINDS.length) - 1),
       drawCardsForSeat: options.drawCardsForSeat ?? null,
     });
+    this.config.betSize = startPayload.blindValues?.bb ?? this.config.betSize;
 
     return this._buildControllerState({
       handIndex: (prevState?.handIndex ?? 0) + 1,

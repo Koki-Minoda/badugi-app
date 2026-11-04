@@ -37,17 +37,23 @@ def main():
     parser.add_argument("--bridge-report", type=Path, required=True)
     parser.add_argument("--ui-dir", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--followup", action="store_true")
+    parser.add_argument("--diagnosis-run", type=Path)
+    parser.add_argument("--candidate-validation", type=Path)
+    parser.add_argument("--reference-validation", type=Path)
     args = parser.parse_args()
     require(not args.out.exists(), "GO output already exists")
     require(len(args.audit_dir) == 2, "require both native and sparse independent audits")
     code_sha, dirty = checkout_identity()
     require(not dirty, "training checkout must be committed and clean")
     plan = load(PLAN)
-    require(plan.get("status") == "FROZEN_FOR_FIRST_MAC_RUN" and
+    expected_status = ("FROZEN_FOR_CAUSE_BASED_BOOTSTRAP_RUN" if args.followup
+                       else "FROZEN_FOR_FIRST_MAC_RUN")
+    require(plan.get("status") == expected_status and
             plan.get("schemaVersion") == SCHEMA and
             plan.get("firstTrainingRunHands") == 200 and
             len(plan.get("trainingGroups", [])) == 10,
-            "training plan is not frozen for the first Mac run")
+            "training plan is not frozen for the requested Mac run")
     audit_evidence = []
     covered = set()
     for directory in args.audit_dir:
@@ -122,8 +128,49 @@ def main():
     mem = int(subprocess.check_output(["sysctl", "-n", "hw.memsize"], text=True).strip())
     require(free >= 20 * 1024 ** 3 and mem >= 16 * 1024 ** 3,
             "Mac resource floor for first run not met")
+    followup_evidence = None
+    if args.followup:
+        require(all((args.diagnosis_run, args.candidate_validation,
+                     args.reference_validation)), "followup requires training and both validation reports")
+        prior = load(args.diagnosis_run / "run-summary.json")
+        candidate_summary = load(args.candidate_validation / "summary.json")
+        reference_summary = load(args.reference_validation / "summary.json")
+        candidate_rows = [json.loads(line) for line in
+                          (args.candidate_validation / "sessions.jsonl").read_text().splitlines()]
+        reference_rows = [json.loads(line) for line in
+                          (args.reference_validation / "sessions.jsonl").read_text().splitlines()]
+        candidate_actions = {action for row in candidate_rows for action in row["heroActions"]}
+        def pressure_mean(rows):
+            values = [row["chipPerHand"] / (50 if row["isTournament"] else 20)
+                      for row in rows if row["profile"] == "pressure"]
+            return sum(values) / len(values)
+        require(prior.get("status") == "TRAINING_CHECKPOINT" and
+                prior.get("trained") and prior.get("hands") == 200 and
+                prior.get("optimizerSteps", 0) > 0 and
+                prior.get("zeroSumHands") == 200 and
+                candidate_summary.get("modelSha256") == digest(args.diagnosis_run / "candidate.pt") and
+                candidate_summary.get("sessions") == reference_summary.get("sessions") == 240 and
+                candidate_summary.get("hands") == reference_summary.get("hands") == 4800 and
+                candidate_summary.get("zeroSumSessions") == 240 and
+                reference_summary.get("zeroSumSessions") == 240 and
+                "BET:0" not in candidate_actions and "DRAW:0" not in candidate_actions and
+                pressure_mean(candidate_rows) < 0 and
+                pressure_mean(reference_rows) > pressure_mean(candidate_rows),
+                "followup cause evidence does not match the documented action collapse")
+        followup_evidence = {
+            "firstRunSummarySha256": digest(args.diagnosis_run / "run-summary.json"),
+            "firstCandidateSha256": digest(args.diagnosis_run / "candidate.pt"),
+            "candidateValidationSha256": digest(args.candidate_validation / "sessions.jsonl"),
+            "referenceValidationSha256": digest(args.reference_validation / "sessions.jsonl"),
+            "candidatePressureBbPerHand": pressure_mean(candidate_rows),
+            "referencePressureBbPerHand": pressure_mean(reference_rows),
+            "candidateActions": sorted(candidate_actions),
+        }
+    max_hands = plan["followupTrainingRunHands"] if args.followup else 200
     manifest = {
-        "status": "GO", "tier": "beginner", "trainingHost": "mac", "maxHands": 200,
+        "status": "GO", "tier": "beginner", "trainingHost": "mac", "maxHands": max_hands,
+        "bootstrapHands": plan["followupBootstrapHands"] if args.followup else 0,
+        "imitationSteps": plan["followupImitationSteps"] if args.followup else 0,
         "schemaVersion": SCHEMA, "codeGitSha": code_sha,
         "contractSha256": contract_hash(), "bridgeSha256": digest(BRIDGE),
         "planSha256": digest(PLAN),
@@ -137,11 +184,12 @@ def main():
                                       "hands": bridge["totalHands"],
                                       "decisions": bridge["totalDecisions"]},
         "uiEvents": ui_evidence,
+        "causeBasedFollowup": followup_evidence,
         "notProductApproval": "No learned model, browser model-use/fallback or independent chip/hand strength claim",
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(manifest, indent=2) + "\n")
-    print(json.dumps({"status": "GO", "tier": "beginner", "maxHands": 200,
+    print(json.dumps({"status": "GO", "tier": "beginner", "maxHands": max_hands,
                       "codeGitSha": code_sha, "manifestSha256": digest(args.out)}, indent=2))
 
 

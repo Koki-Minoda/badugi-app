@@ -99,6 +99,34 @@ def opponent_action(decision, profile, rng):
     return next(action for action in order if action in allowed)
 
 
+def observable_reference_action(decision):
+    """Public-information-only bootstrap policy; never reads opponent profile."""
+    obs = decision["observation"]
+    mask = decision["legalMask"]
+    legal = lambda action: action < len(mask) and mask[action] == 1
+    made = round(obs[24] * 4)
+    high = round(obs[25] * 12)
+    round_index = round(obs[9] * 3)
+    if decision["phase"] == "DRAW":
+        draw_count = min(4, max(0, 4 - made))
+        return draw_count if legal(draw_count) else next(i for i, value in enumerate(mask) if value)
+    to_call_bb = obs[18] * 20
+    strong = made == 4 and high <= 8
+    if to_call_bb > 0:
+        if strong and legal(4):
+            return 4
+        if made == 4 or (made == 3 and round_index < 3 and to_call_bb <= 2):
+            if legal(2):
+                return 2
+        if legal(0):
+            return 0
+    if strong and legal(3):
+        return 3
+    if legal(1):
+        return 1
+    return next(i for i, value in enumerate(mask) if value)
+
+
 def check_decision(decision, seat_count, occupied_count, tournament):
     if (decision["type"] != "decision" or decision["schemaVersion"] != SCHEMA or
             decision["seatCount"] != seat_count or
@@ -111,7 +139,8 @@ def check_decision(decision, seat_count, occupied_count, tournament):
 
 
 def run_hand(bridge, first_response, agent, rng, hero_seat, profile, epsilon,
-             seat_count, occupied_count, tournament, buffer=None, batch_size=64, warmup=512):
+             seat_count, occupied_count, tournament, buffer=None, batch_size=64, warmup=512,
+             bootstrap=False, demonstrations=None):
     response = first_response
     hero_decisions = []
     total_decisions = 0
@@ -121,8 +150,11 @@ def run_hand(bridge, first_response, agent, rng, hero_seat, profile, epsilon,
         if response["seat"] == hero_seat:
             obs = np.asarray(response["observation"], dtype=np.float32)
             mask = np.asarray(response["legalMask"], dtype=np.float32)
-            action = agent.act(obs, epsilon=epsilon, action_mask=mask)
+            action = (observable_reference_action(response) if bootstrap else
+                      agent.act(obs, epsilon=epsilon, action_mask=mask))
             hero_decisions.append((obs, mask, action))
+            if demonstrations is not None:
+                demonstrations.append((obs, action))
             hero_bb = response["activeBigBlind"] if hero_bb is None else hero_bb
         else:
             action = opponent_action(response, profile, rng)
@@ -183,26 +215,50 @@ def main():
     parser.add_argument("--hands", type=int, default=2)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--go-manifest", type=Path)
+    parser.add_argument("--bootstrap-hands", type=int, default=0)
+    parser.add_argument("--imitation-steps", type=int, default=0)
     args = parser.parse_args()
     if not 1 <= args.hands <= 5000:
         raise ValueError("one explicit run must contain 1–5000 hands; 5k is a stop gate")
+    if not 0 <= args.bootstrap_hands < args.hands or not 0 <= args.imitation_steps <= 5000:
+        raise ValueError("invalid bootstrap or imitation count")
+    if (args.bootstrap_hands == 0) != (args.imitation_steps == 0):
+        raise ValueError("bootstrap hands and imitation steps must be set together")
     if args.train and (args.output is None or args.output.exists()):
         raise ValueError("training requires a new isolated --output directory")
     if args.train:
-        require_go_manifest(args.go_manifest, args.tier, args.hands)
-    random.seed(310040001)
-    np.random.seed(310040001)
-    torch.manual_seed(310040001)
+        manifest = require_go_manifest(args.go_manifest, args.tier, args.hands)
+        if (manifest.get("bootstrapHands", 0) != args.bootstrap_hands or
+                manifest.get("imitationSteps", 0) != args.imitation_steps):
+            raise ValueError("training method differs from GO manifest")
+    seed_base = 320040001 if args.bootstrap_hands else 310040001
+    random.seed(seed_base)
+    np.random.seed(seed_base)
+    torch.manual_seed(seed_base)
     agent = DQNAgent(obs_dim=96, n_actions=6, device="cpu", hidden_dim=256,
                      hyperparams=DQNHyperParams(lr=0.0001, batch_size=64))
-    buffer = ReplayBuffer(capacity=100_000, seed=310040001) if args.train else None
+    buffer = ReplayBuffer(capacity=100_000, seed=seed_base) if args.train else None
     bridge = ControllerBridge()
     results = []
+    demonstrations = []
+    imitation_losses = []
     try:
         groups = tuple((seats, occupied, tournament) for tournament in (False, True)
                        for seats, occupied in ((2, 2), (3, 3), (6, 6), (6, 2), (6, 3)))
-        for group_index, (seat_count, occupied_count, tournament) in enumerate(groups):
-            allocated = args.hands // len(groups) + int(group_index < args.hands % len(groups))
+        stages = (("bootstrap", args.bootstrap_hands),
+                  ("rl", args.hands - args.bootstrap_hands)) if args.bootstrap_hands else (("rl", args.hands),)
+        for stage_index, (stage, stage_hands) in enumerate(stages):
+          if stage == "rl" and args.bootstrap_hands:
+            if len(demonstrations) < 64:
+                raise ValueError("insufficient public reference decisions for imitation")
+            for _ in range(args.imitation_steps):
+                sample = random.sample(demonstrations, 64)
+                loss, _ = agent.imitation_update({
+                    "obs": np.stack([item[0] for item in sample]),
+                    "actions": np.asarray([item[1] for item in sample], dtype=np.int64)})
+                imitation_losses.append(loss)
+          for group_index, (seat_count, occupied_count, tournament) in enumerate(groups):
+            allocated = stage_hands // len(groups) + int(group_index < stage_hands % len(groups))
             if not args.train:
                 allocated = args.hands
             if allocated == 0:
@@ -210,7 +266,7 @@ def main():
             completed = 0
             session_index = 0
             while completed < allocated:
-                session_seed = 310040001 + group_index * 1_000_000 + session_index
+                session_seed = seed_base + stage_index * 100_000_000 + group_index * 1_000_000 + session_index
                 rng = random.Random(session_seed + 997)
                 response = bridge.send({"command": "reset", "seatCount": seat_count,
                                         "occupiedSeatCount": occupied_count,
@@ -227,11 +283,17 @@ def main():
                     if not eligible:
                         raise ValueError("controller bridge has no eligible target seat")
                     hero_seat = eligible[(completed + session_index) % len(eligible)]
-                    epsilon = max(0.05, 1.0 - len(results) / 5000) if args.train else 0.0
+                    epsilon = (max(0.05, 0.2 - (len(results) - args.bootstrap_hands) * 0.15 /
+                                   max(1, args.hands - args.bootstrap_hands)) if args.bootstrap_hands else
+                               max(0.05, 1.0 - len(results) / 5000)) if args.train else 0.0
                     outcome = run_hand(bridge, response, agent, rng, hero_seat, profile,
-                                       epsilon, seat_count, occupied_count, tournament, buffer)
+                                       epsilon, seat_count, occupied_count, tournament,
+                                       buffer if stage == "rl" else None,
+                                       bootstrap=stage == "bootstrap",
+                                       demonstrations=demonstrations if stage == "bootstrap" else None)
                     results.append({"seatCount": seat_count, "occupiedSeatCount": occupied_count,
                                     "isTournament": tournament,
+                                    "stage": stage,
                                     "profile": profile, "seed": session_seed,
                                     "handInSession": hand_in_session, "heroSeat": hero_seat,
                                     **outcome})
@@ -249,10 +311,15 @@ def main():
               "noHeroDecisionHands": sum(row["heroDecisions"] == 0 for row in results),
               "optimizerSteps": agent.train_steps, "zeroSumHands": sum(
                   sum(row["chipDeltaBySeat"]) == 0 for row in results),
+              "bootstrapHands": args.bootstrap_hands,
+              "referenceDecisions": len(demonstrations),
+              "imitationSteps": args.imitation_steps,
+              "imitationLossFirst": imitation_losses[0] if imitation_losses else None,
+              "imitationLossLast": imitation_losses[-1] if imitation_losses else None,
               "groups": sorted(set((row["seatCount"], row["occupiedSeatCount"],
                                     row["isTournament"]) for row in results)),
               "opponentProfiles": sorted(set(row["profile"] for row in results)),
-              "seedSplit": "310040001+group*1000000+session; distinct from evaluation seeds",
+              "seedSplit": f"{seed_base}+stage*100000000+group*1000000+session; distinct from evaluation seeds",
               "stopRule": "run stops at requested hands (max 5000); no automatic continuation or promotion"}
     if args.train:
         args.output.mkdir(parents=True)

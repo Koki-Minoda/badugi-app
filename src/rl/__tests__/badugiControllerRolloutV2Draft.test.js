@@ -3,14 +3,16 @@ import { collectBadugiControllerRolloutV2Draft } from '../badugiControllerRollou
 
 describe('Badugi controller rollout v2 draft', () => {
   it.each([
-    [2, false], [3, false], [6, false],
-    [2, true], [3, true], [6, true],
-  ])('records two controller hands at %i seats, tournament=%s',
-    (seatCount, isTournament) => {
+    [2, 2, false], [3, 3, false], [6, 6, false], [6, 2, false], [6, 3, false],
+    [2, 2, true], [3, 3, true], [6, 6, true], [6, 2, true], [6, 3, true],
+  ])('records two controller hands at %i seats with %i occupied, tournament=%s',
+    (seatCount, occupiedSeatCount, isTournament) => {
       const result = collectBadugiControllerRolloutV2Draft({
-        seatCount, isTournament, hands: 2, seed: 20261104,
+        seatCount, occupiedSeatCount, isTournament, hands: 2, seed: 20261104,
+        includeAuditInputs: true,
       });
       expect(result.hands).toHaveLength(2);
+      expect(result.occupiedSeatCount).toBe(occupiedSeatCount);
       for (const hand of result.hands) {
         expect(hand.startingStacks).toHaveLength(seatCount);
         expect(hand.endingStacks).toHaveLength(seatCount);
@@ -23,6 +25,13 @@ describe('Badugi controller rollout v2 draft', () => {
         expect(hand.publicEvents.every((event) =>
           !('replacedCards' in event) &&
           !JSON.stringify(event).includes('"hand"'))).toBe(true);
+        expect(hand.decisions.every((decision) => {
+          const input = decision.auditInput;
+          return input.players[decision.seat].hand.length === 4 &&
+            input.players.every((player, index) => index === decision.seat || !('hand' in player)) &&
+            input.publicEvents.every((event) => !('replacedCards' in event)) &&
+            input.actorDrawEvents.every((event) => event.seat === decision.seat);
+        })).toBe(true);
       }
     });
 });

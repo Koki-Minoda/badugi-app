@@ -63,12 +63,19 @@ export function applyBadugiControllerDrawDecisionV2Draft({
   }
   const after = controller.getUiSnapshot(result.state);
   const actorAfter = after.players?.[seatIndex];
+  const terminal = controller.isHandFinished(result.state);
+  const expectedLabel = actionIndex === 0 ? 'Pat' : `DRAW(${actionIndex})`;
   if (!actorAfter || actorAfter.lastDrawCount !== actionIndex ||
-      actorAfter.lastAction !== (actionIndex === 0 ? 'Pat' : `DRAW(${actionIndex})`) ||
+      !terminal && actorAfter.lastAction !== expectedLabel ||
       actorAfter.hand.some((card, index) => card !== handAfter[index]) ||
-      actorAfter.stack !== actorBefore.stack ||
+      !terminal && actorAfter.stack !== actorBefore.stack ||
       actorAfter.totalInvested !== actorBefore.totalInvested) {
-    throw new TypeError('v2 draft applied DRAW differs from replacement record');
+    throw new TypeError(`v2 draft applied DRAW differs from replacement record: ` +
+      `seat=${seatIndex}, round=${before.drawRound}, requested=${actionIndex}, ` +
+      `lastDraw=${actorAfter?.lastDrawCount}, lastAction=${actorAfter?.lastAction}, ` +
+      `hand=${actorAfter?.hand?.join(',')}, expected=${handAfter.join(',')}, ` +
+      `stack=${actorBefore.stack}->${actorAfter?.stack}, ` +
+      `invested=${actorBefore.totalInvested}->${actorAfter?.totalInvested}`);
   }
   const publicEvent = {
     type: 'DRAW_ACTION', seat: seatIndex,
@@ -85,6 +92,7 @@ export function applyBadugiControllerDrawDecisionV2Draft({
   return {
     state: result.state, controllerEvents: result.events,
     observation, legalMask, actionIndex, publicEvent,
+    terminalActionLabelOverwritten: terminal && actorAfter.lastAction !== expectedLabel,
     actorProjectionEvent: { ...publicEvent,
       replacedCards: replacedCards.map((entry) => ({ ...entry })) },
   };

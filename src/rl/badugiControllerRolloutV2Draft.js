@@ -26,15 +26,48 @@ function sum(values) {
   return values.reduce((total, value) => total + value, 0);
 }
 
+function captureAuditInput({ controller, state, snapshot, seatIndex,
+  publicEvents, actorDrawEvents }) {
+  return {
+    seatIndex, phase: snapshot.phase, drawRoundIndex: snapshot.drawRound,
+    dealerIndex: snapshot.dealerIdx, blindLevelIndex: snapshot.blindLevelIndex,
+    raiseCount: snapshot.raiseCountThisRound,
+    blindStructure: controller.config.blindStructure.map((level) => ({ bb: level.bb })),
+    controllerLegalActions: controller.getLegalActions(state, seatIndex).map((action) => action.type),
+    publicEvents: publicEvents.map((event) => ({
+      type: event.type, seat: event.seat,
+      drawRoundIndex: event.drawRoundIndex, betRoundIndex: event.betRoundIndex,
+      ...(event.type === 'BET_ACTION' ? { action: event.action } : { drawCount: event.drawCount }),
+    })),
+    actorDrawEvents: actorDrawEvents.map((event) => ({
+      seat: event.seat, drawRoundIndex: event.drawRoundIndex,
+      drawCount: event.drawCount,
+      replacedCards: event.replacedCards.map((card) => ({ oldCard: card.oldCard })),
+    })),
+    players: snapshot.players.map((player, index) => ({
+      stack: player.stack, betThisRound: player.betThisRound,
+      totalInvested: player.totalInvested,
+      seatOut: Boolean(player.seatOut), sittingOut: Boolean(player.sittingOut),
+      isBusted: Boolean(player.isBusted), busted: Boolean(player.busted),
+      folded: Boolean(player.folded), hasFolded: Boolean(player.hasFolded),
+      allIn: Boolean(player.allIn), lastDrawCount: player.lastDrawCount,
+      ...(index === seatIndex ? { hand: [...player.hand] } : {}),
+    })),
+  };
+}
+
 export function collectBadugiControllerRolloutV2Draft({
-  seatCount, isTournament, hands, seed,
+  seatCount, occupiedSeatCount = seatCount, isTournament, hands, seed,
+  includeAuditInputs = false,
 }) {
   if (![2, 3, 6].includes(seatCount) || typeof isTournament !== 'boolean' ||
+      ![2, 3, 6].includes(occupiedSeatCount) || occupiedSeatCount > seatCount ||
       !Number.isInteger(hands) || hands < 1 || hands > 100 ||
-      !Number.isInteger(seed)) {
+      !Number.isInteger(seed) || typeof includeAuditInputs !== 'boolean') {
     throw new TypeError('v2 draft requires 2/3/6 seats, mode, hands and seed');
   }
-  const seatConfig = Array(seatCount).fill('CPU');
+  const seatConfig = Array.from({ length: seatCount }, (_, seat) =>
+    seat < occupiedSeatCount ? 'CPU' : 'EMPTY');
   const blindStructure = isTournament
     ? [{ sb: 5, bb: 10, ante: 0, hands: 1 },
       { sb: 20, bb: 40, ante: 0, hands: 100 }]
@@ -48,7 +81,8 @@ export function collectBadugiControllerRolloutV2Draft({
   const results = [];
   for (let handIndex = 0; handIndex < hands; handIndex += 1) {
     const startingStacks = handIndex === 0
-      ? Array(seatCount).fill(startingStack)
+      ? Array.from({ length: seatCount }, (_, seat) =>
+        seat < occupiedSeatCount ? startingStack : 0)
       : results[handIndex - 1].endingStacks;
     const deck = new DeckManager({ rng: seededRandom(seed + handIndex * 1009) });
     state = controller.createNewHandState(state, {
@@ -65,6 +99,10 @@ export function collectBadugiControllerRolloutV2Draft({
       if (!Number.isInteger(seatIndex) || seatIndex < 0 || seatIndex >= seatCount) {
         throw new TypeError('v2 draft rollout has no actionable controller seat');
       }
+      const auditInput = includeAuditInputs ? captureAuditInput({
+        controller, state, snapshot, seatIndex,
+        publicEvents, actorDrawEvents: actorDrawEvents[seatIndex],
+      }) : null;
       const observationEvents = buildBadugiControllerSeatEventViewV2Draft({
         publicEvents, actorDrawEvents: actorDrawEvents[seatIndex], seatIndex,
       });
@@ -106,6 +144,7 @@ export function collectBadugiControllerRolloutV2Draft({
         legalMask: record.legalMask, actionIndex: record.actionIndex,
         appliedEvent: record.event ?? record.publicEvent,
         policySource: 'deterministic-wiring-probe',
+        ...(includeAuditInputs ? { auditInput } : {}),
       });
       state = record.state;
       if (!controller.isHandFinished(state)) {
@@ -136,6 +175,6 @@ export function collectBadugiControllerRolloutV2Draft({
     schemaVersion: 'badugi-controller-rollout-v2-draft',
     observationSchemaVersion: 'badugi-controller-observation-v2-draft',
     policySource: 'deterministic-wiring-probe',
-    seatCount, isTournament, seed, hands: results,
+    seatCount, occupiedSeatCount, isTournament, seed, hands: results,
   };
 }

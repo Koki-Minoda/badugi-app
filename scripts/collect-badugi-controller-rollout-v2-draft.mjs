@@ -17,9 +17,11 @@ function argument(name, fallback = null) {
 const outDir = argument('out');
 const hands = Number(argument('hands', '10'));
 const seed = Number(argument('seed', '2026110401'));
+const auditInputsArgument = argument('audit-inputs', 'false');
+const includeAuditInputs = auditInputsArgument === 'true';
 if (!outDir || !Number.isInteger(hands) || hands < 1 || hands > 100 ||
-    !Number.isInteger(seed)) {
-  throw new TypeError('usage: node scripts/collect-badugi-controller-rollout-v2-draft.mjs --out=DIR [--hands=10] [--seed=2026110401]');
+    !Number.isInteger(seed) || !['true', 'false'].includes(auditInputsArgument)) {
+  throw new TypeError('usage: node scripts/collect-badugi-controller-rollout-v2-draft.mjs --out=DIR [--hands=10] [--seed=2026110401] [--audit-inputs=true]');
 }
 const source = fileURLToPath(new URL('../src/rl/badugiControllerRolloutV2Draft.js', import.meta.url));
 const temporary = join(tmpdir(), `mgx-d03-v2-rollout-${randomUUID()}.mjs`);
@@ -34,17 +36,18 @@ try {
   rmSync(temporary, { force: true });
 }
 const configurations = [
-  [2, false], [3, false], [6, false],
-  [2, true], [3, true], [6, true],
+  [2, 2, false], [3, 3, false], [6, 6, false], [6, 2, false], [6, 3, false],
+  [2, 2, true], [3, 3, true], [6, 6, true], [6, 2, true], [6, 3, true],
 ];
 const sessions = [];
 const reports = [];
-for (const [index, [seatCount, isTournament]] of configurations.entries()) {
+for (const [index, [seatCount, occupiedSeatCount, isTournament]] of configurations.entries()) {
   const sessionSeed = seed + index * 1009;
   const started = performance.now();
-  const session = collect({ seatCount, isTournament, hands, seed: sessionSeed });
+  const session = collect({ seatCount, occupiedSeatCount, isTournament, hands, seed: sessionSeed,
+    includeAuditInputs });
   sessions.push(session);
-  reports.push({ seatCount, isTournament, seed: sessionSeed,
+  reports.push({ seatCount, occupiedSeatCount, isTournament, seed: sessionSeed,
     hands: session.hands.length,
     decisions: session.hands.reduce((count, hand) => count + hand.decisions.length, 0),
     elapsedMs: Math.round(performance.now() - started),
@@ -59,6 +62,7 @@ const summary = {
   learnedPolicy: false, strengthEvaluation: false,
   source: 'real Badugi controller and deck with deterministic probe actions',
   observationSchemaVersion: 'badugi-controller-observation-v2-draft',
+  auditInputsIncluded: includeAuditInputs,
   sessions: reports,
   totalHands: reports.reduce((sum, report) => sum + report.hands, 0),
   totalDecisions: reports.reduce((sum, report) => sum + report.decisions, 0),

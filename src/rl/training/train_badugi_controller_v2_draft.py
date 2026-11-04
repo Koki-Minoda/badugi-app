@@ -26,6 +26,7 @@ from rl.utils.replay_buffer import ReplayBuffer
 
 BRIDGE = ROOT / "scripts" / "badugi-controller-v2-bridge.mjs"
 PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_plan_draft.json"
+STANDARD_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_standard_plan.json"
 SCHEMA = "badugi-controller-observation-v2-draft"
 PROFILES = ("passive", "pressure", "draw_heavy", "random_legal")
 CONTRACT_FILES = (
@@ -185,7 +186,7 @@ def run_hand(bridge, first_response, agent, rng, hero_seat, profile, epsilon,
             "chipDeltaBySeat": response["chipDeltaBySeat"]}
 
 
-def require_go_manifest(path, tier, hands):
+def require_go_manifest(path, tier, hands, init_model=None):
     if path is None:
         raise ValueError("training requires --go-manifest with a frozen passing gate")
     manifest = json.loads(path.read_text())
@@ -204,6 +205,15 @@ def require_go_manifest(path, tier, hands):
                      "controllerActionAuditPassed",
                      "seedAndOpponentPlanFrozen", "macResourcePassed"))):
         raise ValueError("GO manifest is absent, stale or incomplete")
+    if tier == "standard":
+        tier_plan = json.loads(STANDARD_PLAN.read_text())
+        if (init_model is None or not init_model.is_file() or
+                manifest.get("initialModelSha256") != hashlib.sha256(init_model.read_bytes()).hexdigest() or
+                tier_plan.get("initialCheckpointSha256") != manifest.get("initialModelSha256") or
+                manifest.get("tierPlanSha256") != hashlib.sha256(STANDARD_PLAN.read_bytes()).hexdigest()):
+            raise ValueError("Standard requires the frozen v2 Beginner initial model and tier plan")
+    elif init_model is not None:
+        raise ValueError("initial model is only approved for this Standard diagnostic run")
     return manifest
 
 
@@ -219,6 +229,7 @@ def main():
     parser.add_argument("--imitation-steps", type=int, default=0)
     parser.add_argument("--reference-anchor-every", type=int, default=0)
     parser.add_argument("--seed-base", type=int)
+    parser.add_argument("--init-model", type=Path)
     args = parser.parse_args()
     if not 1 <= args.hands <= 5000:
         raise ValueError("one explicit run must contain 1–5000 hands; 5k is a stop gate")
@@ -231,18 +242,24 @@ def main():
     if args.train and (args.output is None or args.output.exists()):
         raise ValueError("training requires a new isolated --output directory")
     if args.train:
-        manifest = require_go_manifest(args.go_manifest, args.tier, args.hands)
+        manifest = require_go_manifest(args.go_manifest, args.tier, args.hands, args.init_model)
         if (manifest.get("bootstrapHands", 0) != args.bootstrap_hands or
                 manifest.get("imitationSteps", 0) != args.imitation_steps or
                 manifest.get("referenceAnchorEvery", 0) != args.reference_anchor_every or
                 (args.seed_base is not None and manifest.get("seedBase") != args.seed_base)):
             raise ValueError("training method differs from GO manifest")
-    seed_base = args.seed_base or (320040001 if args.bootstrap_hands else 310040001)
+    seed_base = (manifest["seedBase"] if args.train else
+                 args.seed_base or (320040001 if args.bootstrap_hands else 310040001))
     random.seed(seed_base)
     np.random.seed(seed_base)
     torch.manual_seed(seed_base)
-    agent = DQNAgent(obs_dim=96, n_actions=6, device="cpu", hidden_dim=256,
-                     hyperparams=DQNHyperParams(lr=0.0001, batch_size=64))
+    agent = (DQNAgent.load(str(args.init_model), device="cpu") if args.init_model else
+             DQNAgent(obs_dim=96, n_actions=6, device="cpu", hidden_dim=256,
+                      hyperparams=DQNHyperParams(lr=0.0001, batch_size=64)))
+    if args.init_model and (agent.obs_dim != 96 or agent.n_actions != 6 or
+                            agent.checkpoint_training_state.get("schemaVersion") != SCHEMA or
+                            agent.checkpoint_training_state.get("tier") != "beginner"):
+        raise ValueError("Standard initial model is not the evaluated v2 Beginner contract")
     buffer = ReplayBuffer(capacity=100_000, seed=seed_base) if args.train else None
     bridge = ControllerBridge()
     results = []
@@ -325,6 +342,8 @@ def main():
     report = {"status": "TRAINING_CHECKPOINT" if args.train else "NO_GRADIENT_PREFLIGHT",
               "tier": args.tier, "trained": args.train, "modelPublished": False,
               "schemaVersion": SCHEMA,
+              "initialModelSha256": (hashlib.sha256(args.init_model.read_bytes()).hexdigest()
+                                     if args.init_model else None),
               "bridgeSha256": hashlib.sha256(BRIDGE.read_bytes()).hexdigest(),
               "contractSha256": contract_hash(),
               "hands": len(results), "decisions": sum(row["decisions"] for row in results),

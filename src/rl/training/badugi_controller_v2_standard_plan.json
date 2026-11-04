@@ -1,0 +1,28 @@
+{
+  "status": "FROZEN_FOR_STANDARD_INITIAL_RUN",
+  "game": "D03 Badugi fixed-limit only",
+  "schemaVersion": "badugi-controller-observation-v2-draft",
+  "observationLength": 96,
+  "actionLength": 6,
+  "initialModel": "evaluated D03 v2 Beginner checkpoint; same controller contract, not legacy E11",
+  "initialCheckpointSha256": "c1d7a335953c188ba6edd512c6596cf0803a84a8405bc33fbd4e3b505d0a2322",
+  "trainingEnvironment": "real BadugiGameController through JSONL Python bridge",
+  "firstTrainingRunHands": 200,
+  "trainingSeedBase": 1230040001,
+  "trainingSessionHands": 20,
+  "trainingGroups": ["2/2-cash", "3/3-cash", "6/6-cash", "6/2-cash", "6/3-cash", "2/2-MTT", "3/3-MTT", "6/6-MTT", "6/2-MTT", "6/3-MTT"],
+  "opponentProfiles": ["passive", "pressure", "draw_heavy", "random_legal"],
+  "diagnosticRule": "Stop after exactly 200 hands. Inspect chip conservation, legal actions and amounts, fold/pat action mix, and unused-seed session results. No automatic extension at 5k.",
+  "productEvaluation": {
+    "candidateSeedBase": 1330040001,
+    "beginnerSeedBase": 1430040001,
+    "groups": "10 seat/mode/occupancy groups x 4 scripted opponents",
+    "unit": "independent controller session of at most 20 continuous hands",
+    "plannedSessionsPerCellPerArm": 30,
+    "interval": "stratified session bootstrap percentile 95%, candidate and Beginner arms resampled separately",
+    "minimumStandardGate": "Before final evaluation freeze all hashes and browser evidence. Candidate-minus-published-Beginner lower95 must exceed 0 overall and in cash and MTT; candidate profile lower95 must exceed 0; no cell candidate mean below -1 BB/hand; fold and pat rates must not collapse. Failing or ambiguous cells require diagnosis and no promotion.",
+    "limitations": "Scripted opponents and chip EV do not establish human or ICM strength. Equal initial seeds do not create causal paired EV after play diverges."
+  },
+  "promotionRule": "No registry or public asset change until independently audited controller sessions plus normal cash/MTT Chromium/WebKit model-use, legal action/amount, eight-second fallback, chip conservation and release gates pass.",
+  "safety": "S01 v2 remains stopped; other nine Standard games remain gated until all D03 tiers complete."
+}

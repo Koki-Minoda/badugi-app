@@ -372,6 +372,16 @@ jobs:
       - run: python -m pip install -e './backend[test]'
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run build
+      - name: Badugi Beginner normal selection, model use, and timeout fallback
+        run: npx playwright test tests/e2e/d03-v2-beginner-production-runtime.spec.ts --project=badugi-flow --project=d03-v2-iphone-webkit
+      - name: Upload Badugi Beginner browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d03-beginner-browser-qa
+          path: test-results/d03-v2-beginner-production-*/
+          if-no-files-found: ignore
+          retention-days: 30
       - name: Candidate MIX rotation and BET/DRAW mobile layout
         env:
           E2E_APP_URL: http://127.0.0.1:3000/

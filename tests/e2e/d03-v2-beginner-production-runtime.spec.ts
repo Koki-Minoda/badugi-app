@@ -23,7 +23,6 @@ for (const [mode, entrants] of [['cash', 6], ['tournament', 2], ['tournament', 3
     }));
     await page.addInitScript(() => {
       localStorage.setItem('mgx.previewVariants', 'true');
-      localStorage.setItem('dev.aiTierOverride', 'beginner');
       localStorage.setItem('mgx_auth', JSON.stringify({
         accessToken: 'test', tokenType: 'Bearer',
         user: { id: 9303, username: 'QA Hero' }, isAuthenticated: true,
@@ -33,6 +32,7 @@ for (const [mode, entrants] of [['cash', 6], ['tournament', 2], ['tournament', 3
     await page.goto(`${APP_URL}?variant=D03&mode=cash&mgxQa=mobile`);
     await enterTitleIfPresent(page);
     await page.getByTestId('menu-ring').click();
+    if (mode === 'cash') await page.getByTestId('badugi-cash-tier').selectOption('beginner');
     await selectGameVariantFromSelector(page, 'badugi');
     await waitForE2EDriver(page);
     if (mode === 'tournament') {
@@ -40,6 +40,7 @@ for (const [mode, entrants] of [['cash', 6], ['tournament', 2], ['tournament', 3
         id: 'd03-v2-candidate-runtime', name: 'D03 v2 Candidate Runtime',
         tables: 1, seatsPerTable: 6, totalPlayers: entrants, startingStack: 2000,
         gameVariant: 'badugi', gameRotation: ['badugi'], rotationPolicy: 'fixed',
+        practiceOnly: true, aiTierId: 'beginner',
         levels: [{ levelIndex: 1, smallBlind: 25, bigBlind: 50, ante: 0, handsThisLevel: 999 }],
         payouts: [{ place: 1, percent: 100 }],
       });
@@ -119,7 +120,6 @@ test('registered D03 Beginner model times out into a legal real-controller fallb
     }));
     await page.addInitScript(() => {
       localStorage.setItem('mgx.previewVariants', 'true');
-      localStorage.setItem('dev.aiTierOverride', 'beginner');
       localStorage.setItem('mgx_auth', JSON.stringify({
         accessToken: 'test', tokenType: 'Bearer',
         user: { id: 9303, username: 'QA Hero' }, isAuthenticated: true,
@@ -129,6 +129,7 @@ test('registered D03 Beginner model times out into a legal real-controller fallb
     await page.goto(`${APP_URL}?variant=D03&mode=cash&mgxQa=mobile`);
     await enterTitleIfPresent(page);
     await page.getByTestId('menu-ring').click();
+    await page.getByTestId('badugi-cash-tier').selectOption('beginner');
     await selectGameVariantFromSelector(page, 'badugi');
     await waitForE2EDriver(page);
     for (let step = 0; step < 120; step += 1) {

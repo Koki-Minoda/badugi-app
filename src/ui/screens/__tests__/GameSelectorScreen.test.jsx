@@ -1,5 +1,5 @@
 import React from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import GameSelectorScreen from "../GameSelectorScreen.jsx";
 
@@ -53,5 +53,13 @@ describe("GameSelectorScreen", () => {
 
     expect(searchSection.compareDocumentPosition(firstGameCard)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(firstGameCard.compareDocumentPosition(advancedMode)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it("passes a selected Badugi Beginner cash tier through the normal launch", () => {
+    const onLaunchVariant = vi.fn();
+    render(<GameSelectorScreen language="ja" onLaunchVariant={onLaunchVariant} />);
+    fireEvent.change(screen.getByTestId("badugi-cash-tier"), { target: { value: "beginner" } });
+    fireEvent.click(screen.getByTestId("game-selector-play-badugi"));
+    expect(onLaunchVariant).toHaveBeenCalledWith("badugi", { cashTierId: "beginner" });
   });
 });

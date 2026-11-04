@@ -100,6 +100,7 @@ export default function TournamentHubScreen({
 }) {
   const ja = useLanguage() === 'ja';
   const [custom, setCustom] = useState(false);
+  const [practiceAiTierId, setPracticeAiTierId] = useState('standard');
   const [structure, setStructure] = useState(() => readStructure(buildTournamentConfigFromStage('store').levels));
   const [structureMessage, setStructureMessage] = useState('');
   const [savedSnapshot, setSavedSnapshot] = useState(
@@ -133,7 +134,7 @@ export default function TournamentHubScreen({
     stageViews[0] ??
     null;
   const customBase = buildTournamentConfigFromStage('store');
-  const selected = custom ? { ...stageViews.find(v => v.stage.id === 'store'), stage:TOURNAMENT_STAGES[0], config:customBase, stageLabel:ja?'練習大会':'Practice', title:structure.name, subtitle:ja?'CPUと対局。成績や参加条件には影響しません。':'Play against CPUs. Does not affect career progress or unlocks.', players:customBase.totalPlayers, tables:customBase.tables, startingStack:structure.startingStack, aiTierLabel:stageViews[0]?.aiTierLabel ?? 'Standard', blindSheetLabel:structure.name, variantUnlocked:true, playable:true, eligibility:{eligible:true}, affordability:{ok:true} } : selectedStage;
+  const selected = custom ? { ...stageViews.find(v => v.stage.id === 'store'), stage:TOURNAMENT_STAGES[0], config:customBase, stageLabel:ja?'練習大会':'Practice', title:structure.name, subtitle:ja?'CPUと対局。成績や参加条件には影響しません。':'Play against CPUs. Does not affect career progress or unlocks.', players:customBase.totalPlayers, tables:customBase.tables, startingStack:structure.startingStack, aiTierLabel:practiceAiTierId === 'beginner' ? 'Beginner' : 'Standard', blindSheetLabel:structure.name, variantUnlocked:true, playable:true, eligibility:{eligible:true}, affordability:{ok:true} } : selectedStage;
   const canStartSelected = Boolean((custom || selected?.playable) && !resumeableSnapshot);
 
   const handleStart = () => {
@@ -141,7 +142,9 @@ export default function TournamentHubScreen({
     startPendingRef.current = true;
     setStartError(null);
     try {
-      const started = onStartTournament?.(custom ? applyCustomStructure(buildTournamentConfigFromStage('store'), structure) : selected.config, custom ? TOURNAMENT_STAGES[0] : selected.stage);
+      const started = onStartTournament?.(custom
+        ? { ...applyCustomStructure(buildTournamentConfigFromStage('store'), structure), aiTierId: practiceAiTierId }
+        : selected.config, custom ? TOURNAMENT_STAGES[0] : selected.stage);
       if (started === false) {
         setStartError("大会を開始できませんでした。進行条件と残高を確認してください。");
         startPendingRef.current = false;
@@ -184,6 +187,17 @@ export default function TournamentHubScreen({
 
         <LanguageSelect />
         <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={custom} onChange={e => setCustom(e.target.checked)} />{ja ? '自分で設定した練習大会を開く（Badugi）' : 'Create a custom practice tournament (Badugi)'}</label>
+        {custom ? (
+          <label className="flex min-h-11 items-center gap-3 text-sm">
+            <span>{ja ? '練習大会のCPU' : 'Practice CPU'}</span>
+            <select data-testid="badugi-practice-tier" value={practiceAiTierId}
+              onChange={(event) => setPracticeAiTierId(event.target.value)}
+              className="min-h-11 rounded-md border border-white/20 bg-slate-900 px-3 text-white">
+              <option value="standard">Standard</option>
+              <option value="beginner">Beginner</option>
+            </select>
+          </label>
+        ) : null}
         {custom && <StructureEditor draft={structure} onChange={setStructure} baseLevels={buildTournamentConfigFromStage('store').levels} ja={ja} onMessage={setStructureMessage} />}
         {structureMessage && <p role="status">{structureMessage}</p>}
         <main className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">

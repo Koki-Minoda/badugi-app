@@ -1772,13 +1772,17 @@ export default function App() {
   const [devTierOverride, setDevTierOverride] = useState(() =>
     loadAiTierOverride(),
   );
+  const [cashTierChoice, setCashTierChoice] = useState(null);
   const cashAiTierConfig = useMemo(
     () =>
       resolveAiTierForGameContext({
         mode: "cash",
         devTierOverride,
+        cashTierId: normalizedGameVariant === APP_VARIANT_IDS.BADUGI
+          ? (cashTierChoice ?? new URLSearchParams(location.search).get("aiTier"))
+          : null,
       }),
-    [devTierOverride],
+    [cashTierChoice, devTierOverride, location.search, normalizedGameVariant],
   );
   const [tournamentStageTierConfig, setTournamentStageTierConfig] = useState(
     () =>
@@ -7207,7 +7211,7 @@ export default function App() {
 
   const handleSelectRing = (
     variantId = gameVariantRef.current ?? DEFAULT_GAME_VARIANT,
-    { keepMixed = false } = {},
+    { keepMixed = false, cashTierId = null } = {},
   ) => {
     if (!keepMixed) {
       dealerChoiceActiveRef.current = false;
@@ -7219,6 +7223,9 @@ export default function App() {
       variantId,
       DEFAULT_GAME_VARIANT,
     );
+    setCashTierChoice(normalizedVariant === APP_VARIANT_IDS.BADUGI
+      ? (["beginner", "standard"].includes(cashTierId) ? cashTierId : "standard")
+      : null);
     const gate = canLaunchVariant(normalizedVariant);
     if (!gate.canLaunch) {
       console.warn("[VARIANT_GATE] launch blocked", {

@@ -69,8 +69,10 @@ def main():
     parser.add_argument('--seed-base', type=int, default=410040001)
     parser.add_argument('--evaluation-manifest', type=Path)
     args = parser.parse_args()
-    if args.output.exists() or not 1 <= args.sessions_per_profile <= 100 or not 1 <= args.hands_per_session <= 100:
+    if args.output.exists() or not 1 <= args.sessions_per_profile <= 250 or not 1 <= args.hands_per_session <= 100:
         raise ValueError('new output directory and bounded session counts required')
+    if args.sessions_per_profile > 100 and not args.evaluation_manifest:
+        raise ValueError('large controller evaluations require a frozen manifest')
     if sum((args.reference, args.model is not None, args.onnx_model is not None)) != 1:
         raise ValueError('choose exactly one of --model, --onnx-model or --reference')
     agent = (None if args.reference else

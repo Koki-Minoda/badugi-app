@@ -40,6 +40,58 @@ function laterDecision() {
 
 describe('Badugi controller event projection v2 draft', () => {
   it.each([
+    [5, 0, 'Call', 0],
+    [15, 0, 'Call', 0],
+    [20, 1, 'Raise', 1],
+  ])('masks a %i-chip short raise according to its actual fixed-limit result',
+    (actorStack, expectedRaiseMask, expectedAction, expectedRaiseCount) => {
+      const seatConfig = ['HERO', 'CPU'];
+      const controller = GAME_VARIANTS.badugi.controllerFactory({
+        seatConfig, startingStack: 500,
+        blindStructure: [{ sb: 5, bb: 10, ante: 0, hands: 999 }],
+      });
+      const initial = controller.createInitialState({ seatConfig });
+      const state = controller.createNewHandState(initial, {
+        drawCardsForSeat: (seat) => [
+          `${'A2'[seat]}S`, `${'23'[seat]}H`,
+          `${'34'[seat]}D`, `${'45'[seat]}C`,
+        ],
+      });
+      const snapshot = controller.getUiSnapshot(state);
+      const seeded = controller.syncFromExternalState({
+        snapshot: {
+          ...snapshot, phase: 'BET', turn: 0, nextTurn: 0,
+          currentBet: 10, raiseCountThisRound: 0,
+          players: snapshot.players.map((player, seatIndex) => ({
+            ...player,
+            stack: seatIndex === 0 ? actorStack : 490,
+            betThisRound: seatIndex === 1 ? 10 : 0,
+            totalInvested: seatIndex === 1 ? 10 : 0,
+            folded: false, hasFolded: false, seatOut: false,
+            isBusted: false, allIn: false,
+            hasActedThisRound: seatIndex !== 0,
+          })),
+        },
+        context: state.context, handIndex: state.handIndex,
+      });
+      expect(controller.getLegalActions(seeded, 0).map((action) => action.type))
+        .toContain('RAISE');
+      const vector = buildBadugiControllerEventObservationV2Draft({
+        controller, state: seeded, seatIndex: 0,
+        publicEvents: [], isTournament: false,
+      });
+      expect(vector[34]).toBe(1); // CALL, including a short all-in call.
+      expect(vector[36]).toBe(expectedRaiseMask); // Full fixed-limit RAISE only.
+      const result = controller.applyAction(seeded, {
+        seatIndex: 0, payload: { type: 'raise' },
+      });
+      expect(result.events.some((event) => event.type === 'invalidAction')).toBe(false);
+      const next = controller.getUiSnapshot(result.state);
+      expect(next.players[0].lastAction).toBe(expectedAction);
+      expect(next.raiseCountThisRound).toBe(expectedRaiseCount);
+    });
+
+  it.each([
     [2, false], [3, false], [6, false],
     [2, true], [3, true], [6, true],
   ])('matches all 96 first-decision slots for %i seats, tournament=%s',

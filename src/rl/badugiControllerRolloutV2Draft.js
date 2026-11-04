@@ -70,9 +70,9 @@ export function collectBadugiControllerRolloutV2Draft({
     seat < occupiedSeatCount ? 'CPU' : 'EMPTY');
   const blindStructure = isTournament
     ? [{ sb: 5, bb: 10, ante: 0, hands: 1 },
-      { sb: 20, bb: 40, ante: 0, hands: 100 }]
-    : [{ sb: 5, bb: 10, ante: 0, hands: 999 }];
-  const startingStack = isTournament ? 800 : 500;
+      { sb: 25, bb: 50, ante: 0, hands: 100 }]
+    : [{ sb: 10, bb: 20, ante: 0, hands: 999 }];
+  const startingStack = isTournament ? 2000 : 500;
   const controller = new BadugiGameController({
     seatConfig, startingStack, blindStructure,
     lastStructureIndex: blindStructure.length - 1,

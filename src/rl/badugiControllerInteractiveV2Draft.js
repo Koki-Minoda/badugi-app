@@ -35,9 +35,9 @@ export class BadugiControllerInteractiveV2Draft {
     this.seed = seed;
     this.blindStructure = blindStructure ?? (isTournament
       ? [{ sb: 5, bb: 10, ante: 0, hands: 1 },
-        { sb: 20, bb: 40, ante: 0, hands: 100 }]
-      : [{ sb: 5, bb: 10, ante: 0, hands: 999 }]);
-    this.startingStack = startingStack ?? (isTournament ? 800 : 500);
+        { sb: 25, bb: 50, ante: 0, hands: 100 }]
+      : [{ sb: 10, bb: 20, ante: 0, hands: 999 }]);
+    this.startingStack = startingStack ?? (isTournament ? 2000 : 500);
     if (!Number.isInteger(this.startingStack) || this.startingStack <= 0 ||
         !Array.isArray(this.blindStructure) || this.blindStructure.length < 1 ||
         this.blindStructure.some((level) => !Number.isFinite(level.bb) || level.bb <= 0)) {

@@ -25,6 +25,11 @@ describe('Badugi v2 interactive controller training boundary', () => {
       let drawCount = 0;
       for (let hand = 0; hand < 3; hand += 1) {
         let response = session.nextHand();
+        if (hand === 0) {
+          expect(session.startingStacks.filter((stack) => stack > 0))
+            .toEqual(Array(occupiedSeatCount).fill(isTournament ? 2000 : 500));
+          expect(response.activeBigBlind).toBe(isTournament ? 50 : 20);
+        }
         while (response.type === 'decision') {
           expect(response.observation).toHaveLength(96);
           expect(response.occupiedSeatCount).toBe(occupiedSeatCount);

@@ -13,6 +13,11 @@ describe('Badugi controller rollout v2 draft', () => {
       });
       expect(result.hands).toHaveLength(2);
       expect(result.occupiedSeatCount).toBe(occupiedSeatCount);
+      expect(result.hands[0].startingStacks.filter((stack) => stack > 0))
+        .toEqual(Array(occupiedSeatCount).fill(isTournament ? 2000 : 500));
+      expect(result.hands[0].decisions[0].auditInput.blindStructure[
+        result.hands[0].decisions[0].auditInput.blindLevelIndex].bb)
+        .toBe(isTournament ? 50 : 20);
       for (const hand of result.hands) {
         expect(hand.startingStacks).toHaveLength(seatCount);
         expect(hand.endingStacks).toHaveLength(seatCount);

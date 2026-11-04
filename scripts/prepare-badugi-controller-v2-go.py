@@ -61,6 +61,14 @@ def main():
                 f"independent slot audit failed: {directory}")
         covered.update((session["seatCount"], session.get("occupiedSeatCount", session["seatCount"]),
                         session["isTournament"]) for session in rollout["sessions"])
+        for session in rollout["sessions"]:
+            first_hand = session["hands"][0]
+            raw = first_hand["decisions"][0]["auditInput"]
+            bb = raw["blindStructure"][raw["blindLevelIndex"]]["bb"]
+            initial_bb = 40 if session["isTournament"] else 25
+            require([stack / bb for stack in first_hand["startingStacks"] if stack > 0] ==
+                    [initial_bb] * session["occupiedSeatCount"],
+                    f"controller starting stack/BB differs from live UI: {directory}")
         audit_evidence.append({"audit": str(audit_path), "auditSha256": digest(audit_path),
                                "rolloutSha256": digest(rollout_path),
                                "decisions": audit["decisions"],

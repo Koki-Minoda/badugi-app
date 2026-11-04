@@ -11,6 +11,8 @@
   "reward": "target seat terminal hand chip delta / active hand BB; zero at intermediate decisions",
   "trainingGroups": ["2/2-cash", "3/3-cash", "6/6-cash", "6/2-cash", "6/3-cash", "2/2-MTT", "3/3-MTT", "6/6-MTT", "6/2-MTT", "6/3-MTT"],
   "groupNotation": "physical seats / occupied seats; live UI MTT uses six physical slots for two or three entrants",
+  "initialCashStackAndBlind": "500 chips per occupied seat; small blind 10, big blind 20; 25 BB",
+  "initialMttStackAndBlind": "2000 chips per occupied seat; small blind 25, big blind 50; 40 BB",
   "opponentProfiles": ["passive", "pressure", "draw_heavy", "random_legal"],
   "trainingSeedBase": 310040001,
   "trainingSeedFormula": "trainingSeedBase + groupIndex*1000000 + sessionIndex",

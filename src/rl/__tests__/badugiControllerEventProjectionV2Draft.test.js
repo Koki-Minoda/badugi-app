@@ -39,40 +39,67 @@ function laterDecision() {
 }
 
 describe('Badugi controller event projection v2 draft', () => {
-  it('matches the first real controller decision with empty public history', () => {
-    const seatConfig = ['HERO', 'CPU'];
+  it.each([
+    [2, false], [3, false], [6, false],
+    [2, true], [3, true], [6, true],
+  ])('matches all 96 first-decision slots for %i seats, tournament=%s',
+    (seatCount, isTournament) => {
+    const seatConfig = ['HERO', ...Array(seatCount - 1).fill('CPU')];
+    const blindStructure = isTournament
+      ? [{ sb: 5, bb: 10, ante: 0, hands: 1 },
+        { sb: 20, bb: 40, ante: 0, hands: 10 }]
+      : [{ sb: 5, bb: 10, ante: 0, hands: 999 }];
     const controller = GAME_VARIANTS.badugi.controllerFactory({
-      seatConfig, startingStack: 500,
-      blindStructure: [{ sb: 5, bb: 10, ante: 0, hands: 999 }],
+      seatConfig, startingStack: isTournament ? 800 : 500,
+      blindStructure, lastStructureIndex: blindStructure.length - 1,
     });
     const initial = controller.createInitialState({ seatConfig });
     const state = controller.createNewHandState(initial, {
-      drawCardsForSeat: () => ['AS', '2H', '3D', '4C'],
+      ...(isTournament ? { blindState: { blindLevelIndex: 1, handsInLevel: 1 } } : {}),
+      drawCardsForSeat: (seat) => [
+        `${'A23456789TJQK'[seat]}S`, `${'A23456789TJQK'[seat + 1]}H`,
+        `${'A23456789TJQK'[seat + 2]}D`, `${'A23456789TJQK'[seat + 3]}C`,
+      ],
     });
     const snapshot = controller.getUiSnapshot(state);
     const seatIndex = snapshot.turn ?? snapshot.nextTurn;
     const first = buildBadugiInitialControllerObservationV2Draft({
-      controller, state, seatIndex, isTournament: false,
+      controller, state, seatIndex, isTournament,
     });
     const projected = buildBadugiControllerEventObservationV2Draft({
-      controller, state, seatIndex, publicEvents: [], isTournament: false,
+      controller, state, seatIndex, publicEvents: [], isTournament,
     });
     expect([...projected]).toEqual([...first]);
+    expect(projected[10]).toBeCloseTo(seatCount / 6);
+    expect(projected[21]).toBe(Number(isTournament));
+    expect(projected[14]).toBeCloseTo(
+      snapshot.players[seatIndex].stack / blindStructure[isTournament ? 1 : 0].bb / 200);
   });
 
-  it('projects the first post-draw BET decision from real controller transitions', () => {
-    const seatConfig = ['HERO', 'CPU'];
+  it.each([
+    [2, false], [3, false], [6, false],
+    [2, true], [3, true], [6, true],
+  ])('projects a post-draw BET decision for %i seats, tournament=%s',
+    (seatCount, isTournament) => {
+    const seatConfig = ['HERO', ...Array(seatCount - 1).fill('CPU')];
+    const blindStructure = isTournament
+      ? [{ sb: 5, bb: 10, ante: 0, hands: 1 },
+        { sb: 20, bb: 40, ante: 0, hands: 10 }]
+      : [{ sb: 5, bb: 10, ante: 0, hands: 999 }];
     const controller = GAME_VARIANTS.badugi.controllerFactory({
-      seatConfig, startingStack: 500,
-      blindStructure: [{ sb: 5, bb: 10, ante: 0, hands: 999 }],
+      seatConfig, startingStack: isTournament ? 800 : 500,
+      blindStructure, lastStructureIndex: blindStructure.length - 1,
     });
     let state = controller.createNewHandState(
       controller.createInitialState({ seatConfig }), {
-        drawCardsForSeat: (seat) => seat === 0
-          ? ['AS', '2H', '3D', '4C'] : ['5S', '6H', '7D', '8C'],
+        ...(isTournament ? { blindState: { blindLevelIndex: 1, handsInLevel: 1 } } : {}),
+        drawCardsForSeat: (seat) => [
+          `${'A23456789TJQK'[seat]}S`, `${'A23456789TJQK'[seat + 1]}H`,
+          `${'A23456789TJQK'[seat + 2]}D`, `${'A23456789TJQK'[seat + 3]}C`,
+        ],
       });
     const publicEvents = [];
-    for (let step = 0; step < 8; step += 1) {
+    for (let step = 0; step < seatCount * 4 + 4; step += 1) {
       const snapshot = controller.getUiSnapshot(state);
       if (snapshot.phase === 'BET' && snapshot.drawRound === 1) break;
       const seatIndex = snapshot.turn ?? snapshot.nextTurn;
@@ -97,12 +124,19 @@ describe('Badugi controller event projection v2 draft', () => {
     expect(snapshot.drawRound).toBe(1);
     const seatIndex = snapshot.turn ?? snapshot.nextTurn;
     const vector = buildBadugiControllerEventObservationV2Draft({
-      controller, state, seatIndex, publicEvents, isTournament: false,
+      controller, state, seatIndex, publicEvents, isTournament,
     });
     expect(vector).toHaveLength(96);
     expect(vector[9]).toBeCloseTo(1 / 3);
     expect(vector[41]).toBe(0);
-    expect(vector[49]).toBe(1);
+    expect(vector[21]).toBe(Number(isTournament));
+    expect(vector[10]).toBeCloseTo(seatCount / 6);
+    expect(snapshot.blindLevelIndex).toBe(isTournament ? 1 : 0);
+    expect(vector[19]).toBeCloseTo(0.5);
+    for (let offset = 1; offset < seatCount; offset += 1) {
+      expect(vector[44 + (offset - 1) * 10 + 5]).toBe(1);
+      expect(vector[44 + (offset - 1) * 10 + 6]).toBe(0);
+    }
   });
 
   it('projects later public BET/DRAW history without reading opponent cards', () => {

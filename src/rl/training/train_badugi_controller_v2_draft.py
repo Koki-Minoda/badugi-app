@@ -217,6 +217,8 @@ def main():
     parser.add_argument("--go-manifest", type=Path)
     parser.add_argument("--bootstrap-hands", type=int, default=0)
     parser.add_argument("--imitation-steps", type=int, default=0)
+    parser.add_argument("--reference-anchor-every", type=int, default=0)
+    parser.add_argument("--seed-base", type=int)
     args = parser.parse_args()
     if not 1 <= args.hands <= 5000:
         raise ValueError("one explicit run must contain 1–5000 hands; 5k is a stop gate")
@@ -224,14 +226,18 @@ def main():
         raise ValueError("invalid bootstrap or imitation count")
     if (args.bootstrap_hands == 0) != (args.imitation_steps == 0):
         raise ValueError("bootstrap hands and imitation steps must be set together")
+    if args.reference_anchor_every < 0 or (args.reference_anchor_every and not args.bootstrap_hands):
+        raise ValueError("reference anchoring requires bootstrap demonstrations")
     if args.train and (args.output is None or args.output.exists()):
         raise ValueError("training requires a new isolated --output directory")
     if args.train:
         manifest = require_go_manifest(args.go_manifest, args.tier, args.hands)
         if (manifest.get("bootstrapHands", 0) != args.bootstrap_hands or
-                manifest.get("imitationSteps", 0) != args.imitation_steps):
+                manifest.get("imitationSteps", 0) != args.imitation_steps or
+                manifest.get("referenceAnchorEvery", 0) != args.reference_anchor_every or
+                (args.seed_base is not None and manifest.get("seedBase") != args.seed_base)):
             raise ValueError("training method differs from GO manifest")
-    seed_base = 320040001 if args.bootstrap_hands else 310040001
+    seed_base = args.seed_base or (320040001 if args.bootstrap_hands else 310040001)
     random.seed(seed_base)
     np.random.seed(seed_base)
     torch.manual_seed(seed_base)
@@ -242,6 +248,7 @@ def main():
     results = []
     demonstrations = []
     imitation_losses = []
+    anchor_steps = 0
     try:
         groups = tuple((seats, occupied, tournament) for tournament in (False, True)
                        for seats, occupied in ((2, 2), (3, 3), (6, 6), (6, 2), (6, 3)))
@@ -257,6 +264,11 @@ def main():
                     "obs": np.stack([item[0] for item in sample]),
                     "actions": np.asarray([item[1] for item in sample], dtype=np.int64)})
                 imitation_losses.append(loss)
+            args.output.mkdir(parents=True)
+            agent.save(str(args.output / "bootstrap-candidate.pt"), training_state={
+                "schemaVersion": SCHEMA, "tier": args.tier,
+                "hands": args.bootstrap_hands, "stage": "reference_imitation",
+                "bridgeSha256": hashlib.sha256(BRIDGE.read_bytes()).hexdigest()})
           for group_index, (seat_count, occupied_count, tournament) in enumerate(groups):
             allocated = stage_hands // len(groups) + int(group_index < stage_hands % len(groups))
             if not args.train:
@@ -291,6 +303,15 @@ def main():
                                        buffer if stage == "rl" else None,
                                        bootstrap=stage == "bootstrap",
                                        demonstrations=demonstrations if stage == "bootstrap" else None)
+                    if (stage == "rl" and args.reference_anchor_every and
+                            outcome["heroDecisions"] and
+                            completed % args.reference_anchor_every == 0):
+                        sample = random.sample(demonstrations, 64)
+                        loss, _ = agent.imitation_update({
+                            "obs": np.stack([item[0] for item in sample]),
+                            "actions": np.asarray([item[1] for item in sample], dtype=np.int64)})
+                        imitation_losses.append(loss)
+                        anchor_steps += 1
                     results.append({"seatCount": seat_count, "occupiedSeatCount": occupied_count,
                                     "isTournament": tournament,
                                     "stage": stage,
@@ -314,6 +335,9 @@ def main():
               "bootstrapHands": args.bootstrap_hands,
               "referenceDecisions": len(demonstrations),
               "imitationSteps": args.imitation_steps,
+              "referenceAnchorEvery": args.reference_anchor_every,
+              "referenceAnchorSteps": anchor_steps,
+              "dqnSteps": sum(row["updates"] for row in results),
               "imitationLossFirst": imitation_losses[0] if imitation_losses else None,
               "imitationLossLast": imitation_losses[-1] if imitation_losses else None,
               "groups": sorted(set((row["seatCount"], row["occupiedSeatCount"],
@@ -322,7 +346,7 @@ def main():
               "seedSplit": f"{seed_base}+stage*100000000+group*1000000+session; distinct from evaluation seeds",
               "stopRule": "run stops at requested hands (max 5000); no automatic continuation or promotion"}
     if args.train:
-        args.output.mkdir(parents=True)
+        args.output.mkdir(parents=True, exist_ok=True)
         agent.save(str(args.output / "candidate.pt"), training_state={
             "schemaVersion": SCHEMA, "tier": args.tier, "hands": len(results),
             "bridgeSha256": report["bridgeSha256"]})

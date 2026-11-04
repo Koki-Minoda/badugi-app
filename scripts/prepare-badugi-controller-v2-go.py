@@ -38,17 +38,20 @@ def main():
     parser.add_argument("--ui-dir", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--followup", action="store_true")
+    parser.add_argument("--anchor", action="store_true")
     parser.add_argument("--diagnosis-run", type=Path)
     parser.add_argument("--candidate-validation", type=Path)
     parser.add_argument("--reference-validation", type=Path)
     args = parser.parse_args()
+    require(not (args.followup and args.anchor), "choose only one cause-based run")
     require(not args.out.exists(), "GO output already exists")
     require(len(args.audit_dir) == 2, "require both native and sparse independent audits")
     code_sha, dirty = checkout_identity()
     require(not dirty, "training checkout must be committed and clean")
     plan = load(PLAN)
-    expected_status = ("FROZEN_FOR_CAUSE_BASED_BOOTSTRAP_RUN" if args.followup
-                       else "FROZEN_FOR_FIRST_MAC_RUN")
+    expected_status = ("FROZEN_FOR_REFERENCE_ANCHOR_RUN" if args.anchor else
+                       "FROZEN_FOR_CAUSE_BASED_BOOTSTRAP_RUN" if args.followup else
+                       "FROZEN_FOR_FIRST_MAC_RUN")
     require(plan.get("status") == expected_status and
             plan.get("schemaVersion") == SCHEMA and
             plan.get("firstTrainingRunHands") == 200 and
@@ -129,7 +132,7 @@ def main():
     require(free >= 20 * 1024 ** 3 and mem >= 16 * 1024 ** 3,
             "Mac resource floor for first run not met")
     followup_evidence = None
-    if args.followup:
+    if args.followup or args.anchor:
         require(all((args.diagnosis_run, args.candidate_validation,
                      args.reference_validation)), "followup requires training and both validation reports")
         prior = load(args.diagnosis_run / "run-summary.json")
@@ -144,10 +147,11 @@ def main():
             values = [row["chipPerHand"] / (50 if row["isTournament"] else 20)
                       for row in rows if row["profile"] == "pressure"]
             return sum(values) / len(values)
+        expected_hands = 2000 if args.anchor else 200
         require(prior.get("status") == "TRAINING_CHECKPOINT" and
-                prior.get("trained") and prior.get("hands") == 200 and
+                prior.get("trained") and prior.get("hands") == expected_hands and
                 prior.get("optimizerSteps", 0) > 0 and
-                prior.get("zeroSumHands") == 200 and
+                prior.get("zeroSumHands") == expected_hands and
                 candidate_summary.get("modelSha256") == digest(args.diagnosis_run / "candidate.pt") and
                 candidate_summary.get("sessions") == reference_summary.get("sessions") == 240 and
                 candidate_summary.get("hands") == reference_summary.get("hands") == 4800 and
@@ -166,11 +170,17 @@ def main():
             "referencePressureBbPerHand": pressure_mean(reference_rows),
             "candidateActions": sorted(candidate_actions),
         }
-    max_hands = plan["followupTrainingRunHands"] if args.followup else 200
+    max_hands = (plan["anchorTrainingRunHands"] if args.anchor else
+                 plan["followupTrainingRunHands"] if args.followup else 200)
     manifest = {
         "status": "GO", "tier": "beginner", "trainingHost": "mac", "maxHands": max_hands,
-        "bootstrapHands": plan["followupBootstrapHands"] if args.followup else 0,
-        "imitationSteps": plan["followupImitationSteps"] if args.followup else 0,
+        "bootstrapHands": (plan["anchorBootstrapHands"] if args.anchor else
+                           plan["followupBootstrapHands"] if args.followup else 0),
+        "imitationSteps": (plan["anchorImitationSteps"] if args.anchor else
+                           plan["followupImitationSteps"] if args.followup else 0),
+        "referenceAnchorEvery": plan["anchorEveryRlHand"] if args.anchor else 0,
+        "seedBase": plan["anchorSeedBase"] if args.anchor else
+                    plan["followupSeedBase"] if args.followup else 310040001,
         "schemaVersion": SCHEMA, "codeGitSha": code_sha,
         "contractSha256": contract_hash(), "bridgeSha256": digest(BRIDGE),
         "planSha256": digest(PLAN),

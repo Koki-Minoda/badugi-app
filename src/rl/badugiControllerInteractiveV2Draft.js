@@ -164,6 +164,13 @@ export class BadugiControllerInteractiveV2Draft {
     return { type: 'hand_end', handIndex: this.handIndex,
       startingStacks: this.startingStacks, endingStacks: this.endingStacks,
       chipDeltaBySeat: this.endingStacks.map((value, seat) => value - this.startingStacks[seat]),
-      decisionCount: this.decisionCount };
+      decisionCount: this.decisionCount,
+      publicActionTrace: this.publicEvents.map((event) => ({
+        type: event.type, seat: event.seat, drawRoundIndex: event.drawRoundIndex,
+        action: event.action ?? null, amount: event.amount ?? 0,
+        drawCount: event.drawCount ?? null, stackBefore: event.stackBefore,
+        stackAfter: event.stackAfter, betBefore: event.betBefore ?? null,
+        betAfter: event.betAfter ?? null,
+      })) };
   }
 }

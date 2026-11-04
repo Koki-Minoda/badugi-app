@@ -203,6 +203,29 @@ describe('Badugi controller event projection v2 draft', () => {
     expect(vector[94]).toBeCloseTo(1 / 4); // actor discarded an ace
   });
 
+  it.each([
+    [10, 'call'],
+    [20, 'raise'],
+  ])('resolves a live %i-chip all-in from public contribution and ignores payout',
+    (amount, resolvedAction) => {
+      const base = laterDecision();
+      const allIn = { type: 'BET_ACTION', seat: 0,
+        drawRoundIndex: 0, betRoundIndex: 0, action: 'all-in',
+        amount, betBefore: 0, betAfter: amount };
+      const collect = { type: 'BET_ACTION', seat: 1,
+        action: 'collect', amount: 0 };
+      const at = 2;
+      const events = [...base.publicEvents];
+      events.splice(at, 0, allIn);
+      const expected = [...events];
+      expected[at] = { ...allIn, action: resolvedAction };
+      expect([...buildBadugiControllerEventObservationV2Draft({
+        ...base, publicEvents: [...events, collect],
+      })]).toEqual([...buildBadugiControllerEventObservationV2Draft({
+        ...base, publicEvents: expected,
+      })]);
+    });
+
   it('rejects missing, duplicate and future draw events, including duplicate pat', () => {
     const base = laterDecision();
     const invoke = (publicEvents) => buildBadugiControllerEventObservationV2Draft({
@@ -223,7 +246,7 @@ describe('Badugi controller event projection v2 draft', () => {
     expect(() => invoke([...base.publicEvents, {
       type: 'BET_ACTION', seat: 1, drawRoundIndex: 1, betRoundIndex: 1,
       action: 'all-in',
-    }])).toThrow(/unambiguous public bet action/);
+    }])).toThrow(/public contribution for all-in/);
   });
 
   it('rejects public draw history that disagrees with the controller', () => {

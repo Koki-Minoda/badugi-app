@@ -34,21 +34,42 @@ export function buildBadugiControllerEventObservationV2Draft({
     throw new TypeError('v2 draft requires a 2/3/6-seat controller decision');
   }
   const betHistory = Array.from({ length: players.length }, () => [false, false, false, false]);
+  const { bigBlind, currentBet, pot, raiseCount } =
+    deriveBadugiControllerPublicChipStateV2Draft(controller, snapshot);
+  const highestPublicBet = [bigBlind, 0, 0, 0];
   const drawHistory = Array.from({ length: players.length }, () => [0, 0, 0]);
   const drawSeen = Array.from({ length: players.length }, () => [false, false, false]);
   const ownDiscardedCards = [];
   let betActionsThisRound = 0;
   for (const event of publicEvents) {
     if (event?.type !== 'BET_ACTION' && event?.type !== 'DRAW_ACTION') continue;
+    // A payout is logged by the live UI as BET_ACTION/collect. It is not a bet.
+    if (event.type === 'BET_ACTION' && event.action === 'collect') {
+      if (event.amount !== 0) throw new TypeError('v2 draft rejects a paid collect event');
+      continue;
+    }
     const round = actionRound(event, drawRoundIndex);
     const seat = event.seat;
     if (!Number.isInteger(seat) || seat < 0 || seat >= players.length) {
       throw new TypeError('v2 draft requires valid public event seats');
     }
     if (event.type === 'BET_ACTION') {
-      const action = String(event.action).toLowerCase();
+      let action = String(event.action).toLowerCase();
+      if (action === 'all-in') {
+        if (!Number.isFinite(event.betBefore) || !Number.isFinite(event.betAfter) ||
+            !Number.isFinite(event.amount) || event.amount <= 0 ||
+            event.betAfter !== event.betBefore + event.amount) {
+          throw new TypeError('v2 draft requires public contribution for all-in');
+        }
+        action = event.betAfter > highestPublicBet[round]
+          ? highestPublicBet[round] === 0 ? 'bet' : 'raise'
+          : 'call';
+      }
       if (!['fold', 'check', 'call', 'bet', 'raise'].includes(action)) {
         throw new TypeError('v2 draft requires an unambiguous public bet action');
+      }
+      if (Number.isFinite(event.betAfter)) {
+        highestPublicBet[round] = Math.max(highestPublicBet[round], event.betAfter);
       }
       if (phase === 'BET' && round === drawRoundIndex) betActionsThisRound += 1;
       if (['bet', 'raise'].includes(action)) {
@@ -88,8 +109,6 @@ export function buildBadugiControllerEventObservationV2Draft({
     }
   }
   const dealerIndex = snapshot.dealerIdx ?? snapshot.dealerSeat ?? snapshot.metadata?.dealerIdx;
-  const { bigBlind, currentBet, pot, raiseCount } =
-    deriveBadugiControllerPublicChipStateV2Draft(controller, snapshot);
   const publicPlayers = players.map((player, seat) => {
     const occupied = !(player?.seatOut || player?.sittingOut || player?.isBusted || player?.busted);
     const inHand = occupied && !(player?.folded || player?.hasFolded);

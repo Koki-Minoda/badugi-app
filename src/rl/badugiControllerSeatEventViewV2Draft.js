@@ -22,7 +22,8 @@ export function buildBadugiControllerSeatEventViewV2Draft({
     if (event?.type === 'BET_ACTION') {
       view.push({ type: 'BET_ACTION', seat: event.seat,
         drawRoundIndex: event.drawRoundIndex, betRoundIndex: event.betRoundIndex,
-        action: event.action });
+        action: event.action, amount: event.amount,
+        betBefore: event.betBefore, betAfter: event.betAfter });
       continue;
     }
     if (event?.type !== 'DRAW_ACTION') continue;

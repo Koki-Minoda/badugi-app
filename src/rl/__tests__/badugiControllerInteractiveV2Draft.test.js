@@ -46,6 +46,12 @@ describe('Badugi v2 interactive controller training boundary', () => {
         }
         expect(response.type).toBe('hand_end');
         expect(response.chipDeltaBySeat.reduce((a, b) => a + b, 0)).toBe(0);
+        expect(response.publicActionTrace).toHaveLength(response.decisionCount);
+        expect(response.publicActionTrace.every((action) =>
+          action.type === 'BET_ACTION' || action.type === 'DRAW_ACTION')).toBe(true);
+        expect(response.publicActionTrace.filter((action) => action.type === 'BET_ACTION')
+          .every((action) => Number.isFinite(action.amount) && action.amount >= 0 &&
+            action.amount <= action.stackBefore)).toBe(true);
       }
       expect(betCount).toBeGreaterThan(0);
       expect(drawCount).toBeGreaterThan(0);

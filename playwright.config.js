@@ -67,6 +67,16 @@ export default defineConfig({
       },
     },
     {
+      name: 'd03-v2-iphone-webkit',
+      testDir: './tests/e2e',
+      testMatch: /d03-v2-candidate-runtime\.spec\.ts/,
+      use: {
+        ...devices['iPhone 13 landscape'],
+        browserName: 'webkit',
+        trace: 'retain-on-failure',
+      },
+    },
+    {
       name: 'core5-soak-desktop-chromium',
       testDir: './tests/e2e',
       testMatch: /browser-gameplay-invariant-harness\.spec\.ts/,

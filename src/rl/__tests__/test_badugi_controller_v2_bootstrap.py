@@ -48,6 +48,23 @@ class BootstrapPolicyTests(unittest.TestCase):
             mask[2] = 0
             self.assertEqual(agent.act(observation, epsilon=0.0, action_mask=mask), 1)
 
+    def test_heads_up_mtt_uses_public_table_size_not_opponent_profile(self):
+        class Scores(torch.nn.Module):
+            def __init__(self, index):
+                super().__init__()
+                self.index = index
+
+            def forward(self, observation):
+                output = observation.new_zeros((observation.shape[0], 6))
+                output[:, self.index] = 1
+                return output
+
+        model = ModeEnsemble(Scores(0), Scores(1), Scores(2)).eval()
+        observation = torch.zeros(4, 96)
+        observation[:, 10] = torch.tensor([2 / 6, 3 / 6, 2 / 6, 3 / 6])
+        observation[:, 21] = torch.tensor([1, 1, 0, 0])
+        self.assertEqual(model(observation).argmax(dim=1).tolist(), [2, 1, 0, 0])
+
     def test_standard_bootstrap_uses_frozen_beginner_actions(self):
         class FrozenBeginner:
             def act(self, obs, epsilon, action_mask):

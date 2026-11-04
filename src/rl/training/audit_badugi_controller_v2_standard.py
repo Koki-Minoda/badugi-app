@@ -33,7 +33,8 @@ def main():
             manifest['sessionsPerProfileGroup'] != beginner_manifest['sessionsPerProfileGroup'] or
             manifest['handsPerSessionMax'] != beginner_manifest['handsPerSessionMax'] or
             quality['bootstrapReplicates'] < 1000 or
-            quality['minimumImprovementBbPerHand'] <= 0):
+            quality['minimumImprovementBbPerHand'] <= 0 or
+            quality.get('maximumMaterialCellRegressionBbPerHand', 0) <= 0):
         raise ValueError('Standard manifests are not independent or comparable')
     candidate = audit_arm(args.candidate, manifest, args.manifest, 'candidate')
     beginner = audit_arm(args.beginner, beginner_manifest,
@@ -90,6 +91,9 @@ def main():
         'noCandidateCellMeanBelowFloor': all(
             value['meanBbPerHand'] >= quality['minimumCellMeanBbPerHand']
             for value in candidate_stats['cell'].values()),
+        'noMaterialRelativeCellRegression': all(
+            value['upper95'] >= -quality['maximumMaterialCellRegressionBbPerHand']
+            for value in difference['cell'].values()),
         'foldRateNotCollapsed': fold_rate >= quality['minimumFoldRate'],
         'patRateNotCollapsed': pat_rate >= quality['minimumPatRate'],
     }
@@ -105,6 +109,9 @@ def main():
         'candidateMinusBeginnerUnpaired': difference,
         'weakCellNames': [name for name, value in difference['cell'].items()
                           if value['meanBbPerHand'] < 0],
+        'materialRegressionCellNames': [
+            name for name, value in difference['cell'].items()
+            if value['upper95'] < -quality['maximumMaterialCellRegressionBbPerHand']],
         'candidateActions': dict(candidate['actions']),
         'beginnerActions': dict(beginner['actions']),
         'candidateFoldRate': fold_rate,

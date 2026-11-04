@@ -6,7 +6,8 @@ import { APP_URL, enterTitleIfPresent, selectGameVariantFromSelector } from './a
 import { getProgressState, invokeE2E, performSafeAction, waitForE2EDriver } from './helpers/gameProgressHelper.js';
 import { installSoakSeed } from './helpers/gameplaySoakHarness';
 
-const onnxPath = '/Users/koki/Documents/Codex/MGX-RL-Artifacts/d03-v2-standard-cash25-mtt75-onnx-exploratory-20261105/candidate.onnx';
+const onnxPath = process.env.D03_STANDARD_CANDIDATE_ONNX ??
+  '/Users/koki/Documents/Codex/MGX-RL-Artifacts/d03-v2-standard-cash25-mtt75-onnx-exploratory-20261105/candidate.onnx';
 const onnxBytes = readFileSync(onnxPath);
 const onnxSha256 = createHash('sha256').update(onnxBytes).digest('hex');
 const modelId = 'isolated-d03-v2-standard-mode-candidate';

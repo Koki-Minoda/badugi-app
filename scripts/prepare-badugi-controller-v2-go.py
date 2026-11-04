@@ -54,7 +54,7 @@ def main():
     code_sha, dirty = checkout_identity()
     require(not dirty, "training checkout must be committed and clean")
     plan = load(STANDARD_PLAN if args.tier == "standard" else PLAN)
-    expected_status = ("FROZEN_FOR_STANDARD_CAUSE_BASED_RETRY" if args.tier == "standard" else
+    expected_status = ("FROZEN_FOR_STANDARD_ANCHOR_RUN" if args.tier == "standard" else
                        "FROZEN_FOR_REFERENCE_ANCHOR_RUN" if args.anchor else
                        "FROZEN_FOR_CAUSE_BASED_BOOTSTRAP_RUN" if args.followup else
                        "FROZEN_FOR_FIRST_MAC_RUN")
@@ -167,6 +167,9 @@ def main():
             values = [row["chipPerHand"] / (50 if row["isTournament"] else 20)
                       for row in rows if row["profile"] == "pressure"]
             return sum(values) / len(values)
+        def cash_mean(rows):
+            values = [row["chipBbPerHand"] for row in rows if row["group"].endswith("cash")]
+            return sum(values) / len(values)
         expected_hands = 2000 if args.anchor else 200
         prior_action_ok = (
             sum(row["heroActions"].get("BET:0", 0) for row in candidate_rows) <
@@ -185,8 +188,10 @@ def main():
                 candidate_summary.get("zeroSumSessions") == 240 and
                 reference_summary.get("zeroSumSessions") == 240 and
                 prior_action_ok and
-                pressure_mean(candidate_rows) < 0 and
-                pressure_mean(reference_rows) > pressure_mean(candidate_rows),
+                ((cash_mean(candidate_rows) < cash_mean(reference_rows))
+                 if args.tier == "standard" else
+                 pressure_mean(candidate_rows) < 0 and
+                 pressure_mean(reference_rows) > pressure_mean(candidate_rows)),
                 "followup cause evidence does not match the documented action collapse")
         followup_evidence = {
             "firstRunSummarySha256": digest(args.diagnosis_run / "run-summary.json"),
@@ -195,18 +200,20 @@ def main():
             "referenceValidationSha256": digest(args.reference_validation / "sessions.jsonl"),
             "candidatePressureBbPerHand": pressure_mean(candidate_rows),
             "referencePressureBbPerHand": pressure_mean(reference_rows),
+            "candidateCashBbPerHand": cash_mean(candidate_rows),
+            "referenceCashBbPerHand": cash_mean(reference_rows),
             "candidateActions": sorted(candidate_actions),
         }
-    max_hands = (plan["firstTrainingRunHands"] if args.tier == "standard" else
+    max_hands = (plan["anchorTrainingRunHands"] if args.tier == "standard" else
                  plan["anchorTrainingRunHands"] if args.anchor else
                  plan["followupTrainingRunHands"] if args.followup else 200)
     manifest = {
         "status": "GO", "tier": args.tier, "trainingHost": "mac", "maxHands": max_hands,
-        "bootstrapHands": (plan["anchorBootstrapHands"] if args.anchor else
+        "bootstrapHands": (plan["anchorBootstrapHands"] if args.anchor or args.tier == "standard" else
                            plan["followupBootstrapHands"] if args.followup else 0),
-        "imitationSteps": (plan["anchorImitationSteps"] if args.anchor else
+        "imitationSteps": (plan["anchorImitationSteps"] if args.anchor or args.tier == "standard" else
                            plan["followupImitationSteps"] if args.followup else 0),
-        "referenceAnchorEvery": plan["anchorEveryRlHand"] if args.anchor else 0,
+        "referenceAnchorEvery": plan["anchorEveryRlHand"] if args.anchor or args.tier == "standard" else 0,
         "seedBase": plan["trainingSeedBase"] if args.tier == "standard" else
                     plan["anchorSeedBase"] if args.anchor else
                     plan["followupSeedBase"] if args.followup else 310040001,
@@ -217,6 +224,7 @@ def main():
         "initialModelSha256": initial_model_sha,
         "initialModelPath": str(args.init_model) if args.init_model else None,
         "explorationEpsilon": plan["explorationEpsilon"] if args.tier == "standard" else None,
+        "anchorPolicyId": plan["anchorPolicyId"] if args.tier == "standard" else None,
         "independentSlotAuditPassed": True, "uiEventAuditPassed": True,
         "controllerActionAuditPassed": True, "seedAndOpponentPlanFrozen": True,
         "macResourcePassed": True, "preparedAtUtc": datetime.now(timezone.utc).isoformat(),

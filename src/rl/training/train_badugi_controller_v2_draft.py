@@ -141,7 +141,7 @@ def check_decision(decision, seat_count, occupied_count, tournament):
 
 def run_hand(bridge, first_response, agent, rng, hero_seat, profile, epsilon,
              seat_count, occupied_count, tournament, buffer=None, batch_size=64, warmup=512,
-             bootstrap=False, demonstrations=None):
+             bootstrap=False, demonstrations=None, bootstrap_agent=None):
     response = first_response
     hero_decisions = []
     total_decisions = 0
@@ -151,7 +151,8 @@ def run_hand(bridge, first_response, agent, rng, hero_seat, profile, epsilon,
         if response["seat"] == hero_seat:
             obs = np.asarray(response["observation"], dtype=np.float32)
             mask = np.asarray(response["legalMask"], dtype=np.float32)
-            action = (observable_reference_action(response) if bootstrap else
+            action = ((bootstrap_agent.act(obs, epsilon=0.0, action_mask=mask)
+                       if bootstrap_agent else observable_reference_action(response)) if bootstrap else
                       agent.act(obs, epsilon=epsilon, action_mask=mask))
             hero_decisions.append((obs, mask, action))
             if demonstrations is not None:
@@ -212,6 +213,7 @@ def require_go_manifest(path, tier, hands, init_model=None):
                 tier_plan.get("initialCheckpointSha256") != manifest.get("initialModelSha256") or
                 manifest.get("explorationEpsilon") != tier_plan.get("explorationEpsilon") or
                 not 0 <= manifest.get("explorationEpsilon", -1) <= 1 or
+                manifest.get("anchorPolicyId") != "published-v2-beginner" or
                 manifest.get("tierPlanSha256") != hashlib.sha256(STANDARD_PLAN.read_bytes()).hexdigest()):
             raise ValueError("Standard requires the frozen v2 Beginner initial model and tier plan")
     elif init_model is not None:
@@ -262,6 +264,8 @@ def main():
                             agent.checkpoint_training_state.get("schemaVersion") != SCHEMA or
                             agent.checkpoint_training_state.get("tier") != "beginner"):
         raise ValueError("Standard initial model is not the evaluated v2 Beginner contract")
+    bootstrap_agent = (DQNAgent.load(str(args.init_model), device="cpu")
+                       if args.train and args.tier == "standard" else None)
     buffer = ReplayBuffer(capacity=100_000, seed=seed_base) if args.train else None
     bridge = ControllerBridge()
     results = []
@@ -322,7 +326,8 @@ def main():
                                        epsilon, seat_count, occupied_count, tournament,
                                        buffer if stage == "rl" else None,
                                        bootstrap=stage == "bootstrap",
-                                       demonstrations=demonstrations if stage == "bootstrap" else None)
+                                       demonstrations=demonstrations if stage == "bootstrap" else None,
+                                       bootstrap_agent=bootstrap_agent)
                     if (stage == "rl" and args.reference_anchor_every and
                             outcome["heroDecisions"] and
                             completed % args.reference_anchor_every == 0):
@@ -348,6 +353,7 @@ def main():
               "initialModelSha256": (hashlib.sha256(args.init_model.read_bytes()).hexdigest()
                                      if args.init_model else None),
               "explorationEpsilon": manifest.get("explorationEpsilon") if args.train else None,
+              "anchorPolicyId": manifest.get("anchorPolicyId") if args.train else None,
               "bridgeSha256": hashlib.sha256(BRIDGE.read_bytes()).hexdigest(),
               "contractSha256": contract_hash(),
               "hands": len(results), "decisions": sum(row["decisions"] for row in results),

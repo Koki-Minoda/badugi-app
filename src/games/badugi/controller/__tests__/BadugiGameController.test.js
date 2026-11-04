@@ -595,6 +595,49 @@ describe("BadugiGameController – betting", () => {
     expect(next.raiseCountThisRound).toBe(0);
   });
 
+  it.each([
+    [5, "Call", 0],
+    [15, "Call", 0],
+    [20, "Raise", 1],
+    [30, "Raise", 1],
+  ])("records a %i-chip Raise facing 10 with the actual fixed-limit result", (
+    actorStack, expectedAction, expectedRaiseCount,
+  ) => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const seeded = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot, phase: "BET", turn: 0, nextTurn: 0,
+        currentBet: 10, raiseCountThisRound: 0,
+        players: snapshot.players.map((player, seatIndex) => ({
+          ...player,
+          stack: seatIndex === 0 ? actorStack : 490,
+          betThisRound: seatIndex === 1 ? 10 : 0,
+          totalInvested: seatIndex === 1 ? 10 : 0,
+          folded: seatIndex > 1, hasFolded: seatIndex > 1,
+          seatOut: false, isBusted: false, allIn: false,
+          hasActedThisRound: seatIndex !== 0,
+        })),
+      },
+      context: state?.context ?? null,
+      handIndex: state?.handIndex ?? 0,
+    });
+    expect(controller.getLegalActions(seeded, 0).map((action) => action.type))
+      .toContain("RAISE");
+    const { state: nextState, events } = controller.applyAction(seeded, {
+      seatIndex: 0, payload: { type: "raise" },
+    });
+    expect(events.some((event) => event.type === "invalidAction")).toBe(false);
+    const next = controller.getUiSnapshot(nextState);
+    expect(next.players[0].totalInvested).toBe(Math.min(actorStack, 20));
+    expect(next.players[0].lastAction).toBe(expectedAction);
+    expect(next.raiseCountThisRound).toBe(expectedRaiseCount);
+  });
+
   it("keeps Raise available when one active opponent can still respond", () => {
     const controller = createController();
     const initial = controller.createInitialState({

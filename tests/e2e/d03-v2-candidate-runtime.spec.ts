@@ -17,32 +17,18 @@ function injectCandidate(source: string) {
   let patched = `import {
     inferBadugiControllerV2CandidateBet,
     inferBadugiControllerV2CandidateDraw,
-  } from '../ai/evaluation/badugiControllerV2CandidateInference.js';
-  import { selectBadugiControllerDrawIndexesV2Draft } from '../rl/badugiControllerDrawIndexesV2Draft.js';\n${source}`;
+  } from '../ai/evaluation/badugiControllerV2CandidateInference.js';\n${source}`;
   patched = patched.replace(originalTier,
     'const onnxTier = seatToAct === 1 ? "beginner" : "teacher";');
   patched = patched.replace(originalTier,
     'const onnxTier = activeSeat === 1 ? "beginner" : "teacher";');
-  for (const [oldName, newName, actor] of [
-    ['inferDrawDecisionWithOnnx', 'inferBadugiControllerV2CandidateDraw', 'seatToAct'],
-    ['inferBetActionWithOnnx', 'inferBadugiControllerV2CandidateBet', 'activeSeat'],
+  for (const [oldName, newName] of [
+    ['? inferBadugiBeginnerControllerV2Draw', '? inferBadugiControllerV2CandidateDraw'],
+    ['? inferBadugiBeginnerControllerV2Bet', '? inferBadugiControllerV2CandidateBet'],
   ]) {
-    const marker = new RegExp(`${oldName},\\s*\\{`);
-    if ([...patched.matchAll(new RegExp(marker.source, 'g'))].length !== 1) {
-      throw new Error(`D03 inference site changed: ${oldName}`);
-    }
-    patched = patched.replace(marker,
-      `${newName}, { v2Controller: sessionControllerRef.current,\n` +
-      `            v2State: sessionControllerStateRef.current, v2SeatIndex: ${actor},\n` +
-      '            v2Events: handHistoryRef.current?.events ?? [], v2Tournament: isTournament,');
+    if (patched.split(oldName).length !== 2) throw new Error(`D03 inference site changed: ${oldName}`);
+    patched = patched.replace(oldName, newName);
   }
-  const drawLegal = 'const drawLegalActions = ["draw_0", "draw_1", "draw_2", "draw_3"];';
-  if (patched.split(drawLegal).length !== 2) throw new Error('D03 DRAW legal site changed');
-  patched = patched.replace(drawLegal,
-    'const drawLegalActions = ["draw_0", "draw_1", "draw_2", "draw_3", "draw_4"];');
-  const discard = 'discardIndexes: selectBadugiTrainingDiscardIndexes(';
-  if (patched.split(discard).length !== 2) throw new Error('D03 DRAW selection site changed');
-  patched = patched.replace(discard, 'discardIndexes: selectBadugiControllerDrawIndexesV2Draft(');
   return patched;
 }
 

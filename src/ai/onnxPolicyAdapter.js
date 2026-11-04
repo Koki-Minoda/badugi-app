@@ -327,6 +327,9 @@ export async function inferBetActionWithOnnx(payload) {
     modelId: payload.modelId,
   });
   if (!entry) return report(null, null, "model-not-configured");
+  if (entry.featureSet === "badugi-controller-observation-v2-draft") {
+    return report(entry, null, "feature-set-requires-v2-adapter");
+  }
   const session = await getOrCreateSession(entry);
   if (!session) return report(entry, null, "session-unavailable");
   const totalLength = expectedInputLength(entry);
@@ -364,6 +367,9 @@ export async function inferDrawDecisionWithOnnx(payload) {
     modelId: payload.modelId,
   });
   if (!entry) return report(null, null, "model-not-configured");
+  if (entry.featureSet === "badugi-controller-observation-v2-draft") {
+    return report(entry, null, "feature-set-requires-v2-adapter");
+  }
   const session = await getOrCreateSession(entry);
   if (!session) return report(entry, null, "session-unavailable");
   const totalLength = expectedInputLength(entry);

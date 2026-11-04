@@ -12,11 +12,11 @@ import {
 describe("onnxPolicyAdapter Badugi schema", () => {
   it("selects tier-specific Badugi models for Beginner, Standard, Pro, Iron, and WorldMaster", () => {
     expect(selectModelForVariant({ variantId: "D03", tierId: "beginner" })).toMatchObject({
-      id: "model-badugi-sixmax-standard-dqn-v2",
-      trainingMode: "sixmax-selfplay",
-      trainingEpisodes: 50000,
-      trainingStatus: "active-beginner-demoted",
-      onnx: "models/badugi_sixmax_standard_dqn_v2.onnx",
+      id: "model-badugi-beginner-controller-v2-20261104",
+      trainingMode: "real-controller-reference-anchor-dqn",
+      trainingEpisodes: 2000,
+      trainingStatus: "evaluated-beginner",
+      onnx: "models/badugi_beginner_controller_v2_20261104.onnx",
       inputShape: [96],
       outputShape: [6],
     });

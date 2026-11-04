@@ -26,11 +26,11 @@ def read_jsonl(path):
             yield json.loads(line)
 
 
-def audit_arm(directory, manifest, role):
+def audit_arm(directory, manifest, manifest_path, role):
     directory = Path(directory)
     summary = json.loads((directory / 'summary.json').read_text())
     if (summary['status'] != 'FROZEN_EVALUATION' or
-            summary['evaluationManifestSha256'] != sha256(manifest) or
+            summary['evaluationManifestSha256'] != sha256(manifest_path) or
             summary['codeGitSha'] != manifest['codeGitSha'] or
             summary['contractSha256'] != manifest['contractSha256'] or
             summary['seedBase'] != manifest['seedBase'] or
@@ -181,8 +181,9 @@ def main():
             manifest['seedBase'] == reference_manifest['seedBase'] or
             manifest['quality']['bootstrapReplicates'] < 1000):
         raise ValueError('evaluation manifests are not independent/frozen')
-    candidate = audit_arm(args.candidate, manifest, 'candidate')
-    reference = audit_arm(args.reference, reference_manifest, 'reference')
+    candidate = audit_arm(args.candidate, manifest, args.manifest, 'candidate')
+    reference = audit_arm(args.reference, reference_manifest,
+                          args.reference_manifest, 'reference')
     if {row['seed'] for row in candidate['rows']} & {row['seed'] for row in reference['rows']}:
         raise ValueError('candidate/reference session seeds overlap')
     browser = audit_browser(args.browser, manifest)

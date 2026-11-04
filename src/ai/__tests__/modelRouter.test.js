@@ -29,7 +29,7 @@ describe("modelRouter", () => {
 
   it("uses exact variant-tier model before a generic tier model", () => {
     const entry = resolveTierModelInfo({ variantId: "D03", tierId: "beginner" });
-    expect(entry?.modelId).toBe("model-badugi-sixmax-standard-dqn-v2");
+    expect(entry?.modelId).toBe("model-badugi-beginner-controller-v2-20261104");
 
     const standard = resolveTierModelInfo({ variantId: "D03", tierId: "standard" });
     expect(standard?.modelId).toBe("model-badugi-sixmax-standard-e11");
@@ -142,26 +142,27 @@ describe("modelRouter", () => {
     })?.modelId).toBe("model-badugi-sixmax-standard-e11");
   });
 
-  it("routes the former Standard v2 as Beginner and keeps legacy beginner assets offline", () => {
+  it("routes evaluated controller v2 as Beginner and retains prior assets offline", () => {
     const legacy = getModelEntry("model-badugi-beginner-dqn-v1");
     expect(legacy?.trainingStatus).toBe("legacy");
     expect(legacy?.productionRequired).toBe(false);
 
     expect(selectModelForVariant({ variantId: "D03", tierId: "beginner" })?.id).toBe(
-      "model-badugi-sixmax-standard-dqn-v2",
+      "model-badugi-beginner-controller-v2-20261104",
     );
     expect(getModelEntry("model-badugi-sixmax-standard-dqn-v2")).toMatchObject({
       tier: "beginner",
-      trainingStatus: "active-beginner-demoted",
+      trainingStatus: "superseded-beginner",
+      productionRequired: false,
     });
   });
 
-  it("routes Badugi Beginner to the former Standard without changing stronger tiers", () => {
+  it("routes Badugi Beginner to controller v2 without changing stronger tiers", () => {
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "beginner" })).toMatchObject({
-      modelId: "model-badugi-sixmax-standard-dqn-v2",
+      modelId: "model-badugi-beginner-controller-v2-20261104",
       tierId: "beginner",
       variantIds: ["D03"],
-      onnx: "models/badugi_sixmax_standard_dqn_v2.onnx",
+      onnx: "models/badugi_beginner_controller_v2_20261104.onnx",
       inputShape: [96],
       outputShape: [6],
     });

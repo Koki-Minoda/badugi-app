@@ -197,11 +197,16 @@ import {
   inferDrawDecisionWithOnnx,
 } from "../ai/onnxPolicyAdapter.js";
 import {
+  inferBadugiBeginnerControllerV2Bet,
+  inferBadugiBeginnerControllerV2Draw,
+} from "../ai/badugiBeginnerControllerV2.js";
+import {
   matchesPendingOnnxInference,
   runTracedOnnxInferenceWithDeadline,
 } from "../ai/onnxInferenceDeadline.js";
 import { buildBadugiObservationPayload } from "../rl/badugiObservationSchema.js";
 import { selectBadugiTrainingDiscardIndexes } from "../rl/badugiTrainingDrawSelection.js";
+import { selectBadugiControllerDrawIndexesV2Draft } from "../rl/badugiControllerDrawIndexesV2Draft.js";
 import { canBadugiTrainingModelIncreaseBet } from "../rl/badugiTrainingBetEligibility.js";
 import { chooseProAction } from "../ai/pro/proDecisionOverlay.js";
 import { useGameEngine } from "./engine/useGameEngine.js";
@@ -2330,6 +2335,18 @@ export default function App() {
           ),
         );
         const sourceSnapshot = controller.getUiSnapshot(controllerState) ?? {};
+        if (normalizedGameVariant === APP_VARIANT_IDS.BADUGI &&
+            typeof controller.updateConfig === "function") {
+          const levelIndex = Math.max(0, Number(sourceSnapshot.blindLevelIndex) || 0);
+          const blindStructure = [...(controller.config?.blindStructure ?? [])];
+          blindStructure[levelIndex] = {
+            ...(blindStructure[levelIndex] ?? {}),
+            sb: SB,
+            bb: BB,
+            ante: currentAnte,
+          };
+          controller.updateConfig({ betSize: BB, blindStructure });
+        }
         const liveSnapshot = {
           ...sourceSnapshot,
           variantId: normalizedGameVariant,
@@ -2341,6 +2358,9 @@ export default function App() {
           dealerIdx,
           dealerSeat: dealerIdx,
           currentBet: liveCurrentBet,
+          drawRound,
+          drawRoundIndex: drawRound,
+          betRoundIndex,
           currentActor: liveActor,
           actingPlayerIndex: liveActor,
           nextTurn: liveActor,
@@ -2348,6 +2368,8 @@ export default function App() {
           metadata: {
             ...(sourceSnapshot.metadata ?? {}),
             currentBet: liveCurrentBet,
+            drawRoundIndex: drawRound,
+            betRoundIndex,
             actingPlayerIndex: liveActor,
           },
         };
@@ -2449,6 +2471,11 @@ export default function App() {
       currentBet,
       dealerIdx,
       betSize,
+      SB,
+      BB,
+      currentAnte,
+      drawRound,
+      betRoundIndex,
       mode,
       normalizedGameVariant,
       phase,
@@ -3174,7 +3201,9 @@ export default function App() {
           return true;
         }
         onnxInferencePendingRef.current = pendingInference;
-        const drawLegalActions = ["draw_0", "draw_1", "draw_2", "draw_3"];
+        const drawLegalActions = onnxTier === "beginner"
+          ? ["draw_0", "draw_1", "draw_2", "draw_3", "draw_4"]
+          : ["draw_0", "draw_1", "draw_2", "draw_3"];
         const observation = buildBadugiObservationPayload({
           state: {
             variantId: "D03",
@@ -3194,13 +3223,20 @@ export default function App() {
           legalActions: drawLegalActions,
         });
         const inferenceResult = await runTracedOnnxInferenceWithDeadline(
-          inferDrawDecisionWithOnnx, {
+          onnxTier === "beginner"
+            ? inferBadugiBeginnerControllerV2Draw
+            : inferDrawDecisionWithOnnx, {
             phase: "DRAW",
             variantId: "D03",
             tierId: onnxTier,
             characterId: me?.characterId ?? me?.cpuCharacterId ?? null,
             observation,
             legalActions: drawLegalActions,
+            v2Controller: sessionControllerRef.current,
+            v2State: sessionControllerStateRef.current,
+            v2SeatIndex: seatToAct,
+            v2Events: handHistoryRef.current?.events ?? [],
+            v2Tournament: isTournament,
           },
         );
         if (onnxInferencePendingRef.current === pendingInference) {
@@ -3216,7 +3252,9 @@ export default function App() {
           try {
             onnxDrawDecision = {
               ...onnxDrawDecision,
-              discardIndexes: selectBadugiTrainingDiscardIndexes(
+              discardIndexes: (onnxTier === "beginner"
+                ? selectBadugiControllerDrawIndexesV2Draft
+                : selectBadugiTrainingDiscardIndexes)(
                 me.hand,
                 onnxDrawDecision.drawCount,
               ),
@@ -3581,6 +3619,7 @@ export default function App() {
     getAiDecisionContextForActor,
     activeAiTierConfig,
     isDrawLowballControllerGame,
+    isTournament,
     isSingleTableDramaha,
     controllerTurn,
     tryControllerBetAction,
@@ -4633,7 +4672,12 @@ export default function App() {
         0,
         forcedCurrentBet - Math.max(0, Number(seatBefore?.betThisRound) || 0),
       );
-      if (isControllerDrivenSingleTable || isDrawLowballControllerGame) {
+      const useBadugiMttController =
+        normalizedGameVariant === APP_VARIANT_IDS.BADUGI &&
+        modeRef.current === "tournament-mtt" &&
+        Boolean(sessionControllerRef.current && sessionControllerStateRef.current);
+      if (isControllerDrivenSingleTable || isDrawLowballControllerGame ||
+          useBadugiMttController) {
         const actionType = payload?.type ?? "call";
         const callAmount =
           String(actionType).toLowerCase() === "call" && payload?.amount == null
@@ -4699,7 +4743,8 @@ export default function App() {
           const isForcedInstantFold =
             payload?.__forceInstant === true &&
             String(actionType).toLowerCase() === "fold";
-          if (!isForcedInstantFold || isDrawLowballControllerGame) {
+          if (!isForcedInstantFold || isDrawLowballControllerGame ||
+              useBadugiMttController) {
             forcedSeatActionsRef.current.delete(seat);
             return false;
           }
@@ -4707,7 +4752,7 @@ export default function App() {
             `forced instant fold fallback seat=${seat} code=${controllerOutcome.code ?? "unknown"}`,
           );
         }
-        if (isDrawLowballControllerGame) return false;
+        if (isDrawLowballControllerGame || useBadugiMttController) return false;
         if (isSingleTableBadugi) {
           warnLegacySingleTablePath(`forced-bet fallback seat=${seat}`);
         }
@@ -4734,8 +4779,8 @@ export default function App() {
         lastControllerActionFailureRef.current = {
           seat,
           payload,
-          code: result.reason ?? "legacy-action-rejected",
-          message: result.reason ?? "legacy action rejected",
+          code: result.code ?? result.reason ?? "legacy-action-rejected",
+          message: result.error ?? result.reason ?? "legacy action rejected",
           events: [],
         };
         forcedSeatActionsRef.current.delete(seat);
@@ -12928,7 +12973,9 @@ export default function App() {
         if (!me) return;
         if (
           sessionControllerRef.current &&
-          typeof sessionControllerRef.current.getCpuAction === "function"
+          typeof sessionControllerRef.current.getCpuAction === "function" &&
+          !(normalizedGameVariant === APP_VARIANT_IDS.BADUGI &&
+            activeAiTierConfig?.id === "beginner")
         ) {
           const controller = sessionControllerRef.current;
           const controllerState = sessionControllerStateRef.current;
@@ -13159,7 +13206,9 @@ export default function App() {
             legalActions: onnxLegalActions,
           });
           const inferenceResult = await runTracedOnnxInferenceWithDeadline(
-            inferBetActionWithOnnx, {
+            onnxTier === "beginner"
+              ? inferBadugiBeginnerControllerV2Bet
+              : inferBetActionWithOnnx, {
               phase: "BET",
               variantId: "D03",
               tierId: onnxTier,
@@ -13167,6 +13216,11 @@ export default function App() {
               observation,
               legalActions: onnxLegalActions,
               betSize,
+              v2Controller: sessionControllerRef.current,
+              v2State: sessionControllerStateRef.current,
+              v2SeatIndex: activeSeat,
+              v2Events: handHistoryRef.current?.events ?? [],
+              v2Tournament: isTournament,
             },
           );
           if (onnxInferencePendingRef.current === pendingInference) {
@@ -13352,6 +13406,7 @@ export default function App() {
     debugLog,
     getAiDecisionContextForActor,
     activeAiTierConfig,
+    isTournament,
     normalizedGameVariant,
     applyForcedBetAction,
     autoResolveCpuDrawIfNeeded,

@@ -146,6 +146,7 @@ function getStatusBadge(profile, labels) {
 }
 
 function VariantCard({ profile, onLaunch, copy }) {
+  const [badugiTier, setBadugiTier] = useState("standard");
   const badge = getStatusBadge(profile, copy);
   const launchVariantId = profile.engineKey ?? profile.id;
   const gate = canLaunchVariant(launchVariantId);
@@ -188,9 +189,23 @@ function VariantCard({ profile, onLaunch, copy }) {
         <span>{copy.betting}: {profile.bettingLabel ?? profile.betting}</span>
         <span>{copy.priority}: {profile.priorityPhase || "-"}</span>
       </div>
+      {launchVariantId === "badugi" && canLaunch ? (
+        <label className="flex items-center justify-between gap-3 text-sm text-slate-200">
+          <span>{copy.language === "ja" ? "CPUの強さ" : "CPU difficulty"}</span>
+          <select
+            data-testid="badugi-cash-tier"
+            value={badugiTier}
+            onChange={(event) => setBadugiTier(event.target.value)}
+            className="min-h-11 rounded-lg border border-white/20 bg-slate-800 px-3 text-white"
+          >
+            <option value="standard">Standard</option>
+            <option value="beginner">Beginner</option>
+          </select>
+        </label>
+      ) : null}
       <button
         type="button"
-        onClick={() => canLaunch && onLaunch(profile)}
+        onClick={() => canLaunch && onLaunch(profile, launchVariantId === "badugi" ? badugiTier : null)}
         disabled={!canLaunch}
         aria-label={`${copy.play}: ${profile.name}`}
         data-testid={`game-selector-play-${launchVariantId}`}
@@ -406,14 +421,14 @@ export default function GameSelectorScreen({
     [language],
   );
 
-  const handleLaunch = (profile) => {
+  const handleLaunch = (profile, cashTierId = null) => {
     const variantId = profile.engineKey ?? profile.id;
     if (!variantId || !isControllerBackedAppVariant(variantId)) return;
     if (typeof onLaunchVariant === "function") {
-      onLaunchVariant(variantId);
+      onLaunchVariant(variantId, { cashTierId });
       return;
     }
-    navigate(`/game?variant=${variantId}`);
+    navigate(`/game?variant=${variantId}${cashTierId ? `&aiTier=${cashTierId}` : ""}`);
   };
 
   const quickLoadPreset = (presetId) => {

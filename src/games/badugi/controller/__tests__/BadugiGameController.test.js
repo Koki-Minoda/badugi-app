@@ -53,6 +53,37 @@ function ensureDrawPhase(controller, state, seatIndex = 0) {
 }
 
 describe("BadugiGameController – new hand", () => {
+  it("uses the active MTT blind level for the controller's fixed-limit raise", () => {
+    const seatConfig = ["HERO", "CPU"];
+    const controller = createController({
+      seatConfig, startingStack: 800,
+      blindStructure: [
+        { sb: 5, bb: 10, ante: 0, hands: 1 },
+        { sb: 20, bb: 40, ante: 0, hands: 10 },
+      ],
+      lastStructureIndex: 1,
+    });
+    const initial = controller.createInitialState({ seatConfig });
+    const state = controller.createNewHandState(initial, {
+      blindState: { blindLevelIndex: 1, handsInLevel: 1 },
+      drawCardsForSeat: () => ["AS", "2H", "3D", "4C"],
+    });
+    const before = controller.getUiSnapshot(state);
+    const seatIndex = before.turn ?? before.nextTurn;
+    const actorBefore = before.players[seatIndex];
+    const toCall = Math.max(0,
+      ...before.players.map((player) => player.betThisRound)) - actorBefore.betThisRound;
+    expect(before.blindLevelIndex).toBe(1);
+    expect(controller.config.betSize).toBe(40);
+    const result = controller.applyAction(state, {
+      seatIndex, payload: { type: "raise" },
+    });
+    expect(result.events.some((event) => event.type === "invalidAction")).toBe(false);
+    const after = controller.getUiSnapshot(result.state);
+    expect(after.players[seatIndex].totalInvested - actorBefore.totalInvested)
+      .toBe(toCall + 40);
+  });
+
   it("provides the legacy-compatible UI surface from the canonical controller path", () => {
     const controller = new BadugiGameController({
       numSeats: 2,
@@ -181,7 +212,7 @@ describe("BadugiGameController – betting", () => {
     expect(controller.getUiSnapshot(result.state).players[0].lastAction).toBe("Check");
   });
 
-  it("does not double an already doubled post-draw raise unit from the UI", () => {
+  it("uses the small bet after draw one and the big bet after draw two", () => {
     const controller = createSixMaxController();
     const initial = controller.createInitialState({
       seatConfig: ["HERO", "CPU", "CPU", "CPU", "CPU", "CPU"],
@@ -210,12 +241,26 @@ describe("BadugiGameController – betting", () => {
       handIndex: 5,
     });
 
-    const result = controller.applyAction(state, {
+    const first = controller.applyAction(state, {
       seatIndex: 0,
-      betSize: 40,
-      payload: { type: "raise", amount: 40 },
+      betSize: 20,
+      payload: { type: "raise", amount: 20 },
     });
+    expect(first.events.some((event) => event.type === "invalidAction")).toBe(false);
+    expect(controller.getUiSnapshot(first.state).players[0].betThisRound).toBe(20);
 
+    const later = controller.syncFromExternalState({
+      snapshot: { ...snapshot, phase: "BET", drawRound: 2, betRoundIndex: 2,
+        currentBet: 0, turn: 0, nextTurn: 0,
+        players: snapshot.players.map((player, seatIndex) => ({
+          ...player, betThisRound: 0, bet: 0, folded: seatIndex > 1,
+          hasFolded: seatIndex > 1, hasActedThisRound: seatIndex > 1,
+        })) },
+      handIndex: 6,
+    });
+    const result = controller.applyAction(later, {
+      seatIndex: 0, betSize: 40, payload: { type: "raise", amount: 40 },
+    });
     expect(result.events.some((event) => event.type === "invalidAction")).toBe(false);
     expect(controller.getUiSnapshot(result.state).players[0].betThisRound).toBe(40);
   });
@@ -537,6 +582,93 @@ describe("BadugiGameController – betting", () => {
     ]);
   });
 
+  it("documents short-stack Raise resolving as an all-in Call", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const seeded = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot,
+        phase: "BET",
+        turn: 0,
+        nextTurn: 0,
+        currentBet: 10,
+        raiseCountThisRound: 0,
+        players: snapshot.players.map((player, seatIndex) => ({
+          ...player,
+          stack: seatIndex === 0 ? 5 : 490,
+          betThisRound: seatIndex === 1 ? 10 : 0,
+          totalInvested: seatIndex === 1 ? 10 : 0,
+          folded: seatIndex > 1,
+          hasFolded: seatIndex > 1,
+          seatOut: false,
+          isBusted: false,
+          allIn: false,
+          hasActedThisRound: seatIndex !== 0,
+        })),
+      },
+      context: state?.context ?? null,
+      handIndex: state?.handIndex ?? 0,
+    });
+
+    expect(controller.getLegalActions(seeded, 0).map((action) => action.type)).toContain("RAISE");
+    const { state: nextState, events } = controller.applyAction(seeded, {
+      seatIndex: 0,
+      payload: { type: "raise" },
+    });
+    expect(events.some((event) => event.type === "invalidAction")).toBe(false);
+    const next = controller.getUiSnapshot(nextState);
+    expect(next.players[0]).toMatchObject({ stack: 0, totalInvested: 5, allIn: true });
+    expect(next.players[0].lastAction).toBe("Call");
+    expect(next.raiseCountThisRound).toBe(0);
+  });
+
+  it.each([
+    [5, "Call", 0],
+    [15, "Call", 0],
+    [20, "Raise", 1],
+    [30, "Raise", 1],
+  ])("records a %i-chip Raise facing 10 with the actual fixed-limit result", (
+    actorStack, expectedAction, expectedRaiseCount,
+  ) => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    const state = controller.createNewHandState(initial, {});
+    const snapshot = controller.getUiSnapshot(state);
+    const seeded = controller.syncFromExternalState({
+      snapshot: {
+        ...snapshot, phase: "BET", turn: 0, nextTurn: 0,
+        currentBet: 10, raiseCountThisRound: 0,
+        players: snapshot.players.map((player, seatIndex) => ({
+          ...player,
+          stack: seatIndex === 0 ? actorStack : 490,
+          betThisRound: seatIndex === 1 ? 10 : 0,
+          totalInvested: seatIndex === 1 ? 10 : 0,
+          folded: seatIndex > 1, hasFolded: seatIndex > 1,
+          seatOut: false, isBusted: false, allIn: false,
+          hasActedThisRound: seatIndex !== 0,
+        })),
+      },
+      context: state?.context ?? null,
+      handIndex: state?.handIndex ?? 0,
+    });
+    expect(controller.getLegalActions(seeded, 0).map((action) => action.type))
+      .toContain("RAISE");
+    const { state: nextState, events } = controller.applyAction(seeded, {
+      seatIndex: 0, payload: { type: "raise" },
+    });
+    expect(events.some((event) => event.type === "invalidAction")).toBe(false);
+    const next = controller.getUiSnapshot(nextState);
+    expect(next.players[0].totalInvested).toBe(Math.min(actorStack, 20));
+    expect(next.players[0].lastAction).toBe(expectedAction);
+    expect(next.raiseCountThisRound).toBe(expectedRaiseCount);
+  });
+
   it("keeps Raise available when one active opponent can still respond", () => {
     const controller = createController();
     const initial = controller.createInitialState({
@@ -656,6 +788,32 @@ describe("BadugiGameController – syncFromSnapshot null turn handling", () => {
 });
 
 describe("BadugiGameController – draw", () => {
+  it("accepts a four-card exchange from an eligible seat", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({
+      seatConfig: ["HERO", "CPU", "CPU", "CPU"],
+    });
+    let state = controller.createNewHandState(initial, {
+      drawCardsForSeat: () => ["AS", "2H", "3D", "4C"],
+    });
+    state = ensureDrawPhase(controller, state, 0);
+
+    const hand = controller.getUiSnapshot(state).players[0].hand;
+    expect(hand).toHaveLength(4);
+    const { state: nextState, events } = controller.applyAction(state, {
+      seatIndex: 0,
+      payload: {
+        type: "draw",
+        drawCount: 4,
+        drawIndexes: [0, 1, 2, 3],
+        handAfter: [...hand],
+      },
+    });
+
+    expect(events.some((event) => event.type === "invalidAction")).toBe(false);
+    expect(controller.getUiSnapshot(nextState).players[0].lastDrawCount).toBe(4);
+  });
+
   it("marks players as having drawn with correct count", () => {
     const controller = createController();
     const initial = controller.createInitialState({

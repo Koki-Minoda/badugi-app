@@ -41,6 +41,13 @@ vi.mock("../modelRouter.js", () => ({
         onnx: "models/bad.onnx",
       };
     }
+    if (tierId === "beginner-v2") {
+      return {
+        id: "controller-v2-model",
+        featureSet: "badugi-controller-observation-v2-draft",
+        inputShape: [96], outputShape: [6], onnx: "models/controller-v2.onnx",
+      };
+    }
     return {
       id: "available-model",
       inputShape: [96],
@@ -56,6 +63,17 @@ describe("onnxPolicyAdapter inference fallback", () => {
   beforeEach(() => {
     runMock.mockReset();
     vi.restoreAllMocks();
+  });
+
+  it("rejects controller-v2 weights through the legacy observation adapter", async () => {
+    const traces = [];
+    for (const infer of [inferBetActionWithOnnx, inferDrawDecisionWithOnnx]) {
+      await expect(infer({ variantId: "D03", tierId: "beginner-v2",
+        onInferenceTrace: (trace) => traces.push(trace) })).resolves.toBeNull();
+    }
+    expect(runMock).not.toHaveBeenCalled();
+    expect(traces).toHaveLength(2);
+    expect(traces.every((trace) => trace.reason === "feature-set-requires-v2-adapter")).toBe(true);
   });
 
   it("returns an ONNX action when a model session is available", async () => {

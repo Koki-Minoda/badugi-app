@@ -35,14 +35,19 @@ export function resolveAiTierForGameContext({
   config = null,
   tournamentSession = null,
   devTierOverride = null,
+  cashTierId = null,
 } = {}) {
   if (devTierOverride) {
     return getTierById(devTierOverride);
   }
   if (mode === "tournament-mtt" || mode === "tournament") {
+    if (config?.practiceOnly && ["beginner", "standard"].includes(config.aiTierId)) {
+      return getTierById(config.aiTierId);
+    }
     return resolveTierForContext({
       stageId: resolveTournamentStageId({ config, tournamentSession }),
     });
   }
+  if (["beginner", "standard"].includes(cashTierId)) return getTierById(cashTierId);
   return getTierById(DEFAULT_CASH_AI_TIER_ID);
 }

@@ -224,12 +224,19 @@ describe("BadugiUIAdapter", () => {
     expect(preDraw.controlsConfig.betSize).toBe(mockTableConfig.bbValue);
     expect(preDraw.controlsConfig.isBigBetStreet).toBe(false);
 
-    const postDraw = adapter.buildViewProps({
+    const afterFirstDraw = adapter.buildViewProps({
       controllerSnapshot: mockSnapshot({ drawRound: 1 }),
       tableConfig: mockTableConfig,
     });
-    expect(postDraw.controlsConfig.betSize).toBe(mockTableConfig.bbValue * 2);
-    expect(postDraw.controlsConfig.isBigBetStreet).toBe(true);
+    expect(afterFirstDraw.controlsConfig.betSize).toBe(mockTableConfig.bbValue);
+    expect(afterFirstDraw.controlsConfig.isBigBetStreet).toBe(false);
+
+    const afterSecondDraw = adapter.buildViewProps({
+      controllerSnapshot: mockSnapshot({ drawRound: 2 }),
+      tableConfig: mockTableConfig,
+    });
+    expect(afterSecondDraw.controlsConfig.betSize).toBe(mockTableConfig.bbValue * 2);
+    expect(afterSecondDraw.controlsConfig.isBigBetStreet).toBe(true);
   });
 
   it("compresses seat labels when busted seats are between blinds", () => {

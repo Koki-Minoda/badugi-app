@@ -24,6 +24,11 @@ const adapter = createBadugiControllerV2Inference({
   featureSet: 'badugi-controller-observation-v2-draft',
   inputShape: [96], outputShape: [6],
 });
+const standardAdapter = createBadugiControllerV2Inference({
+  id: 'standard-v2-test', onnx: 'standard-test.onnx', tier: 'standard',
+  featureSet: 'badugi-controller-observation-v2-draft',
+  inputShape: [96], outputShape: [6],
+});
 
 describe('Badugi controller-v2 live legality', () => {
   it('does not select a raise rejected by the current UI action gate', async () => {
@@ -39,5 +44,14 @@ describe('Badugi controller-v2 live legality', () => {
     run.mockResolvedValueOnce({ output: { data: [0, 4, 3, 2, 1, 100] } });
     const decision = await adapter.inferDraw({ legalActions: ['draw_0', 'draw_1'] });
     expect(decision).toMatchObject({ drawCount: 1, modelId: 'beginner-v2-test' });
+  });
+
+  it('keeps the Standard tier and current legal mask in its decision trace', async () => {
+    run.mockResolvedValueOnce({ output: { data: [100, 0, 3, 0, 0, 0] } });
+    const traces = [];
+    const decision = await standardAdapter.inferBet({ legalActions: ['CALL'],
+      onInferenceTrace: (row) => traces.push(row) });
+    expect(decision).toMatchObject({ action: 'CALL', tierId: 'standard', modelId: 'standard-v2-test' });
+    expect(traces[0]).toMatchObject({ status: 'used', tierId: 'standard', usedModelId: 'standard-v2-test' });
   });
 });

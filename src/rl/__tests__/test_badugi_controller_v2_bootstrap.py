@@ -1,8 +1,15 @@
 """Guard the public-only bootstrap action mapping used before D03 RL."""
 
 import unittest
+import tempfile
+from pathlib import Path
+
+import numpy as np
+import torch
 
 from rl.training.train_badugi_controller_v2_draft import observable_reference_action, run_hand
+from rl.training.export_badugi_controller_v2_mode_ensemble import ModeEnsemble
+from rl.training.validate_badugi_controller_v2_draft import OnnxAgent
 
 
 def decision(phase, made, high, round_index, to_call_bb, mask):
@@ -16,6 +23,31 @@ def decision(phase, made, high, round_index, to_call_bb, mask):
 
 
 class BootstrapPolicyTests(unittest.TestCase):
+    def test_mode_onnx_uses_public_flag_and_legal_mask(self):
+        class FixedScores(torch.nn.Module):
+            def __init__(self, scores):
+                super().__init__()
+                self.register_buffer('scores', torch.tensor(scores, dtype=torch.float32))
+
+            def forward(self, observation):
+                return self.scores.unsqueeze(0).expand(observation.shape[0], -1)
+
+        model = ModeEnsemble(FixedScores([9, 1, 0, 0, 0, 0]),
+                             FixedScores([0, 1, 9, 0, 0, 0])).eval()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'mode.onnx'
+            torch.onnx.export(model, torch.zeros(1, 96), str(path),
+                              input_names=['observation'], output_names=['q_values'],
+                              opset_version=17, dynamo=False)
+            agent = OnnxAgent(path)
+            observation = np.zeros(96, dtype=np.float32)
+            mask = np.asarray([1, 1, 1, 0, 0, 0], dtype=np.float32)
+            self.assertEqual(agent.act(observation, epsilon=0.0, action_mask=mask), 0)
+            observation[21] = 1.0
+            self.assertEqual(agent.act(observation, epsilon=0.0, action_mask=mask), 2)
+            mask[2] = 0
+            self.assertEqual(agent.act(observation, epsilon=0.0, action_mask=mask), 1)
+
     def test_standard_bootstrap_uses_frozen_beginner_actions(self):
         class FrozenBeginner:
             def act(self, obs, epsilon, action_mask):

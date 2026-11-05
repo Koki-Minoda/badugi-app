@@ -15,6 +15,7 @@ from pathlib import Path
 import numpy as np
 
 from rl.env.badugi_env import evaluate_badugi
+from rl.training.badugi_starting_ranges import classify_starting_hand
 from rl.training.train_badugi_controller_v2_draft import (
     ControllerBridge, check_decision, opponent_action, observable_reference_action,
 )
@@ -30,13 +31,22 @@ def classify(obs: list[float]) -> dict:
     if len(set(cards)) != 4:
         raise ValueError('observation does not contain four distinct cards')
     count, ranks = evaluate_badugi(cards)
+    legacy_range = classify_starting_hand(cards)
     high = max(ranks) if ranks else 12
     if round(obs[24] * 4) != count or round(obs[25] * 12) != high:
         raise ValueError('controller range shape differs from independent card evaluation')
+    if (legacy_range.made_cards != count or legacy_range.high_rank != high or
+            legacy_range.rank_sum != sum(ranks)):
+        raise ValueError('legacy public-card range differs from controller observation')
     return {
         'madeCards': count,
         'highRank': high,
         'rankSum': sum(ranks),
+        'legacyRangePercentile': legacy_range.made_score_percentile,
+        'legacyOneDrawTopHalfProbability': legacy_range.one_draw_top_half_probability,
+        'legacyPremium': legacy_range.is_premium,
+        'legacyShouldContinueHeadsUp': legacy_range.should_continue_heads_up,
+        'legacyRecommendedDrawCount': legacy_range.recommended_draw_count,
         'class': ('made-8-or-better' if high <= 8 else 'made-9-plus') if count == 4
                  else ('three-7-or-better' if high <= 6 else 'three-8-plus') if count == 3
                  else 'two-card' if count == 2 else 'one-card',
@@ -114,6 +124,19 @@ def run(contexts: int, seed_base: int, standard_path: Path, candidate_path: Path
             'standardActions': dict(Counter(row['standardAction'] for row in cell)),
             'candidateActions': dict(Counter(row['candidateAction'] for row in cell)),
             'simpleTeacherActions': dict(Counter(row['simpleTeacherAction'] for row in cell)),
+            'actionChanges': sum(row['standardAction'] != row['candidateAction'] for row in cell),
+        }
+    summary['legacyRangeReuse'] = {
+        'scope': 'Public own-card classification only; legacy teacher action is not used',
+        'rankAndScoreParityChecked': len(rows),
+        'percentileBuckets': {},
+    }
+    for index in range(10):
+        cell = [row for row in rows if min(9, int(row['legacyRangePercentile'] * 10)) == index]
+        summary['legacyRangeReuse']['percentileBuckets'][f'{index * 10:02d}-{(index + 1) * 10:02d}'] = {
+            'n': len(cell),
+            'standardActions': dict(Counter(row['standardAction'] for row in cell)),
+            'candidateActions': dict(Counter(row['candidateAction'] for row in cell)),
             'actionChanges': sum(row['standardAction'] != row['candidateAction'] for row in cell),
         }
     (output / 'summary.json').write_text(json.dumps(summary, indent=2, ensure_ascii=False) + '\n')

@@ -9,6 +9,7 @@ import torch
 
 from rl.training.train_badugi_controller_v2_draft import (
     FrozenOnnxPolicy, observable_reference_action, run_hand,
+    sample_reference_demonstrations,
 )
 from rl.training.export_badugi_controller_v2_mode_ensemble import ModeEnsemble
 from rl.training.validate_badugi_controller_v2_draft import OnnxAgent
@@ -25,6 +26,22 @@ def decision(phase, made, high, round_index, to_call_bb, mask):
 
 
 class BootstrapPolicyTests(unittest.TestCase):
+    def test_fold_anchor_balances_only_bet_folds_and_uses_distinct_states(self):
+        demonstrations = [(np.full(96, i, dtype=np.float32), 0, "DRAW")
+                          for i in range(40)]
+        demonstrations += [(np.full(96, i + 40, dtype=np.float32), 0, "BET")
+                           for i in range(10)]
+        demonstrations += [(np.full(96, i + 50, dtype=np.float32), 2, "BET")
+                           for i in range(80)]
+        sample = sample_reference_demonstrations(demonstrations, 64, 8)
+        self.assertEqual(len(sample), 64)
+        self.assertEqual(len({int(item[0][0]) for item in sample}), 64)
+        self.assertEqual(sum(item[2] == "BET" and item[1] == 0 for item in sample), 8)
+        with self.assertRaises(ValueError):
+            sample_reference_demonstrations(demonstrations[:46], 64, 8)
+        with self.assertRaises(ValueError):
+            sample_reference_demonstrations(demonstrations[:45] + demonstrations[50:], 64, 8)
+
     def test_pro_reference_policy_uses_onnx_scores_and_legal_mask(self):
         class FixedScores(torch.nn.Module):
             def __init__(self):

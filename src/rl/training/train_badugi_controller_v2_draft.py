@@ -29,6 +29,7 @@ BRIDGE = ROOT / "scripts" / "badugi-controller-v2-bridge.mjs"
 PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_plan_draft.json"
 STANDARD_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_standard_plan.json"
 PRO_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_plan.json"
+PRO_FOLD_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_fold_anchor_plan.json"
 SCHEMA = "badugi-controller-observation-v2-draft"
 PROFILES = ("passive", "pressure", "draw_heavy", "random_legal")
 CONTRACT_FILES = (
@@ -158,7 +159,7 @@ def run_hand(bridge, first_response, agent, rng, hero_seat, profile, epsilon,
                       agent.act(obs, epsilon=epsilon, action_mask=mask))
             hero_decisions.append((obs, mask, action))
             if demonstrations is not None:
-                demonstrations.append((obs, action))
+                demonstrations.append((obs, action, response["phase"]))
             hero_bb = response["activeBigBlind"] if hero_bb is None else hero_bb
         else:
             action = opponent_action(response, profile, rng)
@@ -211,7 +212,26 @@ class FrozenOnnxPolicy:
         return int(legal[np.argmax(scores[legal])])
 
 
-def require_go_manifest(path, tier, hands, init_model=None, reference_model=None):
+def sample_reference_demonstrations(demonstrations, batch_size, fold_anchor_per_batch=0):
+    """Preserve rare reference BET folds without confusing DRAW index zero with FOLD."""
+    if not 0 <= fold_anchor_per_batch < batch_size:
+        raise ValueError("invalid reference FOLD anchor count")
+    if len(demonstrations) < batch_size:
+        raise ValueError("insufficient public reference decisions for imitation")
+    if fold_anchor_per_batch:
+        folds = [item for item in demonstrations if item[2] == "BET" and item[1] == 0]
+        others = [item for item in demonstrations if not (item[2] == "BET" and item[1] == 0)]
+        if len(folds) < fold_anchor_per_batch or len(others) < batch_size - fold_anchor_per_batch:
+            raise ValueError("insufficient distinct public BET FOLD decisions for anchor")
+        sample = (random.sample(folds, fold_anchor_per_batch) +
+                  random.sample(others, batch_size - fold_anchor_per_batch))
+        random.shuffle(sample)
+        return sample
+    return random.sample(demonstrations, batch_size)
+
+
+def require_go_manifest(path, tier, hands, init_model=None, reference_model=None,
+                        fold_anchor_per_batch=0):
     if path is None:
         raise ValueError("training requires --go-manifest with a frozen passing gate")
     manifest = json.loads(path.read_text())
@@ -243,7 +263,8 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
         if reference_model is not None:
             raise ValueError("Standard bootstrap uses its frozen checkpoint, not a separate reference ONNX")
     elif tier == "pro":
-        tier_plan = json.loads(PRO_PLAN.read_text())
+        tier_plan_path = PRO_FOLD_PLAN if fold_anchor_per_batch else PRO_PLAN
+        tier_plan = json.loads(tier_plan_path.read_text())
         if (init_model is None or not init_model.is_file() or
                 reference_model is None or not reference_model.is_file() or
                 manifest.get("initialModelSha256") != hashlib.sha256(init_model.read_bytes()).hexdigest() or
@@ -253,7 +274,9 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
                 manifest.get("explorationEpsilon") != tier_plan.get("explorationEpsilon") or
                 not 0 <= manifest.get("explorationEpsilon", -1) <= 1 or
                 manifest.get("anchorPolicyId") != "published-v2-standard" or
-                manifest.get("tierPlanSha256") != hashlib.sha256(PRO_PLAN.read_bytes()).hexdigest()):
+                manifest.get("foldAnchorPerBatch", 0) != fold_anchor_per_batch or
+                tier_plan.get("foldAnchorPerBatch", 0) != fold_anchor_per_batch or
+                manifest.get("tierPlanSha256") != hashlib.sha256(tier_plan_path.read_bytes()).hexdigest()):
             raise ValueError("Pro requires frozen v2 Standard initial checkpoint and published reference ONNX")
     elif init_model is not None:
         raise ValueError("initial model is only approved for this Standard diagnostic run")
@@ -276,6 +299,7 @@ def main():
     parser.add_argument("--seed-base", type=int)
     parser.add_argument("--init-model", type=Path)
     parser.add_argument("--reference-model", type=Path)
+    parser.add_argument("--fold-anchor-per-batch", type=int, default=0)
     args = parser.parse_args()
     if not 1 <= args.hands <= 5000:
         raise ValueError("one explicit run must contain 1–5000 hands; 5k is a stop gate")
@@ -285,11 +309,16 @@ def main():
         raise ValueError("bootstrap hands and imitation steps must be set together")
     if args.reference_anchor_every < 0 or (args.reference_anchor_every and not args.bootstrap_hands):
         raise ValueError("reference anchoring requires bootstrap demonstrations")
+    if (not 0 <= args.fold_anchor_per_batch < 64 or
+            (args.fold_anchor_per_batch and
+             (args.tier != "pro" or not args.bootstrap_hands))):
+        raise ValueError("FOLD anchor requires Pro bootstrap and a count below 64")
     if args.train and (args.output is None or args.output.exists()):
         raise ValueError("training requires a new isolated --output directory")
     if args.train:
         manifest = require_go_manifest(args.go_manifest, args.tier, args.hands,
-                                       args.init_model, args.reference_model)
+                                       args.init_model, args.reference_model,
+                                       args.fold_anchor_per_batch)
         if (manifest.get("bootstrapHands", 0) != args.bootstrap_hands or
                 manifest.get("imitationSteps", 0) != args.imitation_steps or
                 manifest.get("referenceAnchorEvery", 0) != args.reference_anchor_every or
@@ -325,10 +354,9 @@ def main():
                   ("rl", args.hands - args.bootstrap_hands)) if args.bootstrap_hands else (("rl", args.hands),)
         for stage_index, (stage, stage_hands) in enumerate(stages):
           if stage == "rl" and args.bootstrap_hands:
-            if len(demonstrations) < 64:
-                raise ValueError("insufficient public reference decisions for imitation")
             for _ in range(args.imitation_steps):
-                sample = random.sample(demonstrations, 64)
+                sample = sample_reference_demonstrations(
+                    demonstrations, 64, args.fold_anchor_per_batch)
                 loss, _ = agent.imitation_update({
                     "obs": np.stack([item[0] for item in sample]),
                     "actions": np.asarray([item[1] for item in sample], dtype=np.int64)})
@@ -377,7 +405,8 @@ def main():
                     if (stage == "rl" and args.reference_anchor_every and
                             outcome["heroDecisions"] and
                             completed % args.reference_anchor_every == 0):
-                        sample = random.sample(demonstrations, 64)
+                        sample = sample_reference_demonstrations(
+                            demonstrations, 64, args.fold_anchor_per_batch)
                         loss, _ = agent.imitation_update({
                             "obs": np.stack([item[0] for item in sample]),
                             "actions": np.asarray([item[1] for item in sample], dtype=np.int64)})
@@ -411,6 +440,9 @@ def main():
                   sum(row["chipDeltaBySeat"]) == 0 for row in results),
               "bootstrapHands": args.bootstrap_hands,
               "referenceDecisions": len(demonstrations),
+              "referenceBetFoldDecisions": sum(
+                  item[2] == "BET" and item[1] == 0 for item in demonstrations),
+              "foldAnchorPerBatch": args.fold_anchor_per_batch,
               "imitationSteps": args.imitation_steps,
               "referenceAnchorEvery": args.reference_anchor_every,
               "referenceAnchorSteps": anchor_steps,

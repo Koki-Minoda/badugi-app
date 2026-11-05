@@ -18,10 +18,10 @@
   "raiseAnchorPerBatch": 8,
   "drawThreeAnchorPerBatch": 4,
   "explorationEpsilon": 0.1,
-  "trainingSeedBase": 4431040001,
+  "trainingSeedBase": 4031040001,
   "trainingGroups": ["2/2-cash", "3/3-cash", "6/6-cash", "6/2-cash", "6/3-cash", "2/2-MTT", "3/3-MTT", "6/6-MTT", "6/2-MTT", "6/3-MTT"],
   "opponentProfiles": ["passive", "pressure", "draw_heavy", "random_legal"],
-  "evaluationSeedBases": [4531040001, 4631040001],
+  "evaluationSeedBases": [4211040001, 4212040001],
   "diagnosticRule": "Stop at exactly 1200 hands. Audit first-hand pressure exposure before comparing full candidate and BET-only candidate against published Standard on new independent 20-hand controller sessions. Retain all 40 group/profile cells. Never promote on this exploratory comparison or an ambiguous interval.",
   "promotionRule": "No public model or registry change without separate preregistered product evaluation and browser actual-use, legal-action/amount, deadline/fallback, chip and trace gates.",
   "safety": "5k is a diagnosis stop gate only. S01 v2 remains stopped; other nine Standard games remain gated until all D03 tiers finish."

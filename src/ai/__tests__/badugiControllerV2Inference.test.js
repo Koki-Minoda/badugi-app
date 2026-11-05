@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { getOrCreateSession } from '../onnxExecutor.js';
 
 const run = vi.fn();
 vi.mock('../onnxExecutor.js', () => ({
@@ -67,5 +68,18 @@ describe('Badugi controller-v2 live legality', () => {
       onInferenceTrace: (row) => traces.push(row) });
     expect(decision).toMatchObject({ action: 'CALL', tierId: 'pro', modelId: 'isolated-pro-v2-test' });
     expect(traces[0]).toMatchObject({ status: 'used', tierId: 'pro', usedModelId: 'isolated-pro-v2-test' });
+  });
+
+  it('retries one transient WebKit session failure before using the legal fallback', async () => {
+    const session = { inputNames: ['input'], outputNames: ['output'], run };
+    vi.mocked(getOrCreateSession).mockClear();
+    vi.mocked(getOrCreateSession).mockResolvedValueOnce(null).mockResolvedValueOnce(session);
+    run.mockResolvedValueOnce({ output: { data: [100, 0, 3, 0, 0, 0] } });
+    const traces = [];
+    const decision = await proAdapter.inferBet({ legalActions: ['CALL'],
+      onInferenceTrace: (row) => traces.push(row) });
+    expect(decision).toMatchObject({ action: 'CALL', tierId: 'pro' });
+    expect(traces).toMatchObject([{ status: 'used', usedModelId: 'isolated-pro-v2-test' }]);
+    expect(getOrCreateSession).toHaveBeenCalledTimes(2);
   });
 });

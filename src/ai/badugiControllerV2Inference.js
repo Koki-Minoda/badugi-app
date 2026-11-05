@@ -44,7 +44,11 @@ export function createBadugiControllerV2Inference(entry) {
       const observation = buildObservation(payload);
       if (observation.length !== 96) throw new TypeError('v2 model requires 96 inputs');
       const mask = observation.slice(32, 38);
-      const session = await getOrCreateSession(entry);
+      let session = await getOrCreateSession(entry);
+      // WebKit can reject one WASM session creation under concurrent load and
+      // succeed on the next attempt. Retry once within the controller deadline;
+      // a second failure still takes the existing legal fallback path.
+      if (!session) session = await getOrCreateSession(entry);
       const runtime = await getOrt();
       if (!session || !runtime) throw new Error('v2 ONNX runtime unavailable');
       const input = new runtime.Tensor('float32', observation, [1, 96]);

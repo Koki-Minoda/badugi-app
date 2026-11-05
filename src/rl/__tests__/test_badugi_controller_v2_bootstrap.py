@@ -12,7 +12,7 @@ from rl.training.train_badugi_controller_v2_draft import (
     sample_reference_demonstrations,
 )
 from rl.training.export_badugi_controller_v2_mode_ensemble import ModeEnsemble
-from rl.training.validate_badugi_controller_v2_draft import OnnxAgent
+from rl.training.validate_badugi_controller_v2_draft import OnnxAgent, PhaseRoutedAgent
 
 
 def decision(phase, made, high, round_index, to_call_bb, mask):
@@ -26,6 +26,27 @@ def decision(phase, made, high, round_index, to_call_bb, mask):
 
 
 class BootstrapPolicyTests(unittest.TestCase):
+    def test_phase_route_reads_only_public_phase_slot(self):
+        class FixedAgent:
+            def __init__(self, action):
+                self.action = action
+
+            def act(self, obs, epsilon, action_mask):
+                self.asserted = (epsilon, action_mask.copy())
+                return self.action
+
+        bet = FixedAgent(2)
+        draw = FixedAgent(3)
+        agent = PhaseRoutedAgent(bet, draw)
+        obs = np.zeros(96, dtype=np.float32)
+        mask = np.ones(6, dtype=np.float32)
+        self.assertEqual(agent.act(obs, 0.0, mask), 2)
+        obs[8] = 1
+        self.assertEqual(agent.act(obs, 0.0, mask), 3)
+        obs[8] = 0.5
+        with self.assertRaises(ValueError):
+            agent.act(obs, 0.0, mask)
+
     def test_fold_anchor_balances_only_bet_folds_and_uses_distinct_states(self):
         demonstrations = [(np.full(96, i, dtype=np.float32), 0, "DRAW")
                           for i in range(40)]

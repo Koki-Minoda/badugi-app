@@ -58,10 +58,33 @@ class OnnxAgent:
         return int(allowed[np.argmax(q_values[allowed])])
 
 
+class PhaseRoutedAgent:
+    """Diagnostic policy routing on the public phase slot, with no hidden profile input."""
+
+    def __init__(self, bet_agent, draw_agent):
+        self.bet_agent = bet_agent
+        self.draw_agent = draw_agent
+
+    def act(self, obs, epsilon, action_mask):
+        phase_draw = float(obs[8])
+        if phase_draw not in (0.0, 1.0):
+            raise ValueError('controller phase slot must be exactly zero or one')
+        agent = self.draw_agent if phase_draw == 1.0 else self.bet_agent
+        return agent.act(obs, epsilon=epsilon, action_mask=action_mask)
+
+
+def phase_model_sha(bet_path, draw_path):
+    bet_sha = hashlib.sha256(bet_path.read_bytes()).hexdigest()
+    draw_sha = hashlib.sha256(draw_path.read_bytes()).hexdigest()
+    return hashlib.sha256(f'{bet_sha}:BET\n{draw_sha}:DRAW\n'.encode()).hexdigest()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=Path)
     parser.add_argument('--onnx-model', type=Path)
+    parser.add_argument('--bet-onnx', type=Path)
+    parser.add_argument('--draw-onnx', type=Path)
     parser.add_argument('--reference', action='store_true')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--sessions-per-profile', type=int, default=6)
@@ -73,16 +96,22 @@ def main():
         raise ValueError('new output directory and bounded session counts required')
     if args.sessions_per_profile > 100 and not args.evaluation_manifest:
         raise ValueError('large controller evaluations require a frozen manifest')
-    if sum((args.reference, args.model is not None, args.onnx_model is not None)) != 1:
-        raise ValueError('choose exactly one of --model, --onnx-model or --reference')
+    phase_pair = args.bet_onnx is not None and args.draw_onnx is not None
+    if ((args.bet_onnx is None) != (args.draw_onnx is None) or
+            sum((args.reference, args.model is not None,
+                 args.onnx_model is not None, phase_pair)) != 1):
+        raise ValueError('choose exactly one of --model, --onnx-model, --reference or a phase pair')
     agent = (None if args.reference else
-             OnnxAgent(args.onnx_model) if args.onnx_model else
+             PhaseRoutedAgent(OnnxAgent(args.bet_onnx), OnnxAgent(args.draw_onnx))
+             if phase_pair else OnnxAgent(args.onnx_model) if args.onnx_model else
              DQNAgent.load(str(args.model), device='cpu'))
     if args.model and (agent.obs_dim != 96 or agent.n_actions != 6 or
                   agent.checkpoint_training_state.get('schemaVersion') != SCHEMA):
         raise ValueError('candidate observation/action contract mismatch')
     candidate_path = args.model or args.onnx_model
-    model_sha = REFERENCE_POLICY_ID if args.reference else hashlib.sha256(candidate_path.read_bytes()).hexdigest()
+    model_sha = (REFERENCE_POLICY_ID if args.reference else
+                 phase_model_sha(args.bet_onnx, args.draw_onnx) if phase_pair else
+                 hashlib.sha256(candidate_path.read_bytes()).hexdigest())
     code_sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     manifest_sha = None
     if args.evaluation_manifest:
@@ -100,6 +129,9 @@ def main():
                 manifest.get('groupMatrix') != GROUP_NAMES or
                 manifest.get('opponentProfiles') != list(PROFILES)):
             raise ValueError('evaluation arguments differ from frozen manifest')
+        if phase_pair and (manifest.get('betModelSha256') != hashlib.sha256(args.bet_onnx.read_bytes()).hexdigest() or
+                           manifest.get('drawModelSha256') != hashlib.sha256(args.draw_onnx.read_bytes()).hexdigest()):
+            raise ValueError('phase model identities differ from frozen manifest')
     bridge = ControllerBridge()
     rows = []
     hand_rows = []
@@ -197,8 +229,10 @@ def main():
                'evaluationManifestSha256': manifest_sha, 'codeGitSha': code_sha,
                'modelSha256': model_sha,
                'contractSha256': contract_hash(),
-               'candidatePath': str(candidate_path) if candidate_path else None,
-               'modelKind': 'onnx' if args.onnx_model else 'pytorch' if args.model else 'reference',
+               'candidatePath': ({'bet': str(args.bet_onnx), 'draw': str(args.draw_onnx)}
+                                 if phase_pair else str(candidate_path) if candidate_path else None),
+               'modelKind': ('phase-routed-onnx' if phase_pair else 'onnx' if args.onnx_model
+                             else 'pytorch' if args.model else 'reference'),
                'seedBase': args.seed_base, 'sessions': len(rows),
                'hands': sum(row['hands'] for row in rows),
                'zeroSumSessions': sum(row['zeroSum'] for row in rows),

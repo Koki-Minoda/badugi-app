@@ -31,6 +31,7 @@ STANDARD_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_standar
 PRO_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_plan.json"
 PRO_FOLD_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_fold_anchor_plan.json"
 PRO_ACTION_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_action_anchor_plan.json"
+PRO_FRESH_STACK_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_fresh_stack_plan.json"
 SCHEMA = "badugi-controller-observation-v2-draft"
 PROFILES = ("passive", "pressure", "draw_heavy", "random_legal")
 CONTRACT_FILES = (
@@ -237,12 +238,18 @@ def sample_reference_demonstrations(demonstrations, batch_size, fold_anchor_per_
         sample = selected + random.sample(remaining, batch_size - len(selected))
         random.shuffle(sample)
         return sample
+
+
+def training_opponent_profile(completed, session_index, fresh_session_per_hand=False):
+    """Use every script opponent at fresh stacks in the Pro diagnostic curriculum."""
+    offset = session_index if fresh_session_per_hand else completed + session_index
+    return PROFILES[offset % len(PROFILES)]
     return random.sample(demonstrations, batch_size)
 
 
 def require_go_manifest(path, tier, hands, init_model=None, reference_model=None,
                         fold_anchor_per_batch=0, raise_anchor_per_batch=0,
-                        draw_three_anchor_per_batch=0):
+                        draw_three_anchor_per_batch=0, fresh_session_per_hand=False):
     if path is None:
         raise ValueError("training requires --go-manifest with a frozen passing gate")
     manifest = json.loads(path.read_text())
@@ -274,7 +281,8 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
         if reference_model is not None:
             raise ValueError("Standard bootstrap uses its frozen checkpoint, not a separate reference ONNX")
     elif tier == "pro":
-        tier_plan_path = (PRO_ACTION_PLAN if raise_anchor_per_batch or draw_three_anchor_per_batch else
+        tier_plan_path = (PRO_FRESH_STACK_PLAN if fresh_session_per_hand else
+                          PRO_ACTION_PLAN if raise_anchor_per_batch or draw_three_anchor_per_batch else
                           PRO_FOLD_PLAN if fold_anchor_per_batch else PRO_PLAN)
         tier_plan = json.loads(tier_plan_path.read_text())
         if (init_model is None or not init_model.is_file() or
@@ -292,6 +300,8 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
                 tier_plan.get("raiseAnchorPerBatch", 0) != raise_anchor_per_batch or
                 manifest.get("drawThreeAnchorPerBatch", 0) != draw_three_anchor_per_batch or
                 tier_plan.get("drawThreeAnchorPerBatch", 0) != draw_three_anchor_per_batch or
+                manifest.get("freshSessionPerHand", False) != fresh_session_per_hand or
+                tier_plan.get("freshSessionPerHand", False) != fresh_session_per_hand or
                 manifest.get("tierPlanSha256") != hashlib.sha256(tier_plan_path.read_bytes()).hexdigest()):
             raise ValueError("Pro requires frozen v2 Standard initial checkpoint and published reference ONNX")
     elif init_model is not None:
@@ -318,6 +328,8 @@ def main():
     parser.add_argument("--fold-anchor-per-batch", type=int, default=0)
     parser.add_argument("--raise-anchor-per-batch", type=int, default=0)
     parser.add_argument("--draw-three-anchor-per-batch", type=int, default=0)
+    parser.add_argument("--fresh-session-per-hand", action="store_true",
+                        help="Pro diagnostic: reset controller and rotate opponent profile for every hand")
     args = parser.parse_args()
     if not 1 <= args.hands <= 5000:
         raise ValueError("one explicit run must contain 1–5000 hands; 5k is a stop gate")
@@ -336,6 +348,8 @@ def main():
                   args.draw_three_anchor_per_batch)) and
              (args.tier != "pro" or not args.bootstrap_hands))):
         raise ValueError("action anchors require Pro bootstrap and a total below 64")
+    if args.fresh_session_per_hand and (not args.train or args.tier != "pro"):
+        raise ValueError("fresh-session curriculum is only approved for isolated Pro training")
     if args.train and (args.output is None or args.output.exists()):
         raise ValueError("training requires a new isolated --output directory")
     if args.train:
@@ -343,7 +357,8 @@ def main():
                                        args.init_model, args.reference_model,
                                        args.fold_anchor_per_batch,
                                        args.raise_anchor_per_batch,
-                                       args.draw_three_anchor_per_batch)
+                                       args.draw_three_anchor_per_batch,
+                                       args.fresh_session_per_hand)
         if (manifest.get("bootstrapHands", 0) != args.bootstrap_hands or
                 manifest.get("imitationSteps", 0) != args.imitation_steps or
                 manifest.get("referenceAnchorEvery", 0) != args.reference_anchor_every or
@@ -408,12 +423,14 @@ def main():
                                         "isTournament": tournament, "seed": session_seed})
                 if response["type"] != "decision":
                     raise ValueError("new controller session did not start with a decision")
-                for hand_in_session in range(min(20, allocated - completed)):
+                for hand_in_session in range(min(1 if args.fresh_session_per_hand else 20,
+                                                 allocated - completed)):
                     if hand_in_session:
                         response = bridge.send({"command": "next_hand"})
                         if response["type"] == "hand_end" and response["decisionCount"] == 0:
                             break  # Table finished: restart with a new training seed.
-                    profile = PROFILES[(completed + session_index) % len(PROFILES)]
+                    profile = training_opponent_profile(completed, session_index,
+                                                        args.fresh_session_per_hand)
                     eligible = response.get("eligibleSeats", [])
                     if not eligible:
                         raise ValueError("controller bridge has no eligible target seat")
@@ -476,6 +493,17 @@ def main():
               "foldAnchorPerBatch": args.fold_anchor_per_batch,
               "raiseAnchorPerBatch": args.raise_anchor_per_batch,
               "drawThreeAnchorPerBatch": args.draw_three_anchor_per_batch,
+              "freshSessionPerHand": args.fresh_session_per_hand,
+              "pressureFirstHandsByStage": {
+                  stage: sum(row["stage"] == stage and row["profile"] == "pressure" and
+                             row["handInSession"] == 0 for row in results)
+                  for stage in ("bootstrap", "rl")},
+              "sixSeatCashPressureFirstHandsByStage": {
+                  stage: sum(row["stage"] == stage and row["profile"] == "pressure" and
+                             row["handInSession"] == 0 and row["seatCount"] == 6 and
+                             row["occupiedSeatCount"] == 6 and not row["isTournament"]
+                             for row in results)
+                  for stage in ("bootstrap", "rl")},
               "imitationSteps": args.imitation_steps,
               "referenceAnchorEvery": args.reference_anchor_every,
               "referenceAnchorSteps": anchor_steps,

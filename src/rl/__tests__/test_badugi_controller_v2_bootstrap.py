@@ -2,6 +2,7 @@
 
 import unittest
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -10,6 +11,7 @@ import torch
 from rl.training.train_badugi_controller_v2_draft import (
     FrozenOnnxPolicy, observable_reference_action, run_hand,
     sample_reference_demonstrations,
+    training_opponent_profile,
 )
 from rl.training.export_badugi_controller_v2_mode_ensemble import ModeEnsemble
 from rl.training.export_badugi_controller_v2_phase_candidate import PhaseEnsemble
@@ -27,6 +29,18 @@ def decision(phase, made, high, round_index, to_call_bb, mask):
 
 
 class BootstrapPolicyTests(unittest.TestCase):
+    def test_fresh_session_profile_covers_pressure_at_first_hand(self):
+        bootstrap = Counter(training_opponent_profile(index, index, True)
+                            for index in range(100))
+        rl = Counter(training_opponent_profile(index, index, True)
+                     for index in range(20))
+        self.assertEqual(bootstrap['pressure'], 25)
+        self.assertEqual(rl['pressure'], 5)
+        legacy_bootstrap_first_hands = Counter(
+            training_opponent_profile(index * 20, index)
+            for index in range(5))
+        self.assertEqual(legacy_bootstrap_first_hands['pressure'], 1)
+
     def test_phase_ensemble_uses_public_phase_flag(self):
         class Scores(torch.nn.Module):
             def __init__(self, index):

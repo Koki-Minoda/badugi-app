@@ -42,6 +42,22 @@ class BootstrapPolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             sample_reference_demonstrations(demonstrations[:45] + demonstrations[50:], 64, 8)
 
+    def test_action_anchor_preserves_phase_specific_raise_and_draw_three(self):
+        demonstrations = ([(np.full(96, i, dtype=np.float32), 0, "BET")
+                           for i in range(20)] +
+                          [(np.full(96, i + 20, dtype=np.float32), 4, "BET")
+                           for i in range(20)] +
+                          [(np.full(96, i + 40, dtype=np.float32), 3, "DRAW")
+                           for i in range(20)] +
+                          [(np.full(96, i + 60, dtype=np.float32), 1, "DRAW")
+                           for i in range(70)])
+        sample = sample_reference_demonstrations(demonstrations, 64, 8, 8, 4)
+        self.assertEqual(len({int(item[0][0]) for item in sample}), 64)
+        for phase, action, quota in (("BET", 0, 8), ("BET", 4, 8), ("DRAW", 3, 4)):
+            self.assertGreaterEqual(sum(item[2] == phase and item[1] == action for item in sample), quota)
+        with self.assertRaises(ValueError):
+            sample_reference_demonstrations(demonstrations, 64, 60, 8, 4)
+
     def test_pro_reference_policy_uses_onnx_scores_and_legal_mask(self):
         class FixedScores(torch.nn.Module):
             def __init__(self):

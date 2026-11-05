@@ -30,6 +30,7 @@ PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_plan_draft.json"
 STANDARD_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_standard_plan.json"
 PRO_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_plan.json"
 PRO_FOLD_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_fold_anchor_plan.json"
+PRO_ACTION_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_action_anchor_plan.json"
 SCHEMA = "badugi-controller-observation-v2-draft"
 PROFILES = ("passive", "pressure", "draw_heavy", "random_legal")
 CONTRACT_FILES = (
@@ -212,26 +213,36 @@ class FrozenOnnxPolicy:
         return int(legal[np.argmax(scores[legal])])
 
 
-def sample_reference_demonstrations(demonstrations, batch_size, fold_anchor_per_batch=0):
-    """Preserve rare reference BET folds without confusing DRAW index zero with FOLD."""
-    if not 0 <= fold_anchor_per_batch < batch_size:
-        raise ValueError("invalid reference FOLD anchor count")
+def sample_reference_demonstrations(demonstrations, batch_size, fold_anchor_per_batch=0,
+                                    raise_anchor_per_batch=0, draw_three_anchor_per_batch=0):
+    """Preserve distinct rare reference actions without conflating phases or indexes."""
+    quotas = {("BET", 0): fold_anchor_per_batch,
+              ("BET", 4): raise_anchor_per_batch,
+              ("DRAW", 3): draw_three_anchor_per_batch}
+    if any(value < 0 for value in quotas.values()) or sum(quotas.values()) >= batch_size:
+        raise ValueError("invalid reference action anchor counts")
     if len(demonstrations) < batch_size:
         raise ValueError("insufficient public reference decisions for imitation")
-    if fold_anchor_per_batch:
-        folds = [item for item in demonstrations if item[2] == "BET" and item[1] == 0]
-        others = [item for item in demonstrations if not (item[2] == "BET" and item[1] == 0)]
-        if len(folds) < fold_anchor_per_batch or len(others) < batch_size - fold_anchor_per_batch:
-            raise ValueError("insufficient distinct public BET FOLD decisions for anchor")
-        sample = (random.sample(folds, fold_anchor_per_batch) +
-                  random.sample(others, batch_size - fold_anchor_per_batch))
+    if any(quotas.values()):
+        selected = []
+        for (phase, action), count in quotas.items():
+            matches = [item for item in demonstrations if item[2] == phase and item[1] == action]
+            if len(matches) < count:
+                raise ValueError(f"insufficient distinct public {phase}:{action} decisions for anchor")
+            selected.extend(random.sample(matches, count))
+        anchored_classes = {key for key, count in quotas.items() if count}
+        remaining = [item for item in demonstrations if (item[2], item[1]) not in anchored_classes]
+        if len(remaining) < batch_size - len(selected):
+            raise ValueError("insufficient remaining public reference decisions")
+        sample = selected + random.sample(remaining, batch_size - len(selected))
         random.shuffle(sample)
         return sample
     return random.sample(demonstrations, batch_size)
 
 
 def require_go_manifest(path, tier, hands, init_model=None, reference_model=None,
-                        fold_anchor_per_batch=0):
+                        fold_anchor_per_batch=0, raise_anchor_per_batch=0,
+                        draw_three_anchor_per_batch=0):
     if path is None:
         raise ValueError("training requires --go-manifest with a frozen passing gate")
     manifest = json.loads(path.read_text())
@@ -263,7 +274,8 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
         if reference_model is not None:
             raise ValueError("Standard bootstrap uses its frozen checkpoint, not a separate reference ONNX")
     elif tier == "pro":
-        tier_plan_path = PRO_FOLD_PLAN if fold_anchor_per_batch else PRO_PLAN
+        tier_plan_path = (PRO_ACTION_PLAN if raise_anchor_per_batch or draw_three_anchor_per_batch else
+                          PRO_FOLD_PLAN if fold_anchor_per_batch else PRO_PLAN)
         tier_plan = json.loads(tier_plan_path.read_text())
         if (init_model is None or not init_model.is_file() or
                 reference_model is None or not reference_model.is_file() or
@@ -276,6 +288,10 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
                 manifest.get("anchorPolicyId") != "published-v2-standard" or
                 manifest.get("foldAnchorPerBatch", 0) != fold_anchor_per_batch or
                 tier_plan.get("foldAnchorPerBatch", 0) != fold_anchor_per_batch or
+                manifest.get("raiseAnchorPerBatch", 0) != raise_anchor_per_batch or
+                tier_plan.get("raiseAnchorPerBatch", 0) != raise_anchor_per_batch or
+                manifest.get("drawThreeAnchorPerBatch", 0) != draw_three_anchor_per_batch or
+                tier_plan.get("drawThreeAnchorPerBatch", 0) != draw_three_anchor_per_batch or
                 manifest.get("tierPlanSha256") != hashlib.sha256(tier_plan_path.read_bytes()).hexdigest()):
             raise ValueError("Pro requires frozen v2 Standard initial checkpoint and published reference ONNX")
     elif init_model is not None:
@@ -300,6 +316,8 @@ def main():
     parser.add_argument("--init-model", type=Path)
     parser.add_argument("--reference-model", type=Path)
     parser.add_argument("--fold-anchor-per-batch", type=int, default=0)
+    parser.add_argument("--raise-anchor-per-batch", type=int, default=0)
+    parser.add_argument("--draw-three-anchor-per-batch", type=int, default=0)
     args = parser.parse_args()
     if not 1 <= args.hands <= 5000:
         raise ValueError("one explicit run must contain 1–5000 hands; 5k is a stop gate")
@@ -309,16 +327,23 @@ def main():
         raise ValueError("bootstrap hands and imitation steps must be set together")
     if args.reference_anchor_every < 0 or (args.reference_anchor_every and not args.bootstrap_hands):
         raise ValueError("reference anchoring requires bootstrap demonstrations")
-    if (not 0 <= args.fold_anchor_per_batch < 64 or
-            (args.fold_anchor_per_batch and
+    if (any(value < 0 for value in (args.fold_anchor_per_batch,
+                                    args.raise_anchor_per_batch,
+                                    args.draw_three_anchor_per_batch)) or
+            sum((args.fold_anchor_per_batch, args.raise_anchor_per_batch,
+                 args.draw_three_anchor_per_batch)) >= 64 or
+            (any((args.fold_anchor_per_batch, args.raise_anchor_per_batch,
+                  args.draw_three_anchor_per_batch)) and
              (args.tier != "pro" or not args.bootstrap_hands))):
-        raise ValueError("FOLD anchor requires Pro bootstrap and a count below 64")
+        raise ValueError("action anchors require Pro bootstrap and a total below 64")
     if args.train and (args.output is None or args.output.exists()):
         raise ValueError("training requires a new isolated --output directory")
     if args.train:
         manifest = require_go_manifest(args.go_manifest, args.tier, args.hands,
                                        args.init_model, args.reference_model,
-                                       args.fold_anchor_per_batch)
+                                       args.fold_anchor_per_batch,
+                                       args.raise_anchor_per_batch,
+                                       args.draw_three_anchor_per_batch)
         if (manifest.get("bootstrapHands", 0) != args.bootstrap_hands or
                 manifest.get("imitationSteps", 0) != args.imitation_steps or
                 manifest.get("referenceAnchorEvery", 0) != args.reference_anchor_every or
@@ -356,7 +381,8 @@ def main():
           if stage == "rl" and args.bootstrap_hands:
             for _ in range(args.imitation_steps):
                 sample = sample_reference_demonstrations(
-                    demonstrations, 64, args.fold_anchor_per_batch)
+                    demonstrations, 64, args.fold_anchor_per_batch,
+                    args.raise_anchor_per_batch, args.draw_three_anchor_per_batch)
                 loss, _ = agent.imitation_update({
                     "obs": np.stack([item[0] for item in sample]),
                     "actions": np.asarray([item[1] for item in sample], dtype=np.int64)})
@@ -406,7 +432,8 @@ def main():
                             outcome["heroDecisions"] and
                             completed % args.reference_anchor_every == 0):
                         sample = sample_reference_demonstrations(
-                            demonstrations, 64, args.fold_anchor_per_batch)
+                            demonstrations, 64, args.fold_anchor_per_batch,
+                            args.raise_anchor_per_batch, args.draw_three_anchor_per_batch)
                         loss, _ = agent.imitation_update({
                             "obs": np.stack([item[0] for item in sample]),
                             "actions": np.asarray([item[1] for item in sample], dtype=np.int64)})
@@ -442,7 +469,13 @@ def main():
               "referenceDecisions": len(demonstrations),
               "referenceBetFoldDecisions": sum(
                   item[2] == "BET" and item[1] == 0 for item in demonstrations),
+              "referenceBetRaiseDecisions": sum(
+                  item[2] == "BET" and item[1] == 4 for item in demonstrations),
+              "referenceDrawThreeDecisions": sum(
+                  item[2] == "DRAW" and item[1] == 3 for item in demonstrations),
               "foldAnchorPerBatch": args.fold_anchor_per_batch,
+              "raiseAnchorPerBatch": args.raise_anchor_per_batch,
+              "drawThreeAnchorPerBatch": args.draw_three_anchor_per_batch,
               "imitationSteps": args.imitation_steps,
               "referenceAnchorEvery": args.reference_anchor_every,
               "referenceAnchorSteps": anchor_steps,

@@ -12,6 +12,7 @@ from rl.training.train_badugi_controller_v2_draft import (
     sample_reference_demonstrations,
 )
 from rl.training.export_badugi_controller_v2_mode_ensemble import ModeEnsemble
+from rl.training.export_badugi_controller_v2_phase_candidate import PhaseEnsemble
 from rl.training.validate_badugi_controller_v2_draft import OnnxAgent, PhaseRoutedAgent
 
 
@@ -26,6 +27,22 @@ def decision(phase, made, high, round_index, to_call_bb, mask):
 
 
 class BootstrapPolicyTests(unittest.TestCase):
+    def test_phase_ensemble_uses_public_phase_flag(self):
+        class Scores(torch.nn.Module):
+            def __init__(self, index):
+                super().__init__()
+                self.index = index
+
+            def forward(self, observation):
+                output = observation.new_zeros((observation.shape[0], 6))
+                output[:, self.index] = 1
+                return output
+
+        model = PhaseEnsemble(Scores(2), Scores(3)).eval()
+        observation = torch.zeros(3, 96)
+        observation[:, 8] = torch.tensor([0, 1, 0])
+        self.assertEqual(model(observation).argmax(dim=1).tolist(), [2, 3, 2])
+
     def test_phase_route_reads_only_public_phase_slot(self):
         class FixedAgent:
             def __init__(self, action):

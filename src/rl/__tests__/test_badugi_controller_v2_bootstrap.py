@@ -113,6 +113,25 @@ class BootstrapPolicyTests(unittest.TestCase):
         legal_actions = torch.where(observation[:, 32:38] > 0.5, scores, -1e9).argmax(dim=1)
         self.assertEqual(legal_actions.tolist(), [0, 2, 0, 0])
 
+    def test_phase_ensemble_heads_up_cash_fallback_uses_public_slots_only(self):
+        class Scores(torch.nn.Module):
+            def __init__(self, action):
+                super().__init__()
+                self.action = action
+
+            def forward(self, observation):
+                scores = observation.new_zeros((observation.shape[0], 6))
+                scores[:, self.action] = 1
+                return scores
+
+        model = PhaseEnsemble(Scores(4), Scores(2),
+                              heads_up_cash_standard_bet=True).eval()
+        observation = torch.zeros(4, 96)
+        observation[:, 10] = torch.tensor([2 / 6, 2 / 6, 3 / 6, 2 / 6])
+        observation[:, 21] = torch.tensor([0, 1, 0, 0])
+        observation[3, 8] = 1
+        self.assertEqual(model(observation).argmax(dim=1).tolist(), [2, 4, 4, 2])
+
     def test_phase_route_reads_only_public_phase_slot(self):
         class FixedAgent:
             def __init__(self, action):

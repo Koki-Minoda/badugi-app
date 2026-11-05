@@ -132,6 +132,24 @@ class BootstrapPolicyTests(unittest.TestCase):
         observation[3, 8] = 1
         self.assertEqual(model(observation).argmax(dim=1).tolist(), [2, 4, 4, 2])
 
+    def test_phase_ensemble_heads_up_all_modes_fallback(self):
+        class Scores(torch.nn.Module):
+            def __init__(self, action):
+                super().__init__()
+                self.action = action
+
+            def forward(self, observation):
+                scores = observation.new_zeros((observation.shape[0], 6))
+                scores[:, self.action] = 1
+                return scores
+
+        model = PhaseEnsemble(Scores(4), Scores(2), heads_up_standard_bet=True).eval()
+        observation = torch.zeros(5, 96)
+        observation[:, 10] = torch.tensor([2 / 6, 2 / 6, 3 / 6, 3 / 6, 2 / 6])
+        observation[:, 21] = torch.tensor([0, 1, 0, 1, 1])
+        observation[4, 8] = 1
+        self.assertEqual(model(observation).argmax(dim=1).tolist(), [2, 2, 4, 4, 2])
+
     def test_phase_route_reads_only_public_phase_slot(self):
         class FixedAgent:
             def __init__(self, action):

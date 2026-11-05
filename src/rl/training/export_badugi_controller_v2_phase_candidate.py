@@ -25,12 +25,14 @@ else:
 
 
 class PhaseEnsemble(torch.nn.Module):
-    def __init__(self, bet, draw, fold_guardian=False, heads_up_cash_standard_bet=False):
+    def __init__(self, bet, draw, fold_guardian=False, heads_up_cash_standard_bet=False,
+                 heads_up_standard_bet=False):
         super().__init__()
         self.bet = bet
         self.draw = draw
         self.fold_guardian = fold_guardian
         self.heads_up_cash_standard_bet = heads_up_cash_standard_bet
+        self.heads_up_standard_bet = heads_up_standard_bet
 
     def forward(self, observation):
         standard_scores = self.draw(observation)
@@ -42,12 +44,13 @@ class PhaseEnsemble(torch.nn.Module):
                                        standard_scores, torch.full_like(standard_scores, -1e9))
             standard_folds = torch.argmax(legal_scores, dim=1, keepdim=True) == 0
             bet_scores = torch.where(standard_folds, standard_scores, bet_scores)
-        if self.heads_up_cash_standard_bet:
+        if self.heads_up_cash_standard_bet or self.heads_up_standard_bet:
             # Public table size and cash/MTT flag only. A pressure-opponent
             # label is neither observable at the table nor a model input.
-            heads_up_cash = ((observation[:, 10:11] < 0.34) &
-                             (observation[:, 21:22] < 0.5))
-            bet_scores = torch.where(heads_up_cash, standard_scores, bet_scores)
+            heads_up = observation[:, 10:11] < 0.34
+            standard_bet = (heads_up if self.heads_up_standard_bet else
+                            heads_up & (observation[:, 21:22] < 0.5))
+            bet_scores = torch.where(standard_bet, standard_scores, bet_scores)
         return torch.where(observation[:, 8:9] >= 0.5, standard_scores, bet_scores)
 
 
@@ -76,6 +79,8 @@ def main():
                         help='Retain published Standard BET only when its legal action is FOLD')
     parser.add_argument('--heads-up-cash-standard-bet', action='store_true',
                         help='Exploratory safety fallback: published Standard BET on 2-seat cash tables')
+    parser.add_argument('--heads-up-standard-bet', action='store_true',
+                        help='Exploratory safety fallback: published Standard BET on all 2-seat tables')
     parser.add_argument('--controller-rollouts', type=Path, required=True)
     parser.add_argument('--heldout-controller-rollouts', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
@@ -87,7 +92,8 @@ def main():
                         load_checkpoint(args.mtt_checkpoint, 'standard'),
                         load_checkpoint(args.heads_up_mtt_checkpoint, 'beginner')).eval()
     combined = PhaseEnsemble(bet, draw, fold_guardian=args.fold_guardian,
-                             heads_up_cash_standard_bet=args.heads_up_cash_standard_bet).eval()
+                             heads_up_cash_standard_bet=args.heads_up_cash_standard_bet,
+                             heads_up_standard_bet=args.heads_up_standard_bet).eval()
     args.output.mkdir(parents=True)
     path = args.output / 'candidate.onnx'
     torch.onnx.export(combined, torch.zeros(1, 96), str(path),
@@ -124,10 +130,11 @@ def main():
             legal = observations[:, 32:38] >= 0.5
             standard_folds = np.where(legal, draw_reference, -1e9).argmax(axis=1) == 0
             bet_reference = np.where(standard_folds[:, None], draw_reference, bet_reference)
-        if args.heads_up_cash_standard_bet:
-            heads_up_cash = ((observations[:, 10:11] < 0.34) &
-                             (observations[:, 21:22] < 0.5))
-            bet_reference = np.where(heads_up_cash, draw_reference, bet_reference)
+        if args.heads_up_cash_standard_bet or args.heads_up_standard_bet:
+            heads_up = observations[:, 10:11] < 0.34
+            standard_bet = (heads_up if args.heads_up_standard_bet else
+                            heads_up & (observations[:, 21:22] < 0.5))
+            bet_reference = np.where(standard_bet, draw_reference, bet_reference)
         expected_reference = np.where(observations[:, 8:9] >= 0.5,
                                       draw_reference, bet_reference)
         if actual.shape != (len(observations), 6) or not np.all(np.isfinite(actual)):
@@ -146,6 +153,7 @@ def main():
               'phaseFlagSlot': 8, 'betCheckpointSha256': digest(args.bet_checkpoint),
               'foldGuardian': args.fold_guardian, 'legalMaskSlots': [32, 38],
               'headsUpCashStandardBet': args.heads_up_cash_standard_bet,
+              'headsUpStandardBet': args.heads_up_standard_bet,
               'cashCheckpointSha256': digest(args.cash_checkpoint),
               'mttCheckpointSha256': digest(args.mtt_checkpoint),
               'headsUpMttCheckpointSha256': digest(args.heads_up_mtt_checkpoint),

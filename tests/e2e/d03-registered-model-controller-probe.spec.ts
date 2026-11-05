@@ -7,19 +7,15 @@ import { getProgressState, invokeE2E, performSafeAction, waitForE2EDriver } from
 const MODELS = {
   beginner: 'model-badugi-beginner-controller-v2-20261104',
   standard: 'model-badugi-standard-controller-v2-20261105',
-  pro: 'model-badugi-pro-v1',
+  pro: 'model-badugi-pro-controller-v2-20261105',
   iron: 'model-badugi-iron-v1',
   worldmaster: 'model-badugi-worldmaster-v1',
 } as const;
 
 function forceRegisteredOnnxInTest(source: string) {
-  const guard = 'const shouldUseOnnx = onnxTier === "beginner" || onnxTier === "standard";';
+  const guard = 'const shouldUseOnnx = ["beginner", "standard", "pro"].includes(onnxTier);';
   expect(source.split(guard)).toHaveLength(3);
-  let patched = source.replaceAll(guard, 'const shouldUseOnnx = true;');
-  const overlay = /activeAiTierConfig\?\.id === "pro"(\s*\?\s*chooseProAction\()/g;
-  expect([...patched.matchAll(overlay)]).toHaveLength(2);
-  patched = patched.replace(overlay, 'false$1');
-  return patched;
+  return source.replaceAll(guard, 'const shouldUseOnnx = true;');
 }
 
 function captureDrawCardSelection(source: string, tier: string) {
@@ -29,7 +25,7 @@ function captureDrawCardSelection(source: string, tier: string) {
     if (onnxDrawDecision) window.__D03_MODEL_DRAW_SELECTION_AUDIT__.push({
       seat: seatToAct, drawRound,
       requestedDrawCount,
-      expectedIndexes: ${['beginner', 'standard'].includes(tier)
+      expectedIndexes: ${['beginner', 'standard', 'pro'].includes(tier)
         ? 'selectBadugiControllerDrawIndexesV2Draft'
         : 'selectBadugiTrainingDiscardIndexes'}(me.hand, requestedDrawCount),
       plannedIndexes: [...discardIndexes],
@@ -47,7 +43,7 @@ for (const [tier, expectedModelId] of Object.entries(MODELS)) {
         const response = await route.fetch();
         const body = await response.text();
         patchedApp += 1;
-        await route.fulfill({ response, body: captureDrawCardSelection(tier === 'beginner' || tier === 'standard'
+        await route.fulfill({ response, body: captureDrawCardSelection(['beginner', 'standard', 'pro'].includes(tier)
           ? body : forceRegisteredOnnxInTest(body), tier) });
       });
       await page.route('**/api/**', route => route.fulfill({
@@ -121,7 +117,7 @@ for (const [tier, expectedModelId] of Object.entries(MODELS)) {
       const report = {
         sourceHead: process.env.GITHUB_SHA ?? null,
         tier, mode, apiStubbed: true,
-        testOnlyAppPatch: tier !== 'beginner' && tier !== 'standard',
+        testOnlyAppPatch: !['beginner', 'standard', 'pro'].includes(tier),
         expectedModelId, patchedApp, handId: evidence.hand.handId,
         decisions: evidence.rows.length, used: used.length,
         nonModelDecisions: evidence.rows.length - used.length,

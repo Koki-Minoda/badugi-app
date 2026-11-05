@@ -10,7 +10,23 @@ import numpy as np
 import onnxruntime as ort
 import torch
 
-from train_badugi_controller_v2_draft import DQNAgent, SCHEMA
+if __package__:
+    from .train_badugi_controller_v2_draft import DQNAgent, SCHEMA
+else:
+    from train_badugi_controller_v2_draft import DQNAgent, SCHEMA
+
+MAX_ABS_TOLERANCE = 2e-5
+
+
+def check_parity(expected, actual):
+    if actual.shape != expected.shape or not np.all(np.isfinite(actual)):
+        raise ValueError(f'ONNX parity failed: shape={actual.shape}, non-finite or unexpected scores')
+    max_abs = float(np.max(np.abs(expected - actual)))
+    action_mismatches = int(np.count_nonzero(expected.argmax(axis=1) != actual.argmax(axis=1)))
+    if max_abs > MAX_ABS_TOLERANCE or action_mismatches:
+        raise ValueError(f'ONNX parity failed: shape={actual.shape}, maxAbs={max_abs}, '
+                         f'actions={action_mismatches}')
+    return max_abs, action_mismatches
 
 
 def digest(path):
@@ -41,14 +57,17 @@ def main():
     with torch.no_grad():
         expected = agent.q_network(torch.from_numpy(samples)).numpy()
     actual = session.run(['q_values'], {'observation': samples})[0]
-    max_abs = float(np.max(np.abs(expected - actual)))
-    if actual.shape != (128, 6) or max_abs > 1e-5:
-        raise ValueError(f'ONNX parity failed: shape={actual.shape}, maxAbs={max_abs}')
+    if expected.shape != (128, 6):
+        raise ValueError('candidate ONNX score shape mismatch')
+    max_abs, action_mismatches = check_parity(expected, actual)
     report = {'status': 'PARITY_PASS_NOT_STRENGTH', 'schemaVersion': SCHEMA,
               'checkpointSha256': digest(args.checkpoint),
               'onnxSha256': digest(path), 'inputShape': [1, 96],
               'outputShape': [1, 6], 'paritySamples': 128,
-              'maxAbsoluteDifference': max_abs, 'published': False}
+              'maxAbsoluteDifference': max_abs,
+              'maxAbsoluteTolerance': MAX_ABS_TOLERANCE,
+              'greedyActionMismatches': action_mismatches,
+              'published': False}
     (args.output / 'export-report.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))
 

@@ -31,7 +31,7 @@ describe("onnxPolicyAdapter Badugi schema", () => {
       })?.id,
     ).toBe("model-badugi-standard-controller-v2-20261105");
     expect(selectModelForVariant({ variantId: "D03", tierId: "pro" })?.id).toBe(
-      "model-badugi-pro-v1",
+      "model-badugi-pro-controller-v2-20261105",
     );
     expect(selectModelForVariant({ variantId: "D03", tierId: "iron" })?.id).toBe(
       "model-badugi-iron-v1",

@@ -27,12 +27,31 @@ else:
         ControllerBridge, DQNAgent, PROFILES, SCHEMA, check_decision, contract_hash,
         opponent_action, observable_reference_action,
     )
+from rl.env.badugi_env import evaluate_badugi
 
 GROUPS = tuple((seats, occupied, tournament) for tournament in (False, True)
                for seats, occupied in ((2, 2), (3, 3), (6, 6), (6, 2), (6, 3)))
 GROUP_NAMES = [f'{seats}/{occupied}-{("mtt" if tournament else "cash")}'
                for seats, occupied, tournament in GROUPS]
 REFERENCE_POLICY_ID = 'observable-reference-v1'
+
+
+def opening_context(observation, action):
+    """Public decision context and hero's own cards at the first pre-draw BET."""
+    cards = [(round(observation[2 * i] * 12), round(observation[2 * i + 1] * 3))
+             for i in range(4)]
+    if len(set(cards)) != 4:
+        raise ValueError('opening observation does not contain four distinct cards')
+    made_cards, ranks = evaluate_badugi(cards)
+    high_rank = max(ranks) if ranks else 12
+    if (round(observation[24] * 4) != made_cards or
+            round(observation[25] * 12) != high_rank):
+        raise ValueError('opening card evaluation differs from controller observation')
+    return {'cards': cards, 'madeCards': made_cards, 'highRank': high_rank,
+            'rankSum': sum(ranks), 'relativePosition': observation[12],
+            'stackBb': observation[14] * 200,
+            'toCallBb': observation[18] * 20,
+            'raiseCount': round(observation[20] * 4), 'actionIndex': action}
 
 
 class OnnxAgent:
@@ -58,31 +77,89 @@ class OnnxAgent:
         return int(allowed[np.argmax(q_values[allowed])])
 
 
+class PhaseRoutedAgent:
+    """Diagnostic policy routing on the public phase slot, with no hidden profile input."""
+
+    def __init__(self, bet_agent, draw_agent):
+        self.bet_agent = bet_agent
+        self.draw_agent = draw_agent
+
+    def act(self, obs, epsilon, action_mask):
+        phase_draw = float(obs[8])
+        if phase_draw not in (0.0, 1.0):
+            raise ValueError('controller phase slot must be exactly zero or one')
+        agent = self.draw_agent if phase_draw == 1.0 else self.bet_agent
+        return agent.act(obs, epsilon=epsilon, action_mask=action_mask)
+
+
+class FoldGuardedPhaseAgent(PhaseRoutedAgent):
+    """Exploratory BET guard: retain a published Standard FOLD on public input."""
+
+    def act(self, obs, epsilon, action_mask):
+        phase_draw = float(obs[8])
+        if phase_draw not in (0.0, 1.0):
+            raise ValueError('controller phase slot must be exactly zero or one')
+        standard_action = self.draw_agent.act(obs, epsilon=epsilon, action_mask=action_mask)
+        if phase_draw == 1.0 or standard_action == 0:
+            return standard_action
+        return self.bet_agent.act(obs, epsilon=epsilon, action_mask=action_mask)
+
+
+def phase_model_sha(bet_path, draw_path, fold_guardian=False):
+    bet_sha = hashlib.sha256(bet_path.read_bytes()).hexdigest()
+    draw_sha = hashlib.sha256(draw_path.read_bytes()).hexdigest()
+    suffix = 'STANDARD_FOLD_GUARDIAN\n' if fold_guardian else ''
+    return hashlib.sha256(f'{bet_sha}:BET\n{draw_sha}:DRAW\n{suffix}'.encode()).hexdigest()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=Path)
     parser.add_argument('--onnx-model', type=Path)
+    parser.add_argument('--bet-onnx', type=Path)
+    parser.add_argument('--draw-onnx', type=Path)
     parser.add_argument('--reference', action='store_true')
+    parser.add_argument('--fold-guardian', action='store_true',
+                        help='Exploratory phase pair only: keep published Standard BET FOLD')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--sessions-per-profile', type=int, default=6)
     parser.add_argument('--hands-per-session', type=int, default=20)
     parser.add_argument('--seed-base', type=int, default=410040001)
     parser.add_argument('--evaluation-manifest', type=Path)
+    parser.add_argument('--only-group', choices=GROUP_NAMES,
+                        help='Exploratory diagnosis only; frozen product evaluations require all groups')
+    parser.add_argument('--only-profile', choices=PROFILES,
+                        help='Exploratory diagnosis only; frozen product evaluations require all profiles')
+    parser.add_argument('--capture-opening', action='store_true',
+                        help='Exploratory replay only: save hero first pre-draw BET cards/context')
     args = parser.parse_args()
     if args.output.exists() or not 1 <= args.sessions_per_profile <= 250 or not 1 <= args.hands_per_session <= 100:
         raise ValueError('new output directory and bounded session counts required')
     if args.sessions_per_profile > 100 and not args.evaluation_manifest:
         raise ValueError('large controller evaluations require a frozen manifest')
-    if sum((args.reference, args.model is not None, args.onnx_model is not None)) != 1:
-        raise ValueError('choose exactly one of --model, --onnx-model or --reference')
+    if args.evaluation_manifest and (args.only_group or args.only_profile):
+        raise ValueError('frozen product evaluations cannot filter groups or profiles')
+    if args.evaluation_manifest and args.capture_opening:
+        raise ValueError('opening capture is diagnostic only; do not change a frozen evaluation')
+    phase_pair = args.bet_onnx is not None and args.draw_onnx is not None
+    if args.fold_guardian and not phase_pair:
+        raise ValueError('fold guardian requires a BET candidate and published Standard DRAW ONNX')
+    if ((args.bet_onnx is None) != (args.draw_onnx is None) or
+            sum((args.reference, args.model is not None,
+                 args.onnx_model is not None, phase_pair)) != 1):
+        raise ValueError('choose exactly one of --model, --onnx-model, --reference or a phase pair')
     agent = (None if args.reference else
-             OnnxAgent(args.onnx_model) if args.onnx_model else
+             (FoldGuardedPhaseAgent if args.fold_guardian else PhaseRoutedAgent)(
+                 OnnxAgent(args.bet_onnx), OnnxAgent(args.draw_onnx))
+             if phase_pair else OnnxAgent(args.onnx_model) if args.onnx_model else
              DQNAgent.load(str(args.model), device='cpu'))
     if args.model and (agent.obs_dim != 96 or agent.n_actions != 6 or
                   agent.checkpoint_training_state.get('schemaVersion') != SCHEMA):
         raise ValueError('candidate observation/action contract mismatch')
     candidate_path = args.model or args.onnx_model
-    model_sha = REFERENCE_POLICY_ID if args.reference else hashlib.sha256(candidate_path.read_bytes()).hexdigest()
+    model_sha = (REFERENCE_POLICY_ID if args.reference else
+                 phase_model_sha(args.bet_onnx, args.draw_onnx, args.fold_guardian) if phase_pair else
+                 hashlib.sha256(candidate_path.read_bytes()).hexdigest())
     code_sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     manifest_sha = None
     if args.evaluation_manifest:
@@ -100,12 +177,21 @@ def main():
                 manifest.get('groupMatrix') != GROUP_NAMES or
                 manifest.get('opponentProfiles') != list(PROFILES)):
             raise ValueError('evaluation arguments differ from frozen manifest')
+        if manifest.get('foldGuardian', False) != args.fold_guardian:
+            raise ValueError('fold guardian differs from frozen manifest')
+        if phase_pair and (manifest.get('betModelSha256') != hashlib.sha256(args.bet_onnx.read_bytes()).hexdigest() or
+                           manifest.get('drawModelSha256') != hashlib.sha256(args.draw_onnx.read_bytes()).hexdigest()):
+            raise ValueError('phase model identities differ from frozen manifest')
     bridge = ControllerBridge()
     rows = []
     hand_rows = []
     try:
         for group_index, (seats, occupied, tournament) in enumerate(GROUPS):
+            if args.only_group and GROUP_NAMES[group_index] != args.only_group:
+                continue
             for profile_index, profile in enumerate(PROFILES):
+                if args.only_profile and profile != args.only_profile:
+                    continue
                 for session_index in range(args.sessions_per_profile):
                     seed = args.seed_base + group_index * 1_000_000 + profile_index * 10_000 + session_index
                     rng = random.Random(seed + 997)
@@ -129,6 +215,7 @@ def main():
                         active_bb = response['activeBigBlind']
                         hero_decisions = 0
                         decision_trace = []
+                        first_opening = None
                         while response['type'] == 'decision':
                             check_decision(response, seats, occupied, tournament)
                             start = time.perf_counter()
@@ -139,6 +226,10 @@ def main():
                                                     action_mask=np.asarray(response['legalMask'], dtype=np.float32)))
                                 actions[f"{response['phase']}:{action}"] += 1
                                 hero_decisions += 1
+                                if (args.capture_opening and first_opening is None and
+                                        response['phase'] == 'BET' and response['drawRoundIndex'] == 0):
+                                    first_opening = opening_context(response['observation'], action)
+                                    first_opening['decisionOrdinal'] = len(decision_trace)
                             else:
                                 action = opponent_action(response, profile, rng)
                             decision_trace.append({'seat': response['seat'],
@@ -170,7 +261,7 @@ def main():
                                     raise ValueError('invalid public draw count')
                             else:
                                 raise ValueError('unknown public action type')
-                        hand_rows.append({'seed': seed, 'handIndex': hand_index,
+                        hand_row = {'seed': seed, 'handIndex': hand_index,
                                           'group': f'{seats}/{occupied}-{("mtt" if tournament else "cash")}',
                                           'profile': profile, 'heroSeat': hero,
                                           'activeBigBlind': active_bb,
@@ -178,7 +269,10 @@ def main():
                                           'endingStacks': response['endingStacks'],
                                           'chipDeltaBySeat': response['chipDeltaBySeat'],
                                           'decisions': decision_trace,
-                                          'publicActionTrace': response['publicActionTrace']})
+                                          'publicActionTrace': response['publicActionTrace']}
+                        if args.capture_opening:
+                            hand_row['heroOpening'] = first_opening
+                        hand_rows.append(hand_row)
                     rows.append({'group': f'{seats}/{occupied}-{("mtt" if tournament else "cash")}',
                                  'seatCount': seats, 'occupiedSeatCount': occupied,
                                  'isTournament': tournament, 'profile': profile,
@@ -197,14 +291,19 @@ def main():
                'evaluationManifestSha256': manifest_sha, 'codeGitSha': code_sha,
                'modelSha256': model_sha,
                'contractSha256': contract_hash(),
-               'candidatePath': str(candidate_path) if candidate_path else None,
-               'modelKind': 'onnx' if args.onnx_model else 'pytorch' if args.model else 'reference',
+               'candidatePath': ({'bet': str(args.bet_onnx), 'draw': str(args.draw_onnx)}
+                                 if phase_pair else str(candidate_path) if candidate_path else None),
+               'modelKind': ('phase-routed-onnx' if phase_pair else 'onnx' if args.onnx_model
+                             else 'pytorch' if args.model else 'reference'),
+               'foldGuardian': args.fold_guardian,
+               'captureOpening': args.capture_opening,
                'seedBase': args.seed_base, 'sessions': len(rows),
                'hands': sum(row['hands'] for row in rows),
                'zeroSumSessions': sum(row['zeroSum'] for row in rows),
                'sessionsPerProfileGroup': args.sessions_per_profile,
                'handsPerSessionMax': args.hands_per_session,
-               'opponentProfiles': PROFILES, 'groups': GROUP_NAMES}
+               'opponentProfiles': [args.only_profile] if args.only_profile else PROFILES,
+               'groups': [args.only_group] if args.only_group else GROUP_NAMES}
     (args.output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     print(json.dumps(summary, indent=2))
 

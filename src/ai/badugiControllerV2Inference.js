@@ -35,8 +35,8 @@ function buildObservation(payload) {
 export function createBadugiControllerV2Inference(entry) {
   if (!entry?.id || !entry?.onnx || entry.featureSet !== 'badugi-controller-observation-v2-draft' ||
       entry.inputShape?.[0] !== 96 || entry.outputShape?.[0] !== 6 ||
-      !['beginner', 'standard'].includes(entry.tier)) {
-    throw new TypeError('D03 v2 inference requires a versioned 96-input/6-output Beginner or Standard entry');
+      !['beginner', 'standard', 'pro'].includes(entry.tier)) {
+    throw new TypeError('D03 v2 inference requires a versioned 96-input/6-output tier entry');
   }
   async function infer(payload, phase) {
     const started = Date.now();
@@ -44,7 +44,11 @@ export function createBadugiControllerV2Inference(entry) {
       const observation = buildObservation(payload);
       if (observation.length !== 96) throw new TypeError('v2 model requires 96 inputs');
       const mask = observation.slice(32, 38);
-      const session = await getOrCreateSession(entry);
+      let session = await getOrCreateSession(entry);
+      // WebKit can reject one WASM session creation under concurrent load and
+      // succeed on the next attempt. Retry once within the controller deadline;
+      // a second failure still takes the existing legal fallback path.
+      if (!session) session = await getOrCreateSession(entry);
       const runtime = await getOrt();
       if (!session || !runtime) throw new Error('v2 ONNX runtime unavailable');
       const input = new runtime.Tensor('float32', observation, [1, 96]);

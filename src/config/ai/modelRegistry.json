@@ -342,20 +342,23 @@
     ]
   },
   {
-    "id": "model-badugi-pro-v1",
-    "version": "v3",
+    "id": "model-badugi-pro-controller-v2-20261105",
+    "version": "controller-v2-20261105",
     "variantIds": [
       "D03"
     ],
     "characterIds": [],
     "tier": "pro",
-    "onnx": "models/badugi_pro_v1.onnx",
-    "checksumSha256": "7735e4367f9e24eab5481075855ed6ef221a5d06c053cf70bc449ec3d7fba3ce",
-    "trainingRun": "badugi_v2obs_perf_50k_20260602",
-    "trainingCheckpoint": "badugi_dqn_050000_20260602-150628.pt",
-    "trainingStatus": "active",
-    "trainingNotes": "v2obs (slots 61-74 追加: hero/opp bet履歴・draw軌跡・deadカード・OOPフラグ・stack比) + 学習高速化（evaluate_badugi lru_cache・counterfactual_continue間引き）で50kエピソード学習。gate: avgReward 1.711, showdownWinRate 64.4%, foldRate 24.4%, vs-pro delta +1.077（standard/pro/iron/worldmaster全通過）。分散±3.49・worst_profile 1.172を考慮しPro適用。Iron昇格にはstronger opponent profilingと追加学習が必要。",
-    "featureSet": "badugi-observation-v1-ev-range",
+    "onnx": "models/badugi_pro_controller_v2_20261105.onnx",
+    "checksumSha256": "40acfcc089873bb1660227ceae3be808917222e090abd8916b03cc174d92af49",
+    "trainingRun": "d03-v2-pro-bet-only-5k-20261105",
+    "trainingCheckpoint": "candidate.pt",
+    "trainingStatus": "evaluated-pro",
+    "trainingMode": "real-controller-reference-anchor-dqn-public-table-ensemble",
+    "featureSet": "badugi-controller-observation-v2-draft",
+    "evaluationManifest": "d03-v2-pro-hu-six-mtt-fallback-20261105/candidate-manifest.json",
+    "evaluationAudit": "d03-v2-pro-hu-six-mtt-fallback-20261105/strength-audit.json",
+    "trainingNotes": "Frozen independent real-controller 8000-session/160000-hand evaluation per arm against published Standard passed preregistered overall, cash and MTT improvement margins. Pro BET uses a trained 5k checkpoint with Standard DRAW; public two-seat cash/MTT and public six-seat MTT use Standard BET. Scripted opponents do not establish human or ICM strength.",
     "productionRequired": true,
     "inputShape": [
       96

@@ -205,6 +205,10 @@ import {
   inferBadugiStandardControllerV2Draw,
 } from "../ai/badugiStandardControllerV2.js";
 import {
+  inferBadugiProControllerV2Bet,
+  inferBadugiProControllerV2Draw,
+} from "../ai/badugiProControllerV2.js";
+import {
   matchesPendingOnnxInference,
   runTracedOnnxInferenceWithDeadline,
 } from "../ai/onnxInferenceDeadline.js";
@@ -3187,7 +3191,7 @@ export default function App() {
         hand: me.hand,
       });
       const onnxTier = activeAiTierConfig?.id;
-      const shouldUseOnnx = onnxTier === "beginner" || onnxTier === "standard";
+      const shouldUseOnnx = ["beginner", "standard", "pro"].includes(onnxTier);
       const drawDecisionStartedAt = Date.now();
       let drawInferenceTrace = null;
       let onnxDrawDecision = null;
@@ -3209,7 +3213,7 @@ export default function App() {
           return true;
         }
         onnxInferencePendingRef.current = pendingInference;
-        const drawLegalActions = ["beginner", "standard"].includes(onnxTier)
+        const drawLegalActions = ["beginner", "standard", "pro"].includes(onnxTier)
           ? ["draw_0", "draw_1", "draw_2", "draw_3", "draw_4"]
           : ["draw_0", "draw_1", "draw_2", "draw_3"];
         const observation = buildBadugiObservationPayload({
@@ -3235,7 +3239,9 @@ export default function App() {
             ? inferBadugiBeginnerControllerV2Draw
             : onnxTier === "standard"
               ? inferBadugiStandardControllerV2Draw
-              : inferDrawDecisionWithOnnx, {
+              : onnxTier === "pro"
+                ? inferBadugiProControllerV2Draw
+                : inferDrawDecisionWithOnnx, {
             phase: "DRAW",
             variantId: "D03",
             tierId: onnxTier,
@@ -3262,7 +3268,7 @@ export default function App() {
           try {
             onnxDrawDecision = {
               ...onnxDrawDecision,
-              discardIndexes: (["beginner", "standard"].includes(onnxTier)
+              discardIndexes: (["beginner", "standard", "pro"].includes(onnxTier)
                 ? selectBadugiControllerDrawIndexesV2Draft
                 : selectBadugiTrainingDiscardIndexes)(
                 me.hand,
@@ -3293,7 +3299,7 @@ export default function App() {
         }
       }
       const aiDrawDecision =
-        activeAiTierConfig?.id === "pro"
+        activeAiTierConfig?.id === "pro" && !shouldUseOnnx
           ? chooseProAction({
               variantId: "D03",
               family: "badugi",
@@ -7230,7 +7236,7 @@ export default function App() {
       DEFAULT_GAME_VARIANT,
     );
     setCashTierChoice(normalizedVariant === APP_VARIANT_IDS.BADUGI
-      ? (["beginner", "standard"].includes(cashTierId) ? cashTierId : "standard")
+      ? (["beginner", "standard", "pro"].includes(cashTierId) ? cashTierId : "standard")
       : null);
     const gate = canLaunchVariant(normalizedVariant);
     if (!gate.canLaunch) {
@@ -13171,7 +13177,7 @@ export default function App() {
           betRound: betRoundIndex,
         });
         const onnxTier = activeAiTierConfig?.id;
-        const shouldUseOnnx = onnxTier === "beginner" || onnxTier === "standard";
+        const shouldUseOnnx = ["beginner", "standard", "pro"].includes(onnxTier);
         const betDecisionStartedAt = Date.now();
         let betInferenceTrace = null;
         let onnxBetDecision = null;
@@ -13223,7 +13229,9 @@ export default function App() {
               ? inferBadugiBeginnerControllerV2Bet
               : onnxTier === "standard"
                 ? inferBadugiStandardControllerV2Bet
-                : inferBetActionWithOnnx, {
+                : onnxTier === "pro"
+                  ? inferBadugiProControllerV2Bet
+                  : inferBetActionWithOnnx, {
               phase: "BET",
               variantId: "D03",
               tierId: onnxTier,
@@ -13263,7 +13271,7 @@ export default function App() {
           }
         }
         const betDecision =
-          activeAiTierConfig?.id === "pro"
+          activeAiTierConfig?.id === "pro" && !shouldUseOnnx
             ? chooseProAction({
                 variantId: "D03",
                 family: "badugi",
@@ -13544,7 +13552,8 @@ export default function App() {
         }
         if (
           (activeAiTierConfig?.id === "beginner" ||
-            activeAiTierConfig?.id === "standard") &&
+            activeAiTierConfig?.id === "standard" ||
+            activeAiTierConfig?.id === "pro") &&
           matchesPendingOnnxInference(onnxInferencePendingRef.current, {
             handId: handIdRef.current,
             phase: "BET",
@@ -13630,7 +13639,8 @@ export default function App() {
         }
         if (
           (activeAiTierConfig?.id === "beginner" ||
-            activeAiTierConfig?.id === "standard") &&
+            activeAiTierConfig?.id === "standard" ||
+            activeAiTierConfig?.id === "pro") &&
           matchesPendingOnnxInference(onnxInferencePendingRef.current, {
             handId: handIdRef.current,
             phase: "DRAW",

@@ -11,7 +11,7 @@ describe("modelRouter", () => {
 
   it("selects model by variant first", () => {
     const entry = selectModelForVariant({ variantId: "D03" });
-    expect(entry?.id).toBe("model-badugi-pro-v1");
+    expect(entry?.id).toBe("model-badugi-pro-controller-v2-20261105");
   });
 
   it("does not route an unrelated variant to a variant-specific tier model", () => {
@@ -173,7 +173,7 @@ describe("modelRouter", () => {
       "model-badugi-standard-controller-v2-20261105",
     );
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "pro" })?.modelId).toBe(
-      "model-badugi-pro-v1",
+      "model-badugi-pro-controller-v2-20261105",
     );
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "iron" })?.modelId).toBe(
       "model-badugi-iron-v1",

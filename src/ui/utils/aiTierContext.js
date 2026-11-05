@@ -1,8 +1,7 @@
 import { TOURNAMENT_STAGE_IDS } from "../../config/tournamentStages.js";
 import { getTierById, resolveTierForContext } from "../../ai/tierManager.js";
 
-// Friend Alpha favors the audited, balanced policy. Pro remains available as
-// an explicit development/tier override until its fold-heavy profile is tuned.
+// Keep Standard as the default; users can explicitly select evaluated tiers.
 export const DEFAULT_CASH_AI_TIER_ID = "standard";
 export const DEFAULT_TOURNAMENT_STAGE_ID = "store";
 
@@ -41,13 +40,13 @@ export function resolveAiTierForGameContext({
     return getTierById(devTierOverride);
   }
   if (mode === "tournament-mtt" || mode === "tournament") {
-    if (config?.practiceOnly && ["beginner", "standard"].includes(config.aiTierId)) {
+    if (config?.practiceOnly && ["beginner", "standard", "pro"].includes(config.aiTierId)) {
       return getTierById(config.aiTierId);
     }
     return resolveTierForContext({
       stageId: resolveTournamentStageId({ config, tournamentSession }),
     });
   }
-  if (["beginner", "standard"].includes(cashTierId)) return getTierById(cashTierId);
+  if (["beginner", "standard", "pro"].includes(cashTierId)) return getTierById(cashTierId);
   return getTierById(DEFAULT_CASH_AI_TIER_ID);
 }

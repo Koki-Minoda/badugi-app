@@ -150,6 +150,27 @@ class BootstrapPolicyTests(unittest.TestCase):
         observation[4, 8] = 1
         self.assertEqual(model(observation).argmax(dim=1).tolist(), [2, 2, 4, 4, 2])
 
+    def test_phase_ensemble_six_seat_mtt_fallback_uses_public_table_and_mode(self):
+        class Scores(torch.nn.Module):
+            def __init__(self, action):
+                super().__init__()
+                self.action = action
+
+            def forward(self, observation):
+                scores = observation.new_zeros((observation.shape[0], 6))
+                scores[:, self.action] = 1
+                return scores
+
+        model = PhaseEnsemble(Scores(4), Scores(2),
+                              six_seat_mtt_standard_bet=True).eval()
+        observation = torch.zeros(6, 96)
+        observation[:, 10] = torch.tensor([2 / 6, 3 / 6, 1, 1, 1, 1])
+        observation[:, 21] = torch.tensor([1, 1, 0, 1, 1, 1])
+        observation[4, 11] = 2 / 6  # Folds do not switch the table-size route.
+        observation[5, 8] = 1      # DRAW remains the Standard branch.
+        self.assertEqual(model(observation).argmax(dim=1).tolist(),
+                         [4, 4, 4, 2, 2, 2])
+
     def test_phase_route_reads_only_public_phase_slot(self):
         class FixedAgent:
             def __init__(self, action):

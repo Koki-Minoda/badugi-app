@@ -26,13 +26,14 @@ else:
 
 class PhaseEnsemble(torch.nn.Module):
     def __init__(self, bet, draw, fold_guardian=False, heads_up_cash_standard_bet=False,
-                 heads_up_standard_bet=False):
+                 heads_up_standard_bet=False, six_seat_mtt_standard_bet=False):
         super().__init__()
         self.bet = bet
         self.draw = draw
         self.fold_guardian = fold_guardian
         self.heads_up_cash_standard_bet = heads_up_cash_standard_bet
         self.heads_up_standard_bet = heads_up_standard_bet
+        self.six_seat_mtt_standard_bet = six_seat_mtt_standard_bet
 
     def forward(self, observation):
         standard_scores = self.draw(observation)
@@ -51,6 +52,12 @@ class PhaseEnsemble(torch.nn.Module):
             standard_bet = (heads_up if self.heads_up_standard_bet else
                             heads_up & (observation[:, 21:22] < 0.5))
             bet_scores = torch.where(standard_bet, standard_scores, bet_scores)
+        if self.six_seat_mtt_standard_bet:
+            # Table size and tournament mode are public, stable session inputs.
+            # The opponent's scripted pressure label is never a model input.
+            six_seat_mtt = ((observation[:, 10:11] > 0.9) &
+                            (observation[:, 21:22] >= 0.5))
+            bet_scores = torch.where(six_seat_mtt, standard_scores, bet_scores)
         return torch.where(observation[:, 8:9] >= 0.5, standard_scores, bet_scores)
 
 
@@ -81,6 +88,8 @@ def main():
                         help='Exploratory safety fallback: published Standard BET on 2-seat cash tables')
     parser.add_argument('--heads-up-standard-bet', action='store_true',
                         help='Exploratory safety fallback: published Standard BET on all 2-seat tables')
+    parser.add_argument('--six-seat-mtt-standard-bet', action='store_true',
+                        help='Exploratory safety fallback: published Standard BET on all 6-seat MTT tables')
     parser.add_argument('--controller-rollouts', type=Path, required=True)
     parser.add_argument('--heldout-controller-rollouts', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
@@ -93,7 +102,8 @@ def main():
                         load_checkpoint(args.heads_up_mtt_checkpoint, 'beginner')).eval()
     combined = PhaseEnsemble(bet, draw, fold_guardian=args.fold_guardian,
                              heads_up_cash_standard_bet=args.heads_up_cash_standard_bet,
-                             heads_up_standard_bet=args.heads_up_standard_bet).eval()
+                             heads_up_standard_bet=args.heads_up_standard_bet,
+                             six_seat_mtt_standard_bet=args.six_seat_mtt_standard_bet).eval()
     args.output.mkdir(parents=True)
     path = args.output / 'candidate.onnx'
     torch.onnx.export(combined, torch.zeros(1, 96), str(path),
@@ -135,6 +145,10 @@ def main():
             standard_bet = (heads_up if args.heads_up_standard_bet else
                             heads_up & (observations[:, 21:22] < 0.5))
             bet_reference = np.where(standard_bet, draw_reference, bet_reference)
+        if args.six_seat_mtt_standard_bet:
+            six_seat_mtt = ((observations[:, 10:11] > 0.9) &
+                            (observations[:, 21:22] >= 0.5))
+            bet_reference = np.where(six_seat_mtt, draw_reference, bet_reference)
         expected_reference = np.where(observations[:, 8:9] >= 0.5,
                                       draw_reference, bet_reference)
         if actual.shape != (len(observations), 6) or not np.all(np.isfinite(actual)):
@@ -154,6 +168,7 @@ def main():
               'foldGuardian': args.fold_guardian, 'legalMaskSlots': [32, 38],
               'headsUpCashStandardBet': args.heads_up_cash_standard_bet,
               'headsUpStandardBet': args.heads_up_standard_bet,
+              'sixSeatMttStandardBet': args.six_seat_mtt_standard_bet,
               'cashCheckpointSha256': digest(args.cash_checkpoint),
               'mttCheckpointSha256': digest(args.mtt_checkpoint),
               'headsUpMttCheckpointSha256': digest(args.heads_up_mtt_checkpoint),

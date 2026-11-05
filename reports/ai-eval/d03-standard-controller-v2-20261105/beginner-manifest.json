@@ -1,0 +1,35 @@
+{
+  "status": "FROZEN",
+  "frozenAtUtc": "2026-11-04T23:47:41.977047+00:00",
+  "codeGitSha": "7fe453d8239d4206ad42e98a4baa855814d823ee",
+  "contractSha256": "eb388f88808ab31483d823586e73503697ec3436d3f084ee436a15959d6b7df3",
+  "groupMatrix": [
+    "2/2-cash",
+    "3/3-cash",
+    "6/6-cash",
+    "6/2-cash",
+    "6/3-cash",
+    "2/2-mtt",
+    "3/3-mtt",
+    "6/6-mtt",
+    "6/2-mtt",
+    "6/3-mtt"
+  ],
+  "opponentProfiles": [
+    "passive",
+    "pressure",
+    "draw_heavy",
+    "random_legal"
+  ],
+  "sessionsPerProfileGroup": 200,
+  "handsPerSessionMax": 20,
+  "unit": "independent continuous real-controller session; hands within a session are not independent",
+  "comparison": "candidate and Beginner arms use disjoint seeds; unpaired cell-stratified bootstrap",
+  "trainingFreeze": "No new gradient training after the 2000-hand Standard checkpoint; cash and MTT Standard weight interpolations, public heads-up MTT route to published Beginner checkpoint.",
+  "arm": "published-beginner",
+  "modelKind": "pytorch",
+  "modelSha256": "c1d7a335953c188ba6edd512c6596cf0803a84a8405bc33fbd4e3b505d0a2322",
+  "publishedOnnxSha256": "61681aa1c652410e52249be2834834eca569b56fb29305b462ac4de2e7a80f5d",
+  "seedBase": 4130040001,
+  "evaluationPlanSha256": "9b851635e76f72dba93c5dfc4ab235ef0902c9e6c6f84ba97a6eaa1242d7312e"
+}

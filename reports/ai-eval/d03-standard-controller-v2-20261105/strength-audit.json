@@ -1,0 +1,1168 @@
+{
+  "status": "STANDARD_CANDIDATE_GATE_PASS",
+  "preregisteredDeltaBbPerHand": 0.05,
+  "manifestSha256": "cfc752ed7cdaa0fc565bc6a089c07754e0730ec24f729e70b339c51bb45aad1d",
+  "beginnerManifestSha256": "26741ad1f45b5d1e9a76a62c892021130b21f938e8f2639bf5ef94b950b02b22",
+  "checks": {
+    "overallLowerExceedsDelta": true,
+    "cashLowerExceedsDelta": true,
+    "mttLowerExceedsDelta": true,
+    "allCandidateProfileLowersPositive": true,
+    "noCandidateCellMeanBelowFloor": true,
+    "noMaterialRelativeCellRegression": true,
+    "foldRateNotCollapsed": true,
+    "patRateNotCollapsed": true
+  },
+  "candidate": {
+    "overall": {
+      "meanBbPerHand": 2.0072343750000003,
+      "lower95": 1.9776049999999998,
+      "upper95": 2.03702859375,
+      "sessionUnits": 8000
+    },
+    "mode": {
+      "cash": {
+        "meanBbPerHand": 1.724975,
+        "lower95": 1.6883057812499997,
+        "upper95": 1.7613834374999997,
+        "sessionUnits": 4000
+      },
+      "mtt": {
+        "meanBbPerHand": 2.2894937499999997,
+        "lower95": 2.243142812500001,
+        "upper95": 2.3364876562499997,
+        "sessionUnits": 4000
+      }
+    },
+    "profile": {
+      "passive": {
+        "meanBbPerHand": 2.1874124999999998,
+        "lower95": 2.1534109375,
+        "upper95": 2.2206131250000003,
+        "sessionUnits": 2000
+      },
+      "pressure": {
+        "meanBbPerHand": 0.775525,
+        "lower95": 0.6811584374999999,
+        "upper95": 0.8778428125,
+        "sessionUnits": 2000
+      },
+      "draw_heavy": {
+        "meanBbPerHand": 2.1872499999999997,
+        "lower95": 2.145373125,
+        "upper95": 2.2285403125000003,
+        "sessionUnits": 2000
+      },
+      "random_legal": {
+        "meanBbPerHand": 2.87875,
+        "lower95": 2.8361621875,
+        "upper95": 2.920350625,
+        "sessionUnits": 2000
+      }
+    },
+    "group": {
+      "2/2-cash": {
+        "meanBbPerHand": 0.89471875,
+        "lower95": 0.84908828125,
+        "upper95": 0.9404726562499999,
+        "sessionUnits": 800
+      },
+      "3/3-cash": {
+        "meanBbPerHand": 1.73465625,
+        "lower95": 1.6683046875,
+        "upper95": 1.80090859375,
+        "sessionUnits": 800
+      },
+      "6/6-cash": {
+        "meanBbPerHand": 3.2946874999999993,
+        "lower95": 3.1486523437500002,
+        "upper95": 3.4391953125,
+        "sessionUnits": 800
+      },
+      "6/2-cash": {
+        "meanBbPerHand": 0.88509375,
+        "lower95": 0.8437773437499999,
+        "upper95": 0.9258124999999999,
+        "sessionUnits": 800
+      },
+      "6/3-cash": {
+        "meanBbPerHand": 1.8157187500000003,
+        "lower95": 1.74715234375,
+        "upper95": 1.8860734375,
+        "sessionUnits": 800
+      },
+      "2/2-mtt": {
+        "meanBbPerHand": 1.09246875,
+        "lower95": 1.04167890625,
+        "upper95": 1.1399414062499997,
+        "sessionUnits": 800
+      },
+      "3/3-mtt": {
+        "meanBbPerHand": 2.15021875,
+        "lower95": 2.05024453125,
+        "upper95": 2.2494703125,
+        "sessionUnits": 800
+      },
+      "6/6-mtt": {
+        "meanBbPerHand": 5.555000000000001,
+        "lower95": 5.3744179687499996,
+        "upper95": 5.7370359375,
+        "sessionUnits": 800
+      },
+      "6/2-mtt": {
+        "meanBbPerHand": 0.90396875,
+        "lower95": 0.85143671875,
+        "upper95": 0.9531890625,
+        "sessionUnits": 800
+      },
+      "6/3-mtt": {
+        "meanBbPerHand": 1.7458125,
+        "lower95": 1.6559351562499998,
+        "upper95": 1.83490703125,
+        "sessionUnits": 800
+      }
+    },
+    "cell": {
+      "2/2-cash|passive": {
+        "meanBbPerHand": 1.1,
+        "lower95": 1.068746875,
+        "upper95": 1.128375,
+        "sessionUnits": 200
+      },
+      "2/2-cash|pressure": {
+        "meanBbPerHand": 0.1,
+        "lower95": -0.075,
+        "upper95": 0.275,
+        "sessionUnits": 200
+      },
+      "2/2-cash|draw_heavy": {
+        "meanBbPerHand": 1.171625,
+        "lower95": 1.1458718749999999,
+        "upper95": 1.195003125,
+        "sessionUnits": 200
+      },
+      "2/2-cash|random_legal": {
+        "meanBbPerHand": 1.20725,
+        "lower95": 1.15925,
+        "upper95": 1.244628125,
+        "sessionUnits": 200
+      },
+      "3/3-cash|passive": {
+        "meanBbPerHand": 2.291375,
+        "lower95": 2.2365,
+        "upper95": 2.342628125,
+        "sessionUnits": 200
+      },
+      "3/3-cash|pressure": {
+        "meanBbPerHand": -0.057125,
+        "lower95": -0.29375,
+        "upper95": 0.19200312499999997,
+        "sessionUnits": 200
+      },
+      "3/3-cash|draw_heavy": {
+        "meanBbPerHand": 2.37825,
+        "lower95": 2.338246875,
+        "upper95": 2.415378125,
+        "sessionUnits": 200
+      },
+      "3/3-cash|random_legal": {
+        "meanBbPerHand": 2.326125,
+        "lower95": 2.222115625,
+        "upper95": 2.4107499999999997,
+        "sessionUnits": 200
+      },
+      "6/6-cash|passive": {
+        "meanBbPerHand": 4.221749999999999,
+        "lower95": 3.994471875,
+        "upper95": 4.4325093749999995,
+        "sessionUnits": 200
+      },
+      "6/6-cash|pressure": {
+        "meanBbPerHand": 0.07725,
+        "lower95": -0.2956375,
+        "upper95": 0.46587500000000004,
+        "sessionUnits": 200
+      },
+      "6/6-cash|draw_heavy": {
+        "meanBbPerHand": 3.705875,
+        "lower95": 3.4117375,
+        "upper95": 3.9933875000000003,
+        "sessionUnits": 200
+      },
+      "6/6-cash|random_legal": {
+        "meanBbPerHand": 5.173874999999999,
+        "lower95": 4.9283,
+        "upper95": 5.397765624999999,
+        "sessionUnits": 200
+      },
+      "6/2-cash|passive": {
+        "meanBbPerHand": 0.784625,
+        "lower95": 0.7509999999999999,
+        "upper95": 0.818128125,
+        "sessionUnits": 200
+      },
+      "6/2-cash|pressure": {
+        "meanBbPerHand": 0.505375,
+        "lower95": 0.3473625,
+        "upper95": 0.656878125,
+        "sessionUnits": 200
+      },
+      "6/2-cash|draw_heavy": {
+        "meanBbPerHand": 1.034375,
+        "lower95": 0.9989968749999999,
+        "upper95": 1.06925,
+        "sessionUnits": 200
+      },
+      "6/2-cash|random_legal": {
+        "meanBbPerHand": 1.216,
+        "lower95": 1.19625,
+        "upper95": 1.232875,
+        "sessionUnits": 200
+      },
+      "6/3-cash|passive": {
+        "meanBbPerHand": 2.0415,
+        "lower95": 1.9768718749999998,
+        "upper95": 2.104378125,
+        "sessionUnits": 200
+      },
+      "6/3-cash|pressure": {
+        "meanBbPerHand": 0.8059999999999999,
+        "lower95": 0.5589875000000001,
+        "upper95": 1.0619999999999998,
+        "sessionUnits": 200
+      },
+      "6/3-cash|draw_heavy": {
+        "meanBbPerHand": 2.27425,
+        "lower95": 2.2244937499999997,
+        "upper95": 2.320503125,
+        "sessionUnits": 200
+      },
+      "6/3-cash|random_legal": {
+        "meanBbPerHand": 2.141125,
+        "lower95": 2.03886875,
+        "upper95": 2.2341281250000002,
+        "sessionUnits": 200
+      },
+      "2/2-mtt|passive": {
+        "meanBbPerHand": 0.541875,
+        "lower95": 0.5173718749999999,
+        "upper95": 0.56575,
+        "sessionUnits": 200
+      },
+      "2/2-mtt|pressure": {
+        "meanBbPerHand": 1.412,
+        "lower95": 1.220103125,
+        "upper95": 1.59164375,
+        "sessionUnits": 200
+      },
+      "2/2-mtt|draw_heavy": {
+        "meanBbPerHand": 0.584125,
+        "lower95": 0.55674375,
+        "upper95": 0.6104999999999999,
+        "sessionUnits": 200
+      },
+      "2/2-mtt|random_legal": {
+        "meanBbPerHand": 1.831875,
+        "lower95": 1.784246875,
+        "upper95": 1.8777499999999998,
+        "sessionUnits": 200
+      },
+      "3/3-mtt|passive": {
+        "meanBbPerHand": 2.126875,
+        "lower95": 2.041125,
+        "upper95": 2.2141281250000002,
+        "sessionUnits": 200
+      },
+      "3/3-mtt|pressure": {
+        "meanBbPerHand": 1.1495,
+        "lower95": 0.7751187499999999,
+        "upper95": 1.4976593749999996,
+        "sessionUnits": 200
+      },
+      "3/3-mtt|draw_heavy": {
+        "meanBbPerHand": 2.31225,
+        "lower95": 2.216871875,
+        "upper95": 2.404128125,
+        "sessionUnits": 200
+      },
+      "3/3-mtt|random_legal": {
+        "meanBbPerHand": 3.0122500000000003,
+        "lower95": 2.883125,
+        "upper95": 3.1421281250000006,
+        "sessionUnits": 200
+      },
+      "6/6-mtt|passive": {
+        "meanBbPerHand": 7.130750000000001,
+        "lower95": 6.909212499999999,
+        "upper95": 7.3545125,
+        "sessionUnits": 200
+      },
+      "6/6-mtt|pressure": {
+        "meanBbPerHand": 1.276875,
+        "lower95": 0.7062406249999998,
+        "upper95": 1.8713749999999998,
+        "sessionUnits": 200
+      },
+      "6/6-mtt|draw_heavy": {
+        "meanBbPerHand": 6.323250000000001,
+        "lower95": 6.064371874999999,
+        "upper95": 6.571753125,
+        "sessionUnits": 200
+      },
+      "6/6-mtt|random_legal": {
+        "meanBbPerHand": 7.4891250000000005,
+        "lower95": 7.24773125,
+        "upper95": 7.717503125,
+        "sessionUnits": 200
+      },
+      "6/2-mtt|passive": {
+        "meanBbPerHand": 0.4905,
+        "lower95": 0.4611187500000001,
+        "upper95": 0.518625,
+        "sessionUnits": 200
+      },
+      "6/2-mtt|pressure": {
+        "meanBbPerHand": 1.0851250000000001,
+        "lower95": 0.90060625,
+        "upper95": 1.259015625,
+        "sessionUnits": 200
+      },
+      "6/2-mtt|draw_heavy": {
+        "meanBbPerHand": 0.5291250000000001,
+        "lower95": 0.49624687500000003,
+        "upper95": 0.5615031250000001,
+        "sessionUnits": 200
+      },
+      "6/2-mtt|random_legal": {
+        "meanBbPerHand": 1.511125,
+        "lower95": 1.422990625,
+        "upper95": 1.59275625,
+        "sessionUnits": 200
+      },
+      "6/3-mtt|passive": {
+        "meanBbPerHand": 1.144875,
+        "lower95": 1.090625,
+        "upper95": 1.197003125,
+        "sessionUnits": 200
+      },
+      "6/3-mtt|pressure": {
+        "meanBbPerHand": 1.40025,
+        "lower95": 1.0732468750000002,
+        "upper95": 1.716546874999999,
+        "sessionUnits": 200
+      },
+      "6/3-mtt|draw_heavy": {
+        "meanBbPerHand": 1.559375,
+        "lower95": 1.488496875,
+        "upper95": 1.63088125,
+        "sessionUnits": 200
+      },
+      "6/3-mtt|random_legal": {
+        "meanBbPerHand": 2.87875,
+        "lower95": 2.74425,
+        "upper95": 3.0110031250000002,
+        "sessionUnits": 200
+      }
+    }
+  },
+  "publishedBeginner": {
+    "overall": {
+      "meanBbPerHand": 1.7516625625,
+      "lower95": 1.7224014453125005,
+      "upper95": 1.7811850843750001,
+      "sessionUnits": 8000
+    },
+    "mode": {
+      "cash": {
+        "meanBbPerHand": 1.568059375,
+        "lower95": 1.5318887500000002,
+        "upper95": 1.6036609375000006,
+        "sessionUnits": 4000
+      },
+      "mtt": {
+        "meanBbPerHand": 1.93526575,
+        "lower95": 1.8895989937500004,
+        "upper95": 1.98036871875,
+        "sessionUnits": 4000
+      }
+    },
+    "profile": {
+      "passive": {
+        "meanBbPerHand": 1.94670625,
+        "lower95": 1.9088123437500002,
+        "upper95": 1.98479421875,
+        "sessionUnits": 2000
+      },
+      "pressure": {
+        "meanBbPerHand": 0.6903499999999999,
+        "lower95": 0.5997996874999999,
+        "upper95": 0.7846153125,
+        "sessionUnits": 2000
+      },
+      "draw_heavy": {
+        "meanBbPerHand": 1.8442374999999998,
+        "lower95": 1.8022090625000002,
+        "upper95": 1.88521625,
+        "sessionUnits": 2000
+      },
+      "random_legal": {
+        "meanBbPerHand": 2.5253565,
+        "lower95": 2.4788560250000002,
+        "upper95": 2.5725395750000004,
+        "sessionUnits": 2000
+      }
+    },
+    "group": {
+      "2/2-cash": {
+        "meanBbPerHand": 0.9021562500000001,
+        "lower95": 0.8564046875,
+        "upper95": 0.9462562499999999,
+        "sessionUnits": 800
+      },
+      "3/3-cash": {
+        "meanBbPerHand": 1.743375,
+        "lower95": 1.67868671875,
+        "upper95": 1.80903671875,
+        "sessionUnits": 800
+      },
+      "6/6-cash": {
+        "meanBbPerHand": 2.585625,
+        "lower95": 2.44915625,
+        "upper95": 2.7233953124999997,
+        "sessionUnits": 800
+      },
+      "6/2-cash": {
+        "meanBbPerHand": 0.8976875,
+        "lower95": 0.8570625,
+        "upper95": 0.9362210937500001,
+        "sessionUnits": 800
+      },
+      "6/3-cash": {
+        "meanBbPerHand": 1.711453125,
+        "lower95": 1.6443734374999999,
+        "upper95": 1.781970703125,
+        "sessionUnits": 800
+      },
+      "2/2-mtt": {
+        "meanBbPerHand": 1.132875,
+        "lower95": 1.0875296875,
+        "upper95": 1.17610078125,
+        "sessionUnits": 800
+      },
+      "3/3-mtt": {
+        "meanBbPerHand": 1.7880625,
+        "lower95": 1.69246640625,
+        "upper95": 1.8835648437499999,
+        "sessionUnits": 800
+      },
+      "6/6-mtt": {
+        "meanBbPerHand": 4.56545375,
+        "lower95": 4.387548562499999,
+        "upper95": 4.73916059375,
+        "sessionUnits": 800
+      },
+      "6/2-mtt": {
+        "meanBbPerHand": 0.7918750000000001,
+        "lower95": 0.7403125,
+        "upper95": 0.8432515625,
+        "sessionUnits": 800
+      },
+      "6/3-mtt": {
+        "meanBbPerHand": 1.3980625,
+        "lower95": 1.3143109375,
+        "upper95": 1.4824078125,
+        "sessionUnits": 800
+      }
+    },
+    "cell": {
+      "2/2-cash|passive": {
+        "meanBbPerHand": 0.9475,
+        "lower95": 0.9109999999999999,
+        "upper95": 0.982128125,
+        "sessionUnits": 200
+      },
+      "2/2-cash|pressure": {
+        "meanBbPerHand": 0.2895,
+        "lower95": 0.11449999999999999,
+        "upper95": 0.452,
+        "sessionUnits": 200
+      },
+      "2/2-cash|draw_heavy": {
+        "meanBbPerHand": 1.147375,
+        "lower95": 1.119375,
+        "upper95": 1.173125,
+        "sessionUnits": 200
+      },
+      "2/2-cash|random_legal": {
+        "meanBbPerHand": 1.22425,
+        "lower95": 1.186625,
+        "upper95": 1.249875,
+        "sessionUnits": 200
+      },
+      "3/3-cash|passive": {
+        "meanBbPerHand": 2.3126249999999997,
+        "lower95": 2.263121875,
+        "upper95": 2.3598781250000003,
+        "sessionUnits": 200
+      },
+      "3/3-cash|pressure": {
+        "meanBbPerHand": -0.04,
+        "lower95": -0.28375,
+        "upper95": 0.205,
+        "sessionUnits": 200
+      },
+      "3/3-cash|draw_heavy": {
+        "meanBbPerHand": 2.324375,
+        "lower95": 2.277375,
+        "upper95": 2.3686249999999998,
+        "sessionUnits": 200
+      },
+      "3/3-cash|random_legal": {
+        "meanBbPerHand": 2.3765,
+        "lower95": 2.29911875,
+        "upper95": 2.439503125,
+        "sessionUnits": 200
+      },
+      "6/6-cash|passive": {
+        "meanBbPerHand": 3.36125,
+        "lower95": 3.0833562499999996,
+        "upper95": 3.62175625,
+        "sessionUnits": 200
+      },
+      "6/6-cash|pressure": {
+        "meanBbPerHand": -0.512,
+        "lower95": -0.787503125,
+        "upper95": -0.2059875000000002,
+        "sessionUnits": 200
+      },
+      "6/6-cash|draw_heavy": {
+        "meanBbPerHand": 2.295625,
+        "lower95": 1.9848750000000002,
+        "upper95": 2.589384375,
+        "sessionUnits": 200
+      },
+      "6/6-cash|random_legal": {
+        "meanBbPerHand": 5.1976249999999995,
+        "lower95": 4.949125,
+        "upper95": 5.436503125000001,
+        "sessionUnits": 200
+      },
+      "6/2-cash|passive": {
+        "meanBbPerHand": 0.794625,
+        "lower95": 0.755621875,
+        "upper95": 0.8336281249999998,
+        "sessionUnits": 200
+      },
+      "6/2-cash|pressure": {
+        "meanBbPerHand": 0.6356250000000001,
+        "lower95": 0.487496875,
+        "upper95": 0.77425,
+        "sessionUnits": 200
+      },
+      "6/2-cash|draw_heavy": {
+        "meanBbPerHand": 0.98,
+        "lower95": 0.9408687499999999,
+        "upper95": 1.018625,
+        "sessionUnits": 200
+      },
+      "6/2-cash|random_legal": {
+        "meanBbPerHand": 1.1805,
+        "lower95": 1.13775,
+        "upper95": 1.216375,
+        "sessionUnits": 200
+      },
+      "6/3-cash|passive": {
+        "meanBbPerHand": 1.9655625,
+        "lower95": 1.8910624999999999,
+        "upper95": 2.035253125,
+        "sessionUnits": 200
+      },
+      "6/3-cash|pressure": {
+        "meanBbPerHand": 0.46862500000000007,
+        "lower95": 0.225609375,
+        "upper95": 0.712375,
+        "sessionUnits": 200
+      },
+      "6/3-cash|draw_heavy": {
+        "meanBbPerHand": 2.22975,
+        "lower95": 2.1758750000000004,
+        "upper95": 2.280625,
+        "sessionUnits": 200
+      },
+      "6/3-cash|random_legal": {
+        "meanBbPerHand": 2.181875,
+        "lower95": 2.0976187499999996,
+        "upper95": 2.2586281250000004,
+        "sessionUnits": 200
+      },
+      "2/2-mtt|passive": {
+        "meanBbPerHand": 0.56925,
+        "lower95": 0.545625,
+        "upper95": 0.5928781249999999,
+        "sessionUnits": 200
+      },
+      "2/2-mtt|pressure": {
+        "meanBbPerHand": 1.572375,
+        "lower95": 1.398615625,
+        "upper95": 1.7280312499999997,
+        "sessionUnits": 200
+      },
+      "2/2-mtt|draw_heavy": {
+        "meanBbPerHand": 0.5665,
+        "lower95": 0.5409968749999999,
+        "upper95": 0.59125,
+        "sessionUnits": 200
+      },
+      "2/2-mtt|random_legal": {
+        "meanBbPerHand": 1.823375,
+        "lower95": 1.768375,
+        "upper95": 1.8746281249999999,
+        "sessionUnits": 200
+      },
+      "3/3-mtt|passive": {
+        "meanBbPerHand": 1.6864999999999997,
+        "lower95": 1.607990625,
+        "upper95": 1.76525,
+        "sessionUnits": 200
+      },
+      "3/3-mtt|pressure": {
+        "meanBbPerHand": 1.172875,
+        "lower95": 0.8252406250000001,
+        "upper95": 1.5153999999999996,
+        "sessionUnits": 200
+      },
+      "3/3-mtt|draw_heavy": {
+        "meanBbPerHand": 1.71125,
+        "lower95": 1.64,
+        "upper95": 1.7832499999999998,
+        "sessionUnits": 200
+      },
+      "3/3-mtt|random_legal": {
+        "meanBbPerHand": 2.5816250000000003,
+        "lower95": 2.4398750000000002,
+        "upper95": 2.725378125,
+        "sessionUnits": 200
+      },
+      "6/6-mtt|passive": {
+        "meanBbPerHand": 6.357749999999999,
+        "lower95": 6.129990625,
+        "upper95": 6.5868843749999995,
+        "sessionUnits": 200
+      },
+      "6/6-mtt|pressure": {
+        "meanBbPerHand": 0.95375,
+        "lower95": 0.40625,
+        "upper95": 1.4882562499999998,
+        "sessionUnits": 200
+      },
+      "6/6-mtt|draw_heavy": {
+        "meanBbPerHand": 5.383125,
+        "lower95": 5.122112499999999,
+        "upper95": 5.629625000000001,
+        "sessionUnits": 200
+      },
+      "6/6-mtt|random_legal": {
+        "meanBbPerHand": 5.567189999999999,
+        "lower95": 5.238069875000001,
+        "upper95": 5.889508124999999,
+        "sessionUnits": 200
+      },
+      "6/2-mtt|passive": {
+        "meanBbPerHand": 0.47775,
+        "lower95": 0.44962500000000005,
+        "upper95": 0.5052500000000001,
+        "sessionUnits": 200
+      },
+      "6/2-mtt|pressure": {
+        "meanBbPerHand": 0.9570000000000001,
+        "lower95": 0.7859968749999999,
+        "upper95": 1.1257531249999997,
+        "sessionUnits": 200
+      },
+      "6/2-mtt|draw_heavy": {
+        "meanBbPerHand": 0.5201250000000001,
+        "lower95": 0.48674687499999997,
+        "upper95": 0.55325,
+        "sessionUnits": 200
+      },
+      "6/2-mtt|random_legal": {
+        "meanBbPerHand": 1.212625,
+        "lower95": 1.115625,
+        "upper95": 1.3115,
+        "sessionUnits": 200
+      },
+      "6/3-mtt|passive": {
+        "meanBbPerHand": 0.9942500000000001,
+        "lower95": 0.9467468750000001,
+        "upper95": 1.042125,
+        "sessionUnits": 200
+      },
+      "6/3-mtt|pressure": {
+        "meanBbPerHand": 1.4057499999999998,
+        "lower95": 1.11498125,
+        "upper95": 1.692253125,
+        "sessionUnits": 200
+      },
+      "6/3-mtt|draw_heavy": {
+        "meanBbPerHand": 1.2842500000000001,
+        "lower95": 1.21136875,
+        "upper95": 1.358628125,
+        "sessionUnits": 200
+      },
+      "6/3-mtt|random_legal": {
+        "meanBbPerHand": 1.9080000000000001,
+        "lower95": 1.764621875,
+        "upper95": 2.0502656249999998,
+        "sessionUnits": 200
+      }
+    }
+  },
+  "candidateMinusBeginnerUnpaired": {
+    "overall": {
+      "meanBbPerHand": 0.2555718125000001,
+      "lower95": 0.21402124999999997,
+      "upper95": 0.297615596875,
+      "sessionUnits": 8000
+    },
+    "mode": {
+      "cash": {
+        "meanBbPerHand": 0.15691562499999995,
+        "lower95": 0.10768578125000001,
+        "upper95": 0.20911921875,
+        "sessionUnits": 4000
+      },
+      "mtt": {
+        "meanBbPerHand": 0.3542280000000002,
+        "lower95": 0.2871298312499999,
+        "upper95": 0.4195281875000001,
+        "sessionUnits": 4000
+      }
+    },
+    "profile": {
+      "passive": {
+        "meanBbPerHand": 0.24070625000000012,
+        "lower95": 0.18798281250000012,
+        "upper95": 0.29245046874999997,
+        "sessionUnits": 2000
+      },
+      "pressure": {
+        "meanBbPerHand": 0.085175,
+        "lower95": -0.04866750000000003,
+        "upper95": 0.21949656249999985,
+        "sessionUnits": 2000
+      },
+      "draw_heavy": {
+        "meanBbPerHand": 0.34301250000000005,
+        "lower95": 0.28279375,
+        "upper95": 0.4027125,
+        "sessionUnits": 2000
+      },
+      "random_legal": {
+        "meanBbPerHand": 0.3533935,
+        "lower95": 0.28899178750000026,
+        "upper95": 0.4158140375,
+        "sessionUnits": 2000
+      }
+    },
+    "group": {
+      "2/2-cash": {
+        "meanBbPerHand": -0.007437500000000034,
+        "lower95": -0.071628125,
+        "upper95": 0.058065624999999926,
+        "sessionUnits": 800
+      },
+      "3/3-cash": {
+        "meanBbPerHand": -0.008718749999999872,
+        "lower95": -0.10275078125000026,
+        "upper95": 0.08150312499999988,
+        "sessionUnits": 800
+      },
+      "6/6-cash": {
+        "meanBbPerHand": 0.7090624999999997,
+        "lower95": 0.5118671875,
+        "upper95": 0.9053484374999998,
+        "sessionUnits": 800
+      },
+      "6/2-cash": {
+        "meanBbPerHand": -0.012593750000000042,
+        "lower95": -0.06950390625000008,
+        "upper95": 0.043564062499999875,
+        "sessionUnits": 800
+      },
+      "6/3-cash": {
+        "meanBbPerHand": 0.104265625,
+        "lower95": 0.008113671874999968,
+        "upper95": 0.20103242187500003,
+        "sessionUnits": 800
+      },
+      "2/2-mtt": {
+        "meanBbPerHand": -0.04040625000000006,
+        "lower95": -0.10509609374999998,
+        "upper95": 0.02450234375000004,
+        "sessionUnits": 800
+      },
+      "3/3-mtt": {
+        "meanBbPerHand": 0.3621562500000002,
+        "lower95": 0.2213656250000003,
+        "upper95": 0.50097421875,
+        "sessionUnits": 800
+      },
+      "6/6-mtt": {
+        "meanBbPerHand": 0.989546250000001,
+        "lower95": 0.7350847500000003,
+        "upper95": 1.2365823437499994,
+        "sessionUnits": 800
+      },
+      "6/2-mtt": {
+        "meanBbPerHand": 0.11209375,
+        "lower95": 0.03655859375000007,
+        "upper95": 0.18531484375000007,
+        "sessionUnits": 800
+      },
+      "6/3-mtt": {
+        "meanBbPerHand": 0.34775,
+        "lower95": 0.22289765624999988,
+        "upper95": 0.4729734374999998,
+        "sessionUnits": 800
+      }
+    },
+    "cell": {
+      "2/2-cash|passive": {
+        "meanBbPerHand": 0.15250000000000008,
+        "lower95": 0.10574687500000002,
+        "upper95": 0.19862499999999983,
+        "sessionUnits": 200
+      },
+      "2/2-cash|pressure": {
+        "meanBbPerHand": -0.18949999999999997,
+        "lower95": -0.4375,
+        "upper95": 0.060500000000000026,
+        "sessionUnits": 200
+      },
+      "2/2-cash|draw_heavy": {
+        "meanBbPerHand": 0.024249999999999883,
+        "lower95": -0.012499999999999956,
+        "upper95": 0.06037500000000007,
+        "sessionUnits": 200
+      },
+      "2/2-cash|random_legal": {
+        "meanBbPerHand": -0.017000000000000126,
+        "lower95": -0.07103437500000015,
+        "upper95": 0.035749999999999955,
+        "sessionUnits": 200
+      },
+      "3/3-cash|passive": {
+        "meanBbPerHand": -0.02124999999999977,
+        "lower95": -0.09587499999999995,
+        "upper95": 0.05087499999999957,
+        "sessionUnits": 200
+      },
+      "3/3-cash|pressure": {
+        "meanBbPerHand": -0.017125,
+        "lower95": -0.3537625,
+        "upper95": 0.3166468749999997,
+        "sessionUnits": 200
+      },
+      "3/3-cash|draw_heavy": {
+        "meanBbPerHand": 0.05387500000000012,
+        "lower95": -0.006750000000000256,
+        "upper95": 0.1153812499999997,
+        "sessionUnits": 200
+      },
+      "3/3-cash|random_legal": {
+        "meanBbPerHand": -0.05037499999999984,
+        "lower95": -0.17175624999999983,
+        "upper95": 0.06249999999999957,
+        "sessionUnits": 200
+      },
+      "6/6-cash|passive": {
+        "meanBbPerHand": 0.8604999999999992,
+        "lower95": 0.5132000000000002,
+        "upper95": 1.2072718749999998,
+        "sessionUnits": 200
+      },
+      "6/6-cash|pressure": {
+        "meanBbPerHand": 0.58925,
+        "lower95": 0.116965625,
+        "upper95": 1.0685062499999998,
+        "sessionUnits": 200
+      },
+      "6/6-cash|draw_heavy": {
+        "meanBbPerHand": 1.41025,
+        "lower95": 0.9928718750000002,
+        "upper95": 1.8396437499999991,
+        "sessionUnits": 200
+      },
+      "6/6-cash|random_legal": {
+        "meanBbPerHand": -0.023750000000000604,
+        "lower95": -0.3643874999999999,
+        "upper95": 0.2997593749999985,
+        "sessionUnits": 200
+      },
+      "6/2-cash|passive": {
+        "meanBbPerHand": -0.010000000000000009,
+        "lower95": -0.06275312500000008,
+        "upper95": 0.04012812500000003,
+        "sessionUnits": 200
+      },
+      "6/2-cash|pressure": {
+        "meanBbPerHand": -0.1302500000000001,
+        "lower95": -0.34200937499999995,
+        "upper95": 0.07600624999999986,
+        "sessionUnits": 200
+      },
+      "6/2-cash|draw_heavy": {
+        "meanBbPerHand": 0.05437500000000006,
+        "lower95": 0.002874999999999961,
+        "upper95": 0.10838125000000001,
+        "sessionUnits": 200
+      },
+      "6/2-cash|random_legal": {
+        "meanBbPerHand": 0.035499999999999865,
+        "lower95": -0.006749999999999823,
+        "upper95": 0.08137812499999994,
+        "sessionUnits": 200
+      },
+      "6/3-cash|passive": {
+        "meanBbPerHand": 0.07593749999999999,
+        "lower95": -0.01919062499999991,
+        "upper95": 0.1728765625000003,
+        "sessionUnits": 200
+      },
+      "6/3-cash|pressure": {
+        "meanBbPerHand": 0.33737499999999987,
+        "lower95": -0.004278125000000073,
+        "upper95": 0.688378125,
+        "sessionUnits": 200
+      },
+      "6/3-cash|draw_heavy": {
+        "meanBbPerHand": 0.04449999999999976,
+        "lower95": -0.026874999999999982,
+        "upper95": 0.11549999999999995,
+        "sessionUnits": 200
+      },
+      "6/3-cash|random_legal": {
+        "meanBbPerHand": -0.04074999999999962,
+        "lower95": -0.167875,
+        "upper95": 0.08487812499999978,
+        "sessionUnits": 200
+      },
+      "2/2-mtt|passive": {
+        "meanBbPerHand": -0.027375000000000038,
+        "lower95": -0.06075312499999986,
+        "upper95": 0.0052499999999999795,
+        "sessionUnits": 200
+      },
+      "2/2-mtt|pressure": {
+        "meanBbPerHand": -0.16037500000000016,
+        "lower95": -0.40612812499999984,
+        "upper95": 0.085253125,
+        "sessionUnits": 200
+      },
+      "2/2-mtt|draw_heavy": {
+        "meanBbPerHand": 0.017625000000000002,
+        "lower95": -0.019128124999999944,
+        "upper95": 0.05412499999999998,
+        "sessionUnits": 200
+      },
+      "2/2-mtt|random_legal": {
+        "meanBbPerHand": 0.008499999999999952,
+        "lower95": -0.06012499999999999,
+        "upper95": 0.08024999999999993,
+        "sessionUnits": 200
+      },
+      "3/3-mtt|passive": {
+        "meanBbPerHand": 0.4403750000000004,
+        "lower95": 0.3234999999999999,
+        "upper95": 0.5625093749999999,
+        "sessionUnits": 200
+      },
+      "3/3-mtt|pressure": {
+        "meanBbPerHand": -0.023374999999999924,
+        "lower95": -0.5240312500000002,
+        "upper95": 0.46805312499999896,
+        "sessionUnits": 200
+      },
+      "3/3-mtt|draw_heavy": {
+        "meanBbPerHand": 0.6010000000000002,
+        "lower95": 0.4817437499999999,
+        "upper95": 0.7151281249999998,
+        "sessionUnits": 200
+      },
+      "3/3-mtt|random_legal": {
+        "meanBbPerHand": 0.43062500000000004,
+        "lower95": 0.23836562500000044,
+        "upper95": 0.6228906249999998,
+        "sessionUnits": 200
+      },
+      "6/6-mtt|passive": {
+        "meanBbPerHand": 0.7730000000000015,
+        "lower95": 0.4544874999999986,
+        "upper95": 1.0842781249999986,
+        "sessionUnits": 200
+      },
+      "6/6-mtt|pressure": {
+        "meanBbPerHand": 0.323125,
+        "lower95": -0.47689687499999983,
+        "upper95": 1.126199999999999,
+        "sessionUnits": 200
+      },
+      "6/6-mtt|draw_heavy": {
+        "meanBbPerHand": 0.940125000000001,
+        "lower95": 0.5763656249999988,
+        "upper95": 1.2960062499999994,
+        "sessionUnits": 200
+      },
+      "6/6-mtt|random_legal": {
+        "meanBbPerHand": 1.9219350000000013,
+        "lower95": 1.52446525,
+        "upper95": 2.313938,
+        "sessionUnits": 200
+      },
+      "6/2-mtt|passive": {
+        "meanBbPerHand": 0.012749999999999984,
+        "lower95": -0.03012812499999985,
+        "upper95": 0.053625000000000034,
+        "sessionUnits": 200
+      },
+      "6/2-mtt|pressure": {
+        "meanBbPerHand": 0.12812500000000004,
+        "lower95": -0.12938437500000022,
+        "upper95": 0.38287499999999985,
+        "sessionUnits": 200
+      },
+      "6/2-mtt|draw_heavy": {
+        "meanBbPerHand": 0.009000000000000008,
+        "lower95": -0.03925000000000001,
+        "upper95": 0.05525312500000008,
+        "sessionUnits": 200
+      },
+      "6/2-mtt|random_legal": {
+        "meanBbPerHand": 0.2985,
+        "lower95": 0.16874374999999975,
+        "upper95": 0.42675624999999967,
+        "sessionUnits": 200
+      },
+      "6/3-mtt|passive": {
+        "meanBbPerHand": 0.150625,
+        "lower95": 0.07812500000000022,
+        "upper95": 0.22124999999999972,
+        "sessionUnits": 200
+      },
+      "6/3-mtt|pressure": {
+        "meanBbPerHand": -0.005499999999999838,
+        "lower95": -0.44215624999999986,
+        "upper95": 0.4360156250000002,
+        "sessionUnits": 200
+      },
+      "6/3-mtt|draw_heavy": {
+        "meanBbPerHand": 0.27512499999999984,
+        "lower95": 0.1708750000000001,
+        "upper95": 0.37638437499999977,
+        "sessionUnits": 200
+      },
+      "6/3-mtt|random_legal": {
+        "meanBbPerHand": 0.97075,
+        "lower95": 0.7708718750000004,
+        "upper95": 1.1670093749999997,
+        "sessionUnits": 200
+      }
+    }
+  },
+  "weakCellNames": [
+    "2/2-cash|pressure",
+    "2/2-cash|random_legal",
+    "3/3-cash|passive",
+    "3/3-cash|pressure",
+    "3/3-cash|random_legal",
+    "6/6-cash|random_legal",
+    "6/2-cash|passive",
+    "6/2-cash|pressure",
+    "6/3-cash|random_legal",
+    "2/2-mtt|passive",
+    "2/2-mtt|pressure",
+    "3/3-mtt|pressure",
+    "6/3-mtt|pressure"
+  ],
+  "materialRegressionCellNames": [],
+  "candidateActions": {
+    "BET:2": 144532,
+    "DRAW:1": 240006,
+    "BET:1": 280278,
+    "BET:3": 44121,
+    "DRAW:0": 69621,
+    "BET:0": 17201,
+    "BET:4": 25500,
+    "DRAW:3": 3756,
+    "DRAW:4": 197
+  },
+  "beginnerActions": {
+    "BET:2": 131374,
+    "DRAW:1": 220724,
+    "BET:1": 266851,
+    "DRAW:0": 71877,
+    "BET:3": 41436,
+    "BET:0": 26083,
+    "BET:4": 26397,
+    "DRAW:4": 873,
+    "DRAW:3": 2794,
+    "DRAW:2": 5
+  },
+  "candidateFoldRate": 0.03361986740469713,
+  "candidatePatRate": 0.22201989922826712,
+  "candidateSessionsSha256": "a460df384268179cc9750a6ddac70d571d7de2a7273aa0f3bc425bbfcccb3ed4",
+  "candidateHandTraceSha256": "fcce07d49a1c4bebab010f2cb9601f35db415d98d7938e2b2491d226b7ca8778",
+  "beginnerSessionsSha256": "ba0ac6692e5a5bec98995f05014079d20ec6849b8c18e496087047bf9d4a0d74",
+  "beginnerHandTraceSha256": "84c32ece2f5f7bd43834f5e634cb51b0eef530f9534fec1a0857a9cd011f7729",
+  "browserEvidence": {
+    "chromium-cash.json": {
+      "sha256": "c38f515516f2648137b15df46b23918a7cb4c26471519adb5fe28517270d0dfe",
+      "targetDecisions": 23,
+      "hands": 3
+    },
+    "chromium-tournament-2.json": {
+      "sha256": "89c93e32ac9153f4b5de9c3b030df38f6ac41f17f15d91aae825c61dd1cac5e8",
+      "targetDecisions": 21,
+      "hands": 3
+    },
+    "chromium-tournament-3.json": {
+      "sha256": "f3f46c214c097028a252c0546290d8e3104c97b3cb731bbda6ce24231ce970c9",
+      "targetDecisions": 15,
+      "hands": 3
+    },
+    "chromium-tournament-6.json": {
+      "sha256": "ec7c26a0ffce172e9138276f185610bb02f5004625122a211333301abc3786ae",
+      "targetDecisions": 22,
+      "hands": 3
+    },
+    "chromium-timeout.json": {
+      "sha256": "09aa84d2cadae4b6c012739c8d3c8167be2d1f2e1e8c9ba1bd67271db57f8b2f",
+      "fallbackDecisions": 1
+    },
+    "webkit-cash.json": {
+      "sha256": "b601a6ed7ad3f5bf240c44ff1aa4a507762b3fc4a6fd572d9f97d01ed72fec13",
+      "targetDecisions": 23,
+      "hands": 3
+    },
+    "webkit-tournament-2.json": {
+      "sha256": "b4564ae8ee007ace3640e59baac81e9c76a6d3e270ac60da300e0d6c575cb208",
+      "targetDecisions": 21,
+      "hands": 3
+    },
+    "webkit-tournament-3.json": {
+      "sha256": "1a0b781614905c848c4b3a6cb23c0e4fbbcc153cc0b9d3059037a0ed22f98aa8",
+      "targetDecisions": 15,
+      "hands": 3
+    },
+    "webkit-tournament-6.json": {
+      "sha256": "72b7d52ec941db9dc5d865608fce0d3d005baba879e71b16d299daa7cad09944",
+      "targetDecisions": 22,
+      "hands": 3
+    },
+    "webkit-timeout.json": {
+      "sha256": "6f122506346962e1ea7b4db2375198fbc7e49521a09a1b8194bb61391e348d57",
+      "fallbackDecisions": 1
+    }
+  },
+  "limitations": "Scripted opponents and session bootstrap do not prove human or ICM strength; identical initial conditions are not causal paired EV."
+}

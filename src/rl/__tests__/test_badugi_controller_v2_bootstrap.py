@@ -7,7 +7,9 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from rl.training.train_badugi_controller_v2_draft import observable_reference_action, run_hand
+from rl.training.train_badugi_controller_v2_draft import (
+    FrozenOnnxPolicy, observable_reference_action, run_hand,
+)
 from rl.training.export_badugi_controller_v2_mode_ensemble import ModeEnsemble
 from rl.training.validate_badugi_controller_v2_draft import OnnxAgent
 
@@ -23,6 +25,29 @@ def decision(phase, made, high, round_index, to_call_bb, mask):
 
 
 class BootstrapPolicyTests(unittest.TestCase):
+    def test_pro_reference_policy_uses_onnx_scores_and_legal_mask(self):
+        class FixedScores(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.register_buffer('values', torch.tensor([0, 0, 5, 0, 10, 0],
+                                                            dtype=torch.float32))
+
+            def forward(self, observation):
+                return self.values.unsqueeze(0) + observation[:, :1] * 0.001
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'reference.onnx'
+            torch.onnx.export(FixedScores(), torch.zeros(1, 96), str(path),
+                              input_names=['observation'], output_names=['q_values'],
+                              dynamic_axes={'observation': {0: 'batch'}, 'q_values': {0: 'batch'}},
+                              opset_version=17, dynamo=False)
+            policy = FrozenOnnxPolicy(path)
+            observation = np.zeros(96, dtype=np.float32)
+            self.assertEqual(policy.act(observation, 0.0, np.array([1, 1, 1, 0, 1, 0])), 4)
+            self.assertEqual(policy.act(observation, 0.0, np.array([1, 1, 1, 0, 0, 0])), 2)
+            with self.assertRaises(ValueError):
+                policy.act(observation, 0.1, np.ones(6))
+
     def test_mode_onnx_uses_public_flag_and_legal_mask(self):
         class FixedScores(torch.nn.Module):
             def __init__(self, scores):

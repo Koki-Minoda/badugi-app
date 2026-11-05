@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import onnxruntime as ort
 import torch
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -27,6 +28,7 @@ from rl.utils.replay_buffer import ReplayBuffer
 BRIDGE = ROOT / "scripts" / "badugi-controller-v2-bridge.mjs"
 PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_plan_draft.json"
 STANDARD_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_standard_plan.json"
+PRO_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_plan.json"
 SCHEMA = "badugi-controller-observation-v2-draft"
 PROFILES = ("passive", "pressure", "draw_heavy", "random_legal")
 CONTRACT_FILES = (
@@ -187,7 +189,29 @@ def run_hand(bridge, first_response, agent, rng, hero_seat, profile, epsilon,
             "chipDeltaBySeat": response["chipDeltaBySeat"]}
 
 
-def require_go_manifest(path, tier, hands, init_model=None):
+class FrozenOnnxPolicy:
+    """Published reference policy on the same observable v2 controller slots."""
+
+    def __init__(self, path):
+        self.session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
+        inputs, outputs = self.session.get_inputs(), self.session.get_outputs()
+        if (len(inputs) != 1 or len(outputs) != 1 or
+                inputs[0].name != "observation" or outputs[0].name != "q_values" or
+                inputs[0].shape[-1] != 96 or outputs[0].shape[-1] != 6):
+            raise ValueError("reference ONNX contract mismatch")
+
+    def act(self, obs, epsilon, action_mask):
+        if epsilon != 0.0:
+            raise ValueError("reference policy must be greedy")
+        scores = self.session.run(["q_values"], {
+            "observation": np.asarray(obs, dtype=np.float32)[None, :]})[0][0]
+        legal = np.flatnonzero(np.asarray(action_mask) > 0)
+        if scores.shape != (6,) or not np.all(np.isfinite(scores)) or not len(legal):
+            raise ValueError("reference policy returned invalid scores or legal mask")
+        return int(legal[np.argmax(scores[legal])])
+
+
+def require_go_manifest(path, tier, hands, init_model=None, reference_model=None):
     if path is None:
         raise ValueError("training requires --go-manifest with a frozen passing gate")
     manifest = json.loads(path.read_text())
@@ -216,8 +240,25 @@ def require_go_manifest(path, tier, hands, init_model=None):
                 manifest.get("anchorPolicyId") != "published-v2-beginner" or
                 manifest.get("tierPlanSha256") != hashlib.sha256(STANDARD_PLAN.read_bytes()).hexdigest()):
             raise ValueError("Standard requires the frozen v2 Beginner initial model and tier plan")
+        if reference_model is not None:
+            raise ValueError("Standard bootstrap uses its frozen checkpoint, not a separate reference ONNX")
+    elif tier == "pro":
+        tier_plan = json.loads(PRO_PLAN.read_text())
+        if (init_model is None or not init_model.is_file() or
+                reference_model is None or not reference_model.is_file() or
+                manifest.get("initialModelSha256") != hashlib.sha256(init_model.read_bytes()).hexdigest() or
+                manifest.get("referenceModelSha256") != hashlib.sha256(reference_model.read_bytes()).hexdigest() or
+                tier_plan.get("initialCheckpointSha256") != manifest.get("initialModelSha256") or
+                tier_plan.get("publishedStandardOnnxSha256") != manifest.get("referenceModelSha256") or
+                manifest.get("explorationEpsilon") != tier_plan.get("explorationEpsilon") or
+                not 0 <= manifest.get("explorationEpsilon", -1) <= 1 or
+                manifest.get("anchorPolicyId") != "published-v2-standard" or
+                manifest.get("tierPlanSha256") != hashlib.sha256(PRO_PLAN.read_bytes()).hexdigest()):
+            raise ValueError("Pro requires frozen v2 Standard initial checkpoint and published reference ONNX")
     elif init_model is not None:
         raise ValueError("initial model is only approved for this Standard diagnostic run")
+    elif reference_model is not None:
+        raise ValueError("reference ONNX is only approved for the Pro diagnostic run")
     return manifest
 
 
@@ -234,6 +275,7 @@ def main():
     parser.add_argument("--reference-anchor-every", type=int, default=0)
     parser.add_argument("--seed-base", type=int)
     parser.add_argument("--init-model", type=Path)
+    parser.add_argument("--reference-model", type=Path)
     args = parser.parse_args()
     if not 1 <= args.hands <= 5000:
         raise ValueError("one explicit run must contain 1–5000 hands; 5k is a stop gate")
@@ -246,7 +288,8 @@ def main():
     if args.train and (args.output is None or args.output.exists()):
         raise ValueError("training requires a new isolated --output directory")
     if args.train:
-        manifest = require_go_manifest(args.go_manifest, args.tier, args.hands, args.init_model)
+        manifest = require_go_manifest(args.go_manifest, args.tier, args.hands,
+                                       args.init_model, args.reference_model)
         if (manifest.get("bootstrapHands", 0) != args.bootstrap_hands or
                 manifest.get("imitationSteps", 0) != args.imitation_steps or
                 manifest.get("referenceAnchorEvery", 0) != args.reference_anchor_every or
@@ -260,12 +303,15 @@ def main():
     agent = (DQNAgent.load(str(args.init_model), device="cpu") if args.init_model else
              DQNAgent(obs_dim=96, n_actions=6, device="cpu", hidden_dim=256,
                       hyperparams=DQNHyperParams(lr=0.0001, batch_size=64)))
+    expected_initial_tier = "beginner" if args.tier == "standard" else "standard"
     if args.init_model and (agent.obs_dim != 96 or agent.n_actions != 6 or
                             agent.checkpoint_training_state.get("schemaVersion") != SCHEMA or
-                            agent.checkpoint_training_state.get("tier") != "beginner"):
-        raise ValueError("Standard initial model is not the evaluated v2 Beginner contract")
+                            agent.checkpoint_training_state.get("tier") != expected_initial_tier):
+        raise ValueError("initial model is not the expected v2 checkpoint contract")
     bootstrap_agent = (DQNAgent.load(str(args.init_model), device="cpu")
-                       if args.train and args.tier == "standard" else None)
+                       if args.train and args.tier == "standard" else
+                       FrozenOnnxPolicy(args.reference_model)
+                       if args.train and args.tier == "pro" else None)
     buffer = ReplayBuffer(capacity=100_000, seed=seed_base) if args.train else None
     bridge = ControllerBridge()
     results = []
@@ -318,7 +364,7 @@ def main():
                     if not eligible:
                         raise ValueError("controller bridge has no eligible target seat")
                     hero_seat = eligible[(completed + session_index) % len(eligible)]
-                    epsilon = (manifest["explorationEpsilon"] if args.train and args.tier == "standard" else
+                    epsilon = (manifest["explorationEpsilon"] if args.train and args.tier in ("standard", "pro") else
                                max(0.05, 0.2 - (len(results) - args.bootstrap_hands) * 0.15 /
                                    max(1, args.hands - args.bootstrap_hands)) if args.bootstrap_hands else
                                max(0.05, 1.0 - len(results) / 5000)) if args.train else 0.0
@@ -352,6 +398,8 @@ def main():
               "schemaVersion": SCHEMA,
               "initialModelSha256": (hashlib.sha256(args.init_model.read_bytes()).hexdigest()
                                      if args.init_model else None),
+              "referenceModelSha256": (hashlib.sha256(args.reference_model.read_bytes()).hexdigest()
+                                       if args.reference_model else None),
               "explorationEpsilon": manifest.get("explorationEpsilon") if args.train else None,
               "anchorPolicyId": manifest.get("anchorPolicyId") if args.train else None,
               "bridgeSha256": hashlib.sha256(BRIDGE.read_bytes()).hexdigest(),

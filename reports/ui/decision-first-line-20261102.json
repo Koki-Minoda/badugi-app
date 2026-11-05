@@ -1,0 +1,63 @@
+{
+  "generatedAt": "2026-11-02T04:10:42.030359+00:00",
+  "appBaseCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+  "workingTreeChangesIncluded": true,
+  "sourceHashes": {
+    "src/ui/App.jsx": "de7e07ea22dd3d01d4a6251bb1aff9081fb30baee1c95bf659896ed7f36c7614",
+    "src/ui/screens/layouts/GameLayoutBase.jsx": "b90e2113d95d16b8106cbf555e86c7637337fc03d82014c5135aa0721f11fb1d",
+    "src/ui/screens/layouts/MobileGameLayout.jsx": "4e5f782914f40e3fe3eb5ea16193ad76570a8ba95eabe2a686b97b25a4b1afda",
+    "src/ui/components/CurrentHandHistory.jsx": "b52175846150c8ed318c5f1694c63b7dea7c61fadcea7e71bb827a192392d3ea",
+    "src/styles/current-hand-history.css": "483e4a00cc20e042d8deb219a8c5dbc3edfecef8a2cb1c8e800dfe0bf1b4de01",
+    "src/ui/components/__tests__/CurrentHandHistory.test.jsx": "01196131a12a4969131de73db4485d87551486b7f676cee01610ad14781482ad",
+    "tests/e2e/decision-first-hand-line.spec.ts": "effe54c824cc2e1f88674fffdb56b43634fe8dee43aa853d1d05d585bd448445"
+  },
+  "scope": "Decision First increment: current hand line only",
+  "browserCases": {
+    "passed": 16,
+    "layoutCases": 15,
+    "liveNLHCase": 1,
+    "profiles": [
+      "Chromium desktop 1280x900",
+      "Chromium mobile 390x844",
+      "Chromium mobile 844x320",
+      "WebKit mobile 390x844",
+      "WebKit mobile 844x320"
+    ],
+    "variants": [
+      "NLH",
+      "Stud8",
+      "2-7TD"
+    ],
+    "checks": [
+      "one-click/tap entry",
+      "native modal geometry",
+      "44px close target",
+      "Tab/Shift-Tab focus containment",
+      "Escape and close focus restoration",
+      "same decision after close",
+      "real canonical CPU action visibility"
+    ]
+  },
+  "unitAndLayoutTestsPassed": 24,
+  "tier1Passed": 2792,
+  "tier1KnownSkips": 1,
+  "knownBugsPassed": 49,
+  "rlSafetyPassed": 64,
+  "build": "PASS",
+  "lint": {
+    "errors": 0,
+    "preExistingWarnings": 2
+  },
+  "regressionEvidence": [
+    "native Tab cycling failed before explicit focus handling",
+    "WebKit skipped button tab stops before per-step focus handling",
+    "live NLH line was empty with legacy history reference; passed with canonical event reference"
+  ],
+  "releaseGatePassed": false,
+  "remaining": [
+    "physical devices",
+    "independent review",
+    "full B layout and information hierarchy",
+    "long Core QA and bankroll coverage issue #303"
+  ]
+}

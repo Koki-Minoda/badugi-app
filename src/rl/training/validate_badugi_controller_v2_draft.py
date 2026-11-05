@@ -91,11 +91,17 @@ def main():
     parser.add_argument('--hands-per-session', type=int, default=20)
     parser.add_argument('--seed-base', type=int, default=410040001)
     parser.add_argument('--evaluation-manifest', type=Path)
+    parser.add_argument('--only-group', choices=GROUP_NAMES,
+                        help='Exploratory diagnosis only; frozen product evaluations require all groups')
+    parser.add_argument('--only-profile', choices=PROFILES,
+                        help='Exploratory diagnosis only; frozen product evaluations require all profiles')
     args = parser.parse_args()
     if args.output.exists() or not 1 <= args.sessions_per_profile <= 250 or not 1 <= args.hands_per_session <= 100:
         raise ValueError('new output directory and bounded session counts required')
     if args.sessions_per_profile > 100 and not args.evaluation_manifest:
         raise ValueError('large controller evaluations require a frozen manifest')
+    if args.evaluation_manifest and (args.only_group or args.only_profile):
+        raise ValueError('frozen product evaluations cannot filter groups or profiles')
     phase_pair = args.bet_onnx is not None and args.draw_onnx is not None
     if ((args.bet_onnx is None) != (args.draw_onnx is None) or
             sum((args.reference, args.model is not None,
@@ -137,7 +143,11 @@ def main():
     hand_rows = []
     try:
         for group_index, (seats, occupied, tournament) in enumerate(GROUPS):
+            if args.only_group and GROUP_NAMES[group_index] != args.only_group:
+                continue
             for profile_index, profile in enumerate(PROFILES):
+                if args.only_profile and profile != args.only_profile:
+                    continue
                 for session_index in range(args.sessions_per_profile):
                     seed = args.seed_base + group_index * 1_000_000 + profile_index * 10_000 + session_index
                     rng = random.Random(seed + 997)
@@ -238,7 +248,8 @@ def main():
                'zeroSumSessions': sum(row['zeroSum'] for row in rows),
                'sessionsPerProfileGroup': args.sessions_per_profile,
                'handsPerSessionMax': args.hands_per_session,
-               'opponentProfiles': PROFILES, 'groups': GROUP_NAMES}
+               'opponentProfiles': [args.only_profile] if args.only_profile else PROFILES,
+               'groups': [args.only_group] if args.only_group else GROUP_NAMES}
     (args.output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     print(json.dumps(summary, indent=2))
 

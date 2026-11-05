@@ -17,8 +17,9 @@ from rl.training.export_badugi_controller_v2_mode_ensemble import ModeEnsemble
 from rl.training.export_badugi_controller_v2_candidate import check_parity
 from rl.training.export_badugi_controller_v2_phase_candidate import PhaseEnsemble
 from rl.training.validate_badugi_controller_v2_draft import (
-    FoldGuardedPhaseAgent, OnnxAgent, PhaseRoutedAgent,
+    FoldGuardedPhaseAgent, OnnxAgent, PhaseRoutedAgent, opening_context,
 )
+from rl.env.badugi_env import evaluate_badugi
 
 
 def decision(phase, made, high, round_index, to_call_bb, mask):
@@ -32,6 +33,23 @@ def decision(phase, made, high, round_index, to_call_bb, mask):
 
 
 class BootstrapPolicyTests(unittest.TestCase):
+    def test_opening_context_records_hero_cards_and_rejects_shape_mismatch(self):
+        cards = [(0, 0), (2, 1), (4, 2), (6, 3)]
+        count, ranks = evaluate_badugi(cards)
+        obs = [0.0] * 96
+        for index, (rank, suit) in enumerate(cards):
+            obs[2 * index:2 * index + 2] = [rank / 12, suit / 3]
+        obs[24], obs[25] = count / 4, max(ranks) / 12
+        obs[12], obs[14], obs[18], obs[20] = 0.5, 0.1, 0.15, 0.25
+        context = opening_context(obs, 2)
+        self.assertEqual(context['cards'], cards)
+        self.assertEqual((context['madeCards'], context['actionIndex'], context['raiseCount']),
+                         (4, 2, 1))
+        self.assertAlmostEqual(context['toCallBb'], 3)
+        obs[24] = 0.5
+        with self.assertRaisesRegex(ValueError, 'card evaluation'):
+            opening_context(obs, 2)
+
     def test_fp32_export_rounding_requires_unchanged_action(self):
         expected = np.asarray([[0.1, 0.5, 0.2], [0.5, 0.1, 0.2]], dtype=np.float32)
         rounded = expected.copy()

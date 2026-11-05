@@ -27,12 +27,31 @@ else:
         ControllerBridge, DQNAgent, PROFILES, SCHEMA, check_decision, contract_hash,
         opponent_action, observable_reference_action,
     )
+from rl.env.badugi_env import evaluate_badugi
 
 GROUPS = tuple((seats, occupied, tournament) for tournament in (False, True)
                for seats, occupied in ((2, 2), (3, 3), (6, 6), (6, 2), (6, 3)))
 GROUP_NAMES = [f'{seats}/{occupied}-{("mtt" if tournament else "cash")}'
                for seats, occupied, tournament in GROUPS]
 REFERENCE_POLICY_ID = 'observable-reference-v1'
+
+
+def opening_context(observation, action):
+    """Public decision context and hero's own cards at the first pre-draw BET."""
+    cards = [(round(observation[2 * i] * 12), round(observation[2 * i + 1] * 3))
+             for i in range(4)]
+    if len(set(cards)) != 4:
+        raise ValueError('opening observation does not contain four distinct cards')
+    made_cards, ranks = evaluate_badugi(cards)
+    high_rank = max(ranks) if ranks else 12
+    if (round(observation[24] * 4) != made_cards or
+            round(observation[25] * 12) != high_rank):
+        raise ValueError('opening card evaluation differs from controller observation')
+    return {'cards': cards, 'madeCards': made_cards, 'highRank': high_rank,
+            'rankSum': sum(ranks), 'relativePosition': observation[12],
+            'stackBb': observation[14] * 200,
+            'toCallBb': observation[18] * 20,
+            'raiseCount': round(observation[20] * 4), 'actionIndex': action}
 
 
 class OnnxAgent:
@@ -111,6 +130,8 @@ def main():
                         help='Exploratory diagnosis only; frozen product evaluations require all groups')
     parser.add_argument('--only-profile', choices=PROFILES,
                         help='Exploratory diagnosis only; frozen product evaluations require all profiles')
+    parser.add_argument('--capture-opening', action='store_true',
+                        help='Exploratory replay only: save hero first pre-draw BET cards/context')
     args = parser.parse_args()
     if args.output.exists() or not 1 <= args.sessions_per_profile <= 250 or not 1 <= args.hands_per_session <= 100:
         raise ValueError('new output directory and bounded session counts required')
@@ -118,6 +139,8 @@ def main():
         raise ValueError('large controller evaluations require a frozen manifest')
     if args.evaluation_manifest and (args.only_group or args.only_profile):
         raise ValueError('frozen product evaluations cannot filter groups or profiles')
+    if args.evaluation_manifest and args.capture_opening:
+        raise ValueError('opening capture is diagnostic only; do not change a frozen evaluation')
     phase_pair = args.bet_onnx is not None and args.draw_onnx is not None
     if args.fold_guardian and not phase_pair:
         raise ValueError('fold guardian requires a BET candidate and published Standard DRAW ONNX')
@@ -192,6 +215,7 @@ def main():
                         active_bb = response['activeBigBlind']
                         hero_decisions = 0
                         decision_trace = []
+                        first_opening = None
                         while response['type'] == 'decision':
                             check_decision(response, seats, occupied, tournament)
                             start = time.perf_counter()
@@ -202,6 +226,10 @@ def main():
                                                     action_mask=np.asarray(response['legalMask'], dtype=np.float32)))
                                 actions[f"{response['phase']}:{action}"] += 1
                                 hero_decisions += 1
+                                if (args.capture_opening and first_opening is None and
+                                        response['phase'] == 'BET' and response['drawRoundIndex'] == 0):
+                                    first_opening = opening_context(response['observation'], action)
+                                    first_opening['decisionOrdinal'] = len(decision_trace)
                             else:
                                 action = opponent_action(response, profile, rng)
                             decision_trace.append({'seat': response['seat'],
@@ -233,7 +261,7 @@ def main():
                                     raise ValueError('invalid public draw count')
                             else:
                                 raise ValueError('unknown public action type')
-                        hand_rows.append({'seed': seed, 'handIndex': hand_index,
+                        hand_row = {'seed': seed, 'handIndex': hand_index,
                                           'group': f'{seats}/{occupied}-{("mtt" if tournament else "cash")}',
                                           'profile': profile, 'heroSeat': hero,
                                           'activeBigBlind': active_bb,
@@ -241,7 +269,10 @@ def main():
                                           'endingStacks': response['endingStacks'],
                                           'chipDeltaBySeat': response['chipDeltaBySeat'],
                                           'decisions': decision_trace,
-                                          'publicActionTrace': response['publicActionTrace']})
+                                          'publicActionTrace': response['publicActionTrace']}
+                        if args.capture_opening:
+                            hand_row['heroOpening'] = first_opening
+                        hand_rows.append(hand_row)
                     rows.append({'group': f'{seats}/{occupied}-{("mtt" if tournament else "cash")}',
                                  'seatCount': seats, 'occupiedSeatCount': occupied,
                                  'isTournament': tournament, 'profile': profile,
@@ -265,6 +296,7 @@ def main():
                'modelKind': ('phase-routed-onnx' if phase_pair else 'onnx' if args.onnx_model
                              else 'pytorch' if args.model else 'reference'),
                'foldGuardian': args.fold_guardian,
+               'captureOpening': args.capture_opening,
                'seedBase': args.seed_base, 'sessions': len(rows),
                'hands': sum(row['hands'] for row in rows),
                'zeroSumSessions': sum(row['zeroSum'] for row in rows),

@@ -87,7 +87,7 @@ export default function MobileGameLayout({headerProps:h,sidePanelProps:s,tablePr
   <Modal open={s.seatManagerOpen} title={ja?'席設定':'Seat Manager'} onClose={s.onCloseSeatManager} className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
    <div className="space-y-2">
     <p>{ja?'変更は次のハンドから反映されます':'Changes apply on the next hand.'}</p>
-    {s.seatConfig.map((seatType,index)=><label key={index} className="flex items-center justify-between gap-3 text-sm"><span>{ja?`席 ${index+1}`:`Seat ${index+1}`}</span><select data-testid={`seat-type-${index}`} className="rounded border border-white/20 bg-slate-900 px-3 py-2" value={seatType} disabled={index===0} onChange={event=>s.onSeatTypeChange(index,event.target.value)}>{s.seatTypeOptions.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
+    {(s.seatConfig??[]).map((seatType,index)=><label key={index} className="flex items-center justify-between gap-3 text-sm"><span>{ja?`席 ${index+1}`:`Seat ${index+1}`}</span><select data-testid={`seat-type-${index}`} className="rounded border border-white/20 bg-slate-900 px-3 py-2" value={seatType} disabled={index===0} onChange={event=>s.onSeatTypeChange(index,event.target.value)}>{(s.seatTypeOptions??[]).map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
    </div>
   </Modal>
  </div>;

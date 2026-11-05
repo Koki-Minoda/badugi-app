@@ -13544,7 +13544,8 @@ export default function App() {
         }
         if (
           (activeAiTierConfig?.id === "beginner" ||
-            activeAiTierConfig?.id === "standard") &&
+            activeAiTierConfig?.id === "standard" ||
+            activeAiTierConfig?.id === "pro") &&
           matchesPendingOnnxInference(onnxInferencePendingRef.current, {
             handId: handIdRef.current,
             phase: "BET",
@@ -13630,7 +13631,8 @@ export default function App() {
         }
         if (
           (activeAiTierConfig?.id === "beginner" ||
-            activeAiTierConfig?.id === "standard") &&
+            activeAiTierConfig?.id === "standard" ||
+            activeAiTierConfig?.id === "pro") &&
           matchesPendingOnnxInference(onnxInferencePendingRef.current, {
             handId: handIdRef.current,
             phase: "DRAW",

@@ -25,14 +25,23 @@ else:
 
 
 class PhaseEnsemble(torch.nn.Module):
-    def __init__(self, bet, draw):
+    def __init__(self, bet, draw, fold_guardian=False):
         super().__init__()
         self.bet = bet
         self.draw = draw
+        self.fold_guardian = fold_guardian
 
     def forward(self, observation):
-        return torch.where(observation[:, 8:9] >= 0.5,
-                           self.draw(observation), self.bet(observation))
+        standard_scores = self.draw(observation)
+        bet_scores = self.bet(observation)
+        if self.fold_guardian:
+            # The controller's legal mask is part of the frozen 96-input schema.
+            # Preserve Standard only when its legal BET argmax is FOLD (index 0).
+            legal_scores = torch.where(observation[:, 32:38] >= 0.5,
+                                       standard_scores, torch.full_like(standard_scores, -1e9))
+            standard_folds = torch.argmax(legal_scores, dim=1, keepdim=True) == 0
+            bet_scores = torch.where(standard_folds, standard_scores, bet_scores)
+        return torch.where(observation[:, 8:9] >= 0.5, standard_scores, bet_scores)
 
 
 def digest(path):
@@ -56,6 +65,8 @@ def main():
     parser.add_argument('--heads-up-mtt-checkpoint', type=Path, required=True)
     parser.add_argument('--bet-reference-onnx', type=Path, required=True)
     parser.add_argument('--draw-reference-onnx', type=Path, required=True)
+    parser.add_argument('--fold-guardian', action='store_true',
+                        help='Retain published Standard BET only when its legal action is FOLD')
     parser.add_argument('--controller-rollouts', type=Path, required=True)
     parser.add_argument('--heldout-controller-rollouts', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
@@ -66,7 +77,7 @@ def main():
     draw = ModeEnsemble(load_checkpoint(args.cash_checkpoint, 'standard'),
                         load_checkpoint(args.mtt_checkpoint, 'standard'),
                         load_checkpoint(args.heads_up_mtt_checkpoint, 'beginner')).eval()
-    combined = PhaseEnsemble(bet, draw).eval()
+    combined = PhaseEnsemble(bet, draw, fold_guardian=args.fold_guardian).eval()
     args.output.mkdir(parents=True)
     path = args.output / 'candidate.onnx'
     torch.onnx.export(combined, torch.zeros(1, 96), str(path),
@@ -81,6 +92,9 @@ def main():
     random_obs[:, 8] = np.tile(np.asarray([0, 1], dtype=np.float32), 128)
     random_obs[:, 21] = np.tile(np.asarray([0, 0, 1, 1], dtype=np.float32), 64)
     random_obs[:, 10] = np.tile(np.asarray([2 / 6, 3 / 6, 1.0, 2 / 6], dtype=np.float32), 64)
+    random_obs[:, 32:38] = (rng.uniform(size=(256, 6)) > 0.5).astype(np.float32)
+    random_obs[:, 32] = np.where(random_obs[:, 8] == 0, 1.0, random_obs[:, 32])
+    random_obs[:, 33] = np.where(random_obs[:, 8] == 1, 1.0, random_obs[:, 33])
     rollout_batches = []
     for rollout_path in (args.controller_rollouts, args.heldout_controller_rollouts):
         rollouts = json.loads(rollout_path.read_text())
@@ -96,6 +110,10 @@ def main():
             expected_torch = combined(torch.from_numpy(observations)).numpy()
         bet_reference = bet_session.run(['q_values'], {'observation': observations})[0]
         draw_reference = draw_session.run(['q_values'], {'observation': observations})[0]
+        if args.fold_guardian:
+            legal = observations[:, 32:38] >= 0.5
+            standard_folds = np.where(legal, draw_reference, -1e9).argmax(axis=1) == 0
+            bet_reference = np.where(standard_folds[:, None], draw_reference, bet_reference)
         expected_reference = np.where(observations[:, 8:9] >= 0.5,
                                       draw_reference, bet_reference)
         if actual.shape != (len(observations), 6) or not np.all(np.isfinite(actual)):
@@ -103,14 +121,16 @@ def main():
         max_difference = max(max_difference,
                              float(np.max(np.abs(actual - expected_torch))),
                              float(np.max(np.abs(actual - expected_reference))))
-        if masks is not None:
-            actual_actions = np.where(masks > 0, actual, -np.inf).argmax(axis=1)
-            expected_actions = np.where(masks > 0, expected_reference, -np.inf).argmax(axis=1)
+        active_mask = observations[:, 32:38] if masks is None else masks
+        if active_mask is not None:
+            actual_actions = np.where(active_mask > 0, actual, -np.inf).argmax(axis=1)
+            expected_actions = np.where(active_mask > 0, expected_reference, -np.inf).argmax(axis=1)
             action_mismatches.append(int(np.sum(actual_actions != expected_actions)))
     if max_difference > MAX_ABS_TOLERANCE or any(action_mismatches):
         raise ValueError(f'phase ONNX parity failed: maxAbs={max_difference}, actions={action_mismatches}')
     report = {'status': 'PARITY_PASS_NOT_STRENGTH', 'schemaVersion': SCHEMA,
               'phaseFlagSlot': 8, 'betCheckpointSha256': digest(args.bet_checkpoint),
+              'foldGuardian': args.fold_guardian, 'legalMaskSlots': [32, 38],
               'cashCheckpointSha256': digest(args.cash_checkpoint),
               'mttCheckpointSha256': digest(args.mtt_checkpoint),
               'headsUpMttCheckpointSha256': digest(args.heads_up_mtt_checkpoint),

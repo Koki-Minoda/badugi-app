@@ -69,7 +69,7 @@ export default defineConfig({
     {
       name: 'd03-v2-iphone-webkit',
       testDir: './tests/e2e',
-      testMatch: /d03-v2-(?:candidate|standard-candidate|beginner-production|standard-production)-runtime\.spec\.ts/,
+      testMatch: /d03-v2-(?:candidate|standard-candidate|pro-guarded-candidate|beginner-production|standard-production)-runtime\.spec\.ts/,
       use: {
         ...devices['iPhone 13 landscape'],
         browserName: 'webkit',

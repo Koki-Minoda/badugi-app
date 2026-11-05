@@ -29,6 +29,11 @@ const standardAdapter = createBadugiControllerV2Inference({
   featureSet: 'badugi-controller-observation-v2-draft',
   inputShape: [96], outputShape: [6],
 });
+const proAdapter = createBadugiControllerV2Inference({
+  id: 'isolated-pro-v2-test', onnx: 'pro-test.onnx', tier: 'pro',
+  featureSet: 'badugi-controller-observation-v2-draft',
+  inputShape: [96], outputShape: [6],
+});
 
 describe('Badugi controller-v2 live legality', () => {
   it('does not select a raise rejected by the current UI action gate', async () => {
@@ -53,5 +58,14 @@ describe('Badugi controller-v2 live legality', () => {
       onInferenceTrace: (row) => traces.push(row) });
     expect(decision).toMatchObject({ action: 'CALL', tierId: 'standard', modelId: 'standard-v2-test' });
     expect(traces[0]).toMatchObject({ status: 'used', tierId: 'standard', usedModelId: 'standard-v2-test' });
+  });
+
+  it('accepts the isolated Pro tier while preserving the live legal mask', async () => {
+    run.mockResolvedValueOnce({ output: { data: [100, 0, 3, 0, 0, 0] } });
+    const traces = [];
+    const decision = await proAdapter.inferBet({ legalActions: ['CALL'],
+      onInferenceTrace: (row) => traces.push(row) });
+    expect(decision).toMatchObject({ action: 'CALL', tierId: 'pro', modelId: 'isolated-pro-v2-test' });
+    expect(traces[0]).toMatchObject({ status: 'used', tierId: 'pro', usedModelId: 'isolated-pro-v2-test' });
   });
 });

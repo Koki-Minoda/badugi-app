@@ -69,6 +69,32 @@ class BootstrapPolicyTests(unittest.TestCase):
         observation[:, 8] = torch.tensor([0, 1, 0])
         self.assertEqual(model(observation).argmax(dim=1).tolist(), [2, 3, 2])
 
+    def test_phase_ensemble_fold_guardian_respects_legal_mask(self):
+        class Scores(torch.nn.Module):
+            def __init__(self, values):
+                super().__init__()
+                self.values = values
+
+            def forward(self, observation):
+                return observation.new_tensor(self.values).expand(observation.shape[0], -1)
+
+        model = PhaseEnsemble(Scores([0, 0, 4, 0, 0, 0]),
+                              Scores([8, 1, 3, 0, 0, 0]), fold_guardian=True).eval()
+        observation = torch.zeros(4, 96)
+        observation[0, 32:38] = torch.tensor([1, 0, 1, 0, 0, 0])
+        observation[1, 32:38] = torch.tensor([0, 1, 1, 0, 0, 0])
+        observation[2, 32:38] = torch.tensor([1, 0, 1, 0, 0, 0])
+        observation[2, 8] = 1
+        observation[3, 32:38] = torch.tensor([1, 1, 1, 0, 0, 0])
+        # On BET, Standard FOLD wins only when legal; DRAW always uses Standard.
+        scores = model(observation)
+        self.assertEqual(scores[0].argmax().item(), 0)
+        self.assertEqual(scores[1].argmax().item(), 2)
+        self.assertEqual(scores[2].argmax().item(), 0)
+        self.assertEqual(scores[3].argmax().item(), 0)
+        legal_actions = torch.where(observation[:, 32:38] > 0.5, scores, -1e9).argmax(dim=1)
+        self.assertEqual(legal_actions.tolist(), [0, 2, 0, 0])
+
     def test_phase_route_reads_only_public_phase_slot(self):
         class FixedAgent:
             def __init__(self, action):

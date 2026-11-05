@@ -130,6 +130,61 @@ class BootstrapPolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             sample_reference_demonstrations(demonstrations, 64, 60, 8, 4)
 
+    def test_unanchored_reference_sample_has_requested_size(self):
+        demonstrations = [(np.full(96, i, dtype=np.float32), 2, "BET")
+                          for i in range(80)]
+        sample = sample_reference_demonstrations(demonstrations, 64)
+        self.assertEqual(len(sample), 64)
+        self.assertEqual(len({int(item[0][0]) for item in sample}), 64)
+
+    def test_bet_only_training_routes_draw_to_reference_and_excludes_it_from_replay(self):
+        class Agent:
+            def __init__(self, action):
+                self.action = action
+                self.calls = 0
+
+            def act(self, obs, epsilon, action_mask):
+                self.calls += 1
+                return self.action
+
+        class Buffer:
+            def __init__(self):
+                self.rows = []
+
+            def add(self, *args, **kwargs):
+                self.rows.append((args, kwargs))
+
+            def __len__(self):
+                return len(self.rows)
+
+        class Bridge:
+            def __init__(self, draw):
+                self.draw = draw
+                self.actions = []
+
+            def send(self, command):
+                self.actions.append(command["actionIndex"])
+                return self.draw if len(self.actions) == 1 else {
+                    "type": "hand_end", "chipDeltaBySeat": [20, -20]}
+
+        bet = decision("BET", 3, 7, 0, 0, [0, 1, 0, 1, 0, 0])
+        draw = decision("DRAW", 3, 7, 0, 0, [1, 1, 1, 1, 1, 0])
+        for row in (bet, draw):
+            row.update({"type": "decision", "schemaVersion": "badugi-controller-observation-v2-draft",
+                        "seat": 0, "seatCount": 2, "occupiedSeatCount": 2,
+                        "isTournament": False, "activeBigBlind": 20})
+        learner, reference, buffer = Agent(1), Agent(2), Buffer()
+        bridge = Bridge(draw)
+        outcome = run_hand(bridge, bet, learner, None, 0, "passive", 0.1,
+                           2, 2, False, buffer=buffer, warmup=512,
+                           reference_draw_agent=reference, bet_only_replay=True)
+        self.assertEqual(bridge.actions, [1, 2])
+        self.assertEqual((learner.calls, reference.calls), (1, 1))
+        self.assertEqual(len(buffer.rows), 1)
+        self.assertEqual(outcome["heroDecisions"], 1)
+        self.assertEqual(outcome["heroActualDecisions"], 2)
+        self.assertEqual(outcome["heroChipBb"], 1)
+
     def test_pro_reference_policy_uses_onnx_scores_and_legal_mask(self):
         class FixedScores(torch.nn.Module):
             def __init__(self):

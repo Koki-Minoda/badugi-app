@@ -11,6 +11,7 @@ import json
 import random
 import subprocess
 import sys
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -32,6 +33,7 @@ PRO_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_plan.jso
 PRO_FOLD_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_fold_anchor_plan.json"
 PRO_ACTION_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_action_anchor_plan.json"
 PRO_FRESH_STACK_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_fresh_stack_plan.json"
+PRO_BET_ONLY_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_bet_only_plan.json"
 SCHEMA = "badugi-controller-observation-v2-draft"
 PROFILES = ("passive", "pressure", "draw_heavy", "random_legal")
 CONTRACT_FILES = (
@@ -146,21 +148,36 @@ def check_decision(decision, seat_count, occupied_count, tournament):
 
 def run_hand(bridge, first_response, agent, rng, hero_seat, profile, epsilon,
              seat_count, occupied_count, tournament, buffer=None, batch_size=64, warmup=512,
-             bootstrap=False, demonstrations=None, bootstrap_agent=None):
+             bootstrap=False, demonstrations=None, bootstrap_agent=None,
+             reference_draw_agent=None, bet_only_replay=False):
     response = first_response
     hero_decisions = []
     total_decisions = 0
     hero_bb = None
+    hero_actual_decisions = 0
+    opening = None
     while response["type"] == "decision":
         check_decision(response, seat_count, occupied_count, tournament)
         if response["seat"] == hero_seat:
             obs = np.asarray(response["observation"], dtype=np.float32)
             mask = np.asarray(response["legalMask"], dtype=np.float32)
-            action = ((bootstrap_agent.act(obs, epsilon=0.0, action_mask=mask)
-                       if bootstrap_agent else observable_reference_action(response)) if bootstrap else
-                      agent.act(obs, epsilon=epsilon, action_mask=mask))
-            hero_decisions.append((obs, mask, action))
-            if demonstrations is not None:
+            if reference_draw_agent is not None and response["phase"] == "DRAW":
+                action = reference_draw_agent.act(obs, epsilon=0.0, action_mask=mask)
+            elif bootstrap:
+                action = (bootstrap_agent.act(obs, epsilon=0.0, action_mask=mask)
+                          if bootstrap_agent else observable_reference_action(response))
+            else:
+                action = agent.act(obs, epsilon=epsilon, action_mask=mask)
+            hero_actual_decisions += 1
+            if response["phase"] == "BET" and round(float(obs[9] * 3)) == 0 and opening is None:
+                opening = {"madeCards": round(float(obs[24] * 4)),
+                           "highRank": round(float(obs[25] * 12)),
+                           "raiseCount": round(float(obs[20] * 4)),
+                           "position": float(obs[12]), "stackBb": float(obs[14] * 200),
+                           "action": action}
+            if not bet_only_replay or response["phase"] == "BET":
+                hero_decisions.append((obs, mask, action))
+            if demonstrations is not None and (not bet_only_replay or response["phase"] == "BET"):
                 demonstrations.append((obs, action, response["phase"]))
             hero_bb = response["activeBigBlind"] if hero_bb is None else hero_bb
         else:
@@ -173,7 +190,7 @@ def run_hand(bridge, first_response, agent, rng, hero_seat, profile, epsilon,
             raise ValueError("controller bridge exceeded 200 decisions")
     if response["type"] != "hand_end" or sum(response["chipDeltaBySeat"]) != 0:
         raise ValueError("controller bridge did not return a balanced terminal hand")
-    reward_bb = response["chipDeltaBySeat"][hero_seat] / hero_bb if hero_decisions else None
+    reward_bb = response["chipDeltaBySeat"][hero_seat] / hero_bb if hero_actual_decisions else None
     updates = 0
     if buffer is not None:
         for index, (obs, _, action) in enumerate(hero_decisions):
@@ -188,6 +205,7 @@ def run_hand(bridge, first_response, agent, rng, hero_seat, profile, epsilon,
             buffer.update_priorities(indices, td_errors)
             updates += 1
     return {"decisions": total_decisions, "heroDecisions": len(hero_decisions),
+            "heroActualDecisions": hero_actual_decisions, "opening": opening,
             "heroChipBb": reward_bb, "updates": updates,
             "chipDeltaBySeat": response["chipDeltaBySeat"]}
 
@@ -238,18 +256,19 @@ def sample_reference_demonstrations(demonstrations, batch_size, fold_anchor_per_
         sample = selected + random.sample(remaining, batch_size - len(selected))
         random.shuffle(sample)
         return sample
+    return random.sample(demonstrations, batch_size)
 
 
 def training_opponent_profile(completed, session_index, fresh_session_per_hand=False):
     """Use every script opponent at fresh stacks in the Pro diagnostic curriculum."""
     offset = session_index if fresh_session_per_hand else completed + session_index
     return PROFILES[offset % len(PROFILES)]
-    return random.sample(demonstrations, batch_size)
 
 
 def require_go_manifest(path, tier, hands, init_model=None, reference_model=None,
                         fold_anchor_per_batch=0, raise_anchor_per_batch=0,
-                        draw_three_anchor_per_batch=0, fresh_session_per_hand=False):
+                        draw_three_anchor_per_batch=0, fresh_session_per_hand=False,
+                        bet_only_standard_draw=False):
     if path is None:
         raise ValueError("training requires --go-manifest with a frozen passing gate")
     manifest = json.loads(path.read_text())
@@ -281,7 +300,8 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
         if reference_model is not None:
             raise ValueError("Standard bootstrap uses its frozen checkpoint, not a separate reference ONNX")
     elif tier == "pro":
-        tier_plan_path = (PRO_FRESH_STACK_PLAN if fresh_session_per_hand else
+        tier_plan_path = (PRO_BET_ONLY_PLAN if bet_only_standard_draw else
+                          PRO_FRESH_STACK_PLAN if fresh_session_per_hand else
                           PRO_ACTION_PLAN if raise_anchor_per_batch or draw_three_anchor_per_batch else
                           PRO_FOLD_PLAN if fold_anchor_per_batch else PRO_PLAN)
         tier_plan = json.loads(tier_plan_path.read_text())
@@ -302,6 +322,8 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
                 tier_plan.get("drawThreeAnchorPerBatch", 0) != draw_three_anchor_per_batch or
                 manifest.get("freshSessionPerHand", False) != fresh_session_per_hand or
                 tier_plan.get("freshSessionPerHand", False) != fresh_session_per_hand or
+                manifest.get("betOnlyStandardDraw", False) != bet_only_standard_draw or
+                tier_plan.get("betOnlyStandardDraw", False) != bet_only_standard_draw or
                 manifest.get("tierPlanSha256") != hashlib.sha256(tier_plan_path.read_bytes()).hexdigest()):
             raise ValueError("Pro requires frozen v2 Standard initial checkpoint and published reference ONNX")
     elif init_model is not None:
@@ -330,6 +352,8 @@ def main():
     parser.add_argument("--draw-three-anchor-per-batch", type=int, default=0)
     parser.add_argument("--fresh-session-per-hand", action="store_true",
                         help="Pro diagnostic: reset controller and rotate opponent profile for every hand")
+    parser.add_argument("--bet-only-standard-draw", action="store_true",
+                        help="Pro diagnostic: learn BET only in 20-hand sessions; use frozen Standard DRAW")
     args = parser.parse_args()
     if not 1 <= args.hands <= 5000:
         raise ValueError("one explicit run must contain 1–5000 hands; 5k is a stop gate")
@@ -350,6 +374,9 @@ def main():
         raise ValueError("action anchors require Pro bootstrap and a total below 64")
     if args.fresh_session_per_hand and (not args.train or args.tier != "pro"):
         raise ValueError("fresh-session curriculum is only approved for isolated Pro training")
+    if args.bet_only_standard_draw and (not args.train or args.tier != "pro" or
+                                       args.fresh_session_per_hand or args.draw_three_anchor_per_batch):
+        raise ValueError("BET-only Pro requires isolated training, 20-hand sessions and no DRAW anchor")
     if args.train and (args.output is None or args.output.exists()):
         raise ValueError("training requires a new isolated --output directory")
     if args.train:
@@ -358,7 +385,8 @@ def main():
                                        args.fold_anchor_per_batch,
                                        args.raise_anchor_per_batch,
                                        args.draw_three_anchor_per_batch,
-                                       args.fresh_session_per_hand)
+                                       args.fresh_session_per_hand,
+                                       args.bet_only_standard_draw)
         if (manifest.get("bootstrapHands", 0) != args.bootstrap_hands or
                 manifest.get("imitationSteps", 0) != args.imitation_steps or
                 manifest.get("referenceAnchorEvery", 0) != args.reference_anchor_every or
@@ -381,6 +409,7 @@ def main():
                        if args.train and args.tier == "standard" else
                        FrozenOnnxPolicy(args.reference_model)
                        if args.train and args.tier == "pro" else None)
+    reference_draw_agent = (bootstrap_agent if args.bet_only_standard_draw else None)
     buffer = ReplayBuffer(capacity=100_000, seed=seed_base) if args.train else None
     bridge = ControllerBridge()
     results = []
@@ -423,18 +452,28 @@ def main():
                                         "isTournament": tournament, "seed": session_seed})
                 if response["type"] != "decision":
                     raise ValueError("new controller session did not start with a decision")
+                fixed_hero_seat = None
+                fixed_profile = PROFILES[session_index % len(PROFILES)] if args.bet_only_standard_draw else None
                 for hand_in_session in range(min(1 if args.fresh_session_per_hand else 20,
                                                  allocated - completed)):
                     if hand_in_session:
                         response = bridge.send({"command": "next_hand"})
                         if response["type"] == "hand_end" and response["decisionCount"] == 0:
                             break  # Table finished: restart with a new training seed.
-                    profile = training_opponent_profile(completed, session_index,
-                                                        args.fresh_session_per_hand)
+                    profile = (fixed_profile if fixed_profile is not None else
+                               training_opponent_profile(completed, session_index,
+                                                         args.fresh_session_per_hand))
                     eligible = response.get("eligibleSeats", [])
                     if not eligible:
                         raise ValueError("controller bridge has no eligible target seat")
-                    hero_seat = eligible[(completed + session_index) % len(eligible)]
+                    if args.bet_only_standard_draw:
+                        if fixed_hero_seat is None:
+                            fixed_hero_seat = eligible[session_index % len(eligible)]
+                        if fixed_hero_seat not in eligible:
+                            break  # Preserve one target seat and restart after its elimination.
+                        hero_seat = fixed_hero_seat
+                    else:
+                        hero_seat = eligible[(completed + session_index) % len(eligible)]
                     epsilon = (manifest["explorationEpsilon"] if args.train and args.tier in ("standard", "pro") else
                                max(0.05, 0.2 - (len(results) - args.bootstrap_hands) * 0.15 /
                                    max(1, args.hands - args.bootstrap_hands)) if args.bootstrap_hands else
@@ -444,7 +483,9 @@ def main():
                                        buffer if stage == "rl" else None,
                                        bootstrap=stage == "bootstrap",
                                        demonstrations=demonstrations if stage == "bootstrap" else None,
-                                       bootstrap_agent=bootstrap_agent)
+                                       bootstrap_agent=bootstrap_agent,
+                                       reference_draw_agent=reference_draw_agent,
+                                       bet_only_replay=args.bet_only_standard_draw)
                     if (stage == "rl" and args.reference_anchor_every and
                             outcome["heroDecisions"] and
                             completed % args.reference_anchor_every == 0):
@@ -494,6 +535,13 @@ def main():
               "raiseAnchorPerBatch": args.raise_anchor_per_batch,
               "drawThreeAnchorPerBatch": args.draw_three_anchor_per_batch,
               "freshSessionPerHand": args.fresh_session_per_hand,
+              "betOnlyStandardDraw": args.bet_only_standard_draw,
+              "openingClassCounts": dict(Counter(
+                  (f"{row['opening']['madeCards']}-card-high-{row['opening']['highRank']}"
+                   if row.get('opening') else 'no-opening') for row in results)),
+              "openingActionCounts": dict(Counter(
+                  str(row['opening']['action']) if row.get('opening') else 'no-opening'
+                  for row in results)),
               "pressureFirstHandsByStage": {
                   stage: sum(row["stage"] == stage and row["profile"] == "pressure" and
                              row["handInSession"] == 0 for row in results)

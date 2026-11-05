@@ -406,6 +406,28 @@
     ]
   },
   {
+    "id": "model-badugi-standard-controller-v2-20261105",
+    "version": "controller-v2-20261105",
+    "variant": "Badugi",
+    "variantIds": ["D03"],
+    "characterIds": [],
+    "tier": "standard",
+    "onnx": "models/badugi_standard_controller_v2_20261105.onnx",
+    "checksumSha256": "af31b433508c5e5a941ed04463380721e32fc7ebfe6715fa7b790396be91c80c",
+    "trainingRun": "d03-v2-standard-anchor-2000hand-seed223-20261105",
+    "trainingMode": "real-controller-reference-anchor-dqn-public-mode-ensemble",
+    "trainingEpisodes": 2000,
+    "trainingStatus": "evaluated-standard",
+    "featureSet": "badugi-controller-observation-v2-draft",
+    "evaluationManifest": "d03-v2-standard-public-hu-route-final-evaluation-20261105/candidate-manifest.json",
+    "evaluationAudit": "d03-v2-standard-public-hu-route-final-evaluation-20261105/audit/audit.json",
+    "evaluationAuditSha256": "ee786da58eb6cc46458761355e2c956d61bad71208e2ea679c358ac45b7794a8",
+    "trainingNotes": "Frozen independent 8000-session/160000-hand real-controller evaluation per arm passed a 0.05 BB/hand improvement margin over published Beginner in overall, cash and MTT. Cash uses 25% Standard weight interpolation, MTT 75%, and two-seat MTT uses the published Beginner network by public table size. Scripted-opponent strength does not establish human or ICM strength.",
+    "productionRequired": true,
+    "inputShape": [96],
+    "outputShape": [6]
+  },
+  {
     "id": "model-badugi-sixmax-standard-e11",
     "version": "e11-3000",
     "variant": "Badugi",

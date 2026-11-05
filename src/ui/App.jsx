@@ -201,6 +201,10 @@ import {
   inferBadugiBeginnerControllerV2Draw,
 } from "../ai/badugiBeginnerControllerV2.js";
 import {
+  inferBadugiStandardControllerV2Bet,
+  inferBadugiStandardControllerV2Draw,
+} from "../ai/badugiStandardControllerV2.js";
+import {
   matchesPendingOnnxInference,
   runTracedOnnxInferenceWithDeadline,
 } from "../ai/onnxInferenceDeadline.js";
@@ -3205,7 +3209,7 @@ export default function App() {
           return true;
         }
         onnxInferencePendingRef.current = pendingInference;
-        const drawLegalActions = onnxTier === "beginner"
+        const drawLegalActions = ["beginner", "standard"].includes(onnxTier)
           ? ["draw_0", "draw_1", "draw_2", "draw_3", "draw_4"]
           : ["draw_0", "draw_1", "draw_2", "draw_3"];
         const observation = buildBadugiObservationPayload({
@@ -3229,7 +3233,9 @@ export default function App() {
         const inferenceResult = await runTracedOnnxInferenceWithDeadline(
           onnxTier === "beginner"
             ? inferBadugiBeginnerControllerV2Draw
-            : inferDrawDecisionWithOnnx, {
+            : onnxTier === "standard"
+              ? inferBadugiStandardControllerV2Draw
+              : inferDrawDecisionWithOnnx, {
             phase: "DRAW",
             variantId: "D03",
             tierId: onnxTier,
@@ -3256,7 +3262,7 @@ export default function App() {
           try {
             onnxDrawDecision = {
               ...onnxDrawDecision,
-              discardIndexes: (onnxTier === "beginner"
+              discardIndexes: (["beginner", "standard"].includes(onnxTier)
                 ? selectBadugiControllerDrawIndexesV2Draft
                 : selectBadugiTrainingDiscardIndexes)(
                 me.hand,
@@ -13215,7 +13221,9 @@ export default function App() {
           const inferenceResult = await runTracedOnnxInferenceWithDeadline(
             onnxTier === "beginner"
               ? inferBadugiBeginnerControllerV2Bet
-              : inferBetActionWithOnnx, {
+              : onnxTier === "standard"
+                ? inferBadugiStandardControllerV2Bet
+                : inferBetActionWithOnnx, {
               phase: "BET",
               variantId: "D03",
               tierId: onnxTier,

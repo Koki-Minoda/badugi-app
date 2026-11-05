@@ -32,7 +32,7 @@ describe("modelRouter", () => {
     expect(entry?.modelId).toBe("model-badugi-beginner-controller-v2-20261104");
 
     const standard = resolveTierModelInfo({ variantId: "D03", tierId: "standard" });
-    expect(standard?.modelId).toBe("model-badugi-sixmax-standard-e11");
+    expect(standard?.modelId).toBe("model-badugi-standard-controller-v2-20261105");
 
     expect(resolveTierModelInfo({ variantId: "UNKNOWN", tierId: "beginner" })).toBeNull();
     expect(resolveTierModelInfo({ variantId: "H01", tierId: "beginner" })).toBeNull();
@@ -45,7 +45,7 @@ describe("modelRouter", () => {
 
   it("supports character-specific standard Badugi model overrides", () => {
     expect(selectModelForVariant({ variantId: "D03", tierId: "standard" })?.id).toBe(
-      "model-badugi-sixmax-standard-e11",
+      "model-badugi-standard-controller-v2-20261105",
     );
     expect(
       selectModelForVariant({
@@ -53,7 +53,7 @@ describe("modelRouter", () => {
         tierId: "standard",
         characterId: "badugi-sixmax-standard-ryo",
       })?.id,
-    ).toBe("model-badugi-sixmax-standard-e11");
+    ).toBe("model-badugi-standard-controller-v2-20261105");
 
     const characterModel = resolveCpuCharacterModelInfo({
       characterId: "badugi-sixmax-standard-ryo",
@@ -64,24 +64,24 @@ describe("modelRouter", () => {
     expect(characterModel).toMatchObject({
       characterId: "badugi-sixmax-standard-ryo",
       characterLabel: "Ryo",
-      modelId: "model-badugi-sixmax-standard-e11",
+      modelId: "model-badugi-standard-controller-v2-20261105",
       tierId: "standard",
       style: "profile-diverse",
     });
   });
 
-  it("uses E11 as the shared Badugi Standard base while preserving character styles", () => {
-    expect(getModelEntry("model-badugi-sixmax-standard-e11")).toMatchObject({
+  it("uses evaluated controller v2 as the shared Badugi Standard base while preserving character styles", () => {
+    expect(getModelEntry("model-badugi-standard-controller-v2-20261105")).toMatchObject({
       tier: "standard",
       variantIds: ["D03"],
-      onnx: "models/badugi_sixmax_standard_e11.onnx",
-      sourceCheckpoint:
-        "rl/models/badugi_phase4_20260828/e11_epsilon_005_3k/badugi_sixmax_dqn_0003000_20260828-211540.pt",
+      onnx: "models/badugi_standard_controller_v2_20261105.onnx",
+      featureSet: "badugi-controller-observation-v2-draft",
+      checksumSha256: "af31b433508c5e5a941ed04463380721e32fc7ebfe6715fa7b790396be91c80c",
       productionRequired: true,
     });
 
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "standard" })).toMatchObject({
-      modelId: "model-badugi-sixmax-standard-e11",
+      modelId: "model-badugi-standard-controller-v2-20261105",
       tierId: "standard",
     });
 
@@ -91,7 +91,7 @@ describe("modelRouter", () => {
       tierId: "standard",
     })).toMatchObject({
       characterLabel: "Reading Standard",
-      modelId: "model-badugi-sixmax-standard-e11",
+      modelId: "model-badugi-standard-controller-v2-20261105",
       style: "opponent-reading",
     });
 
@@ -101,7 +101,7 @@ describe("modelRouter", () => {
       tierId: "standard",
     })).toMatchObject({
       characterLabel: "Balanced Standard",
-      modelId: "model-badugi-sixmax-standard-e11",
+      modelId: "model-badugi-standard-controller-v2-20261105",
       style: "baseline-balanced",
     });
 
@@ -119,7 +119,7 @@ describe("modelRouter", () => {
         characterId,
         characterLabel,
         personality: characterLabel,
-        modelId: "model-badugi-sixmax-standard-e11",
+        modelId: "model-badugi-standard-controller-v2-20261105",
         tierId: "standard",
         style,
       });
@@ -130,6 +130,9 @@ describe("modelRouter", () => {
     const legacy = getModelEntry("model-badugi-standard-dqn-v1");
     expect(legacy?.trainingStatus).toBe("legacy");
     expect(legacy?.productionRequired).toBe(false);
+    expect(getModelEntry("model-badugi-sixmax-standard-e11")?.onnx).toBe(
+      "models/badugi_sixmax_standard_e11.onnx",
+    );
     expect(getModelEntry("model-badugi-sixmax-standard-1m")).toMatchObject({
       tier: "standard",
       productionRequired: true,
@@ -139,7 +142,7 @@ describe("modelRouter", () => {
       characterId: "badugi-sixmax-standard-ryo",
       variantId: "D03",
       tierId: "standard",
-    })?.modelId).toBe("model-badugi-sixmax-standard-e11");
+    })?.modelId).toBe("model-badugi-standard-controller-v2-20261105");
   });
 
   it("routes evaluated controller v2 as Beginner and retains prior assets offline", () => {
@@ -157,7 +160,7 @@ describe("modelRouter", () => {
     });
   });
 
-  it("routes Badugi Beginner to controller v2 without changing stronger tiers", () => {
+  it("routes Badugi Beginner and Standard to evaluated controller v2 models", () => {
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "beginner" })).toMatchObject({
       modelId: "model-badugi-beginner-controller-v2-20261104",
       tierId: "beginner",
@@ -167,7 +170,7 @@ describe("modelRouter", () => {
       outputShape: [6],
     });
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "standard" })?.modelId).toBe(
-      "model-badugi-sixmax-standard-e11",
+      "model-badugi-standard-controller-v2-20261105",
     );
     expect(resolveTierModelInfo({ variantId: "D03", tierId: "pro" })?.modelId).toBe(
       "model-badugi-pro-v1",

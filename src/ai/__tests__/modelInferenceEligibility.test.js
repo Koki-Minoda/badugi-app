@@ -15,7 +15,7 @@ describe('inference model eligibility',()=>{
   expect(selectModelForVariant({...request,requireVariantMatch:true})).toBeNull();
  });
  it.each([
-  ['D03','standard','model-badugi-sixmax-standard-e11'],
+  ['D03','standard','model-badugi-standard-controller-v2-20261105'],
   ['D01','pro','model-d01-td-pro-dqn-025000'],
   ['S02','pro','model-s02-sd-pro-dqn-v2-025000'],
  ])('preserves the supported model for %s %s',(variantId,tierId,id)=>{

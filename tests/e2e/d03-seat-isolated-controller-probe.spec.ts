@@ -33,8 +33,8 @@ function isolateSeatOne(source: string, modelTier: string | null, seats: number)
 }
 
 const MODEL_IDS = {
-  beginner: 'model-badugi-sixmax-standard-dqn-v2',
-  standard: 'model-badugi-sixmax-standard-e11',
+  beginner: 'model-badugi-beginner-controller-v2-20261104',
+  standard: 'model-badugi-standard-controller-v2-20261105',
   pro: 'model-badugi-pro-v1',
   iron: 'model-badugi-iron-v1',
   worldmaster: 'model-badugi-worldmaster-v1',

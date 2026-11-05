@@ -15,7 +15,9 @@ from rl.training.train_badugi_controller_v2_draft import (
 )
 from rl.training.export_badugi_controller_v2_mode_ensemble import ModeEnsemble
 from rl.training.export_badugi_controller_v2_phase_candidate import PhaseEnsemble
-from rl.training.validate_badugi_controller_v2_draft import OnnxAgent, PhaseRoutedAgent
+from rl.training.validate_badugi_controller_v2_draft import (
+    FoldGuardedPhaseAgent, OnnxAgent, PhaseRoutedAgent,
+)
 
 
 def decision(phase, made, high, round_index, to_call_bb, mask):
@@ -77,6 +79,24 @@ class BootstrapPolicyTests(unittest.TestCase):
         obs[8] = 0.5
         with self.assertRaises(ValueError):
             agent.act(obs, 0.0, mask)
+
+    def test_fold_guardian_preserves_standard_bet_fold_and_draw(self):
+        class Agent:
+            def __init__(self, action):
+                self.action = action
+
+            def act(self, obs, epsilon, action_mask):
+                return self.action
+
+        standard = Agent(0)
+        guarded = FoldGuardedPhaseAgent(Agent(2), standard)
+        obs = np.zeros(96, dtype=np.float32)
+        mask = np.ones(6, dtype=np.float32)
+        self.assertEqual(guarded.act(obs, 0.0, mask), 0)
+        standard.action = 1
+        self.assertEqual(guarded.act(obs, 0.0, mask), 2)
+        obs[8] = 1
+        self.assertEqual(guarded.act(obs, 0.0, mask), 1)
 
     def test_fold_anchor_balances_only_bet_folds_and_uses_distinct_states(self):
         demonstrations = [(np.full(96, i, dtype=np.float32), 0, "DRAW")

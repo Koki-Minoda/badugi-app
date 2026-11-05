@@ -73,10 +73,24 @@ class PhaseRoutedAgent:
         return agent.act(obs, epsilon=epsilon, action_mask=action_mask)
 
 
-def phase_model_sha(bet_path, draw_path):
+class FoldGuardedPhaseAgent(PhaseRoutedAgent):
+    """Exploratory BET guard: retain a published Standard FOLD on public input."""
+
+    def act(self, obs, epsilon, action_mask):
+        phase_draw = float(obs[8])
+        if phase_draw not in (0.0, 1.0):
+            raise ValueError('controller phase slot must be exactly zero or one')
+        standard_action = self.draw_agent.act(obs, epsilon=epsilon, action_mask=action_mask)
+        if phase_draw == 1.0 or standard_action == 0:
+            return standard_action
+        return self.bet_agent.act(obs, epsilon=epsilon, action_mask=action_mask)
+
+
+def phase_model_sha(bet_path, draw_path, fold_guardian=False):
     bet_sha = hashlib.sha256(bet_path.read_bytes()).hexdigest()
     draw_sha = hashlib.sha256(draw_path.read_bytes()).hexdigest()
-    return hashlib.sha256(f'{bet_sha}:BET\n{draw_sha}:DRAW\n'.encode()).hexdigest()
+    suffix = 'STANDARD_FOLD_GUARDIAN\n' if fold_guardian else ''
+    return hashlib.sha256(f'{bet_sha}:BET\n{draw_sha}:DRAW\n{suffix}'.encode()).hexdigest()
 
 
 def main():
@@ -86,6 +100,8 @@ def main():
     parser.add_argument('--bet-onnx', type=Path)
     parser.add_argument('--draw-onnx', type=Path)
     parser.add_argument('--reference', action='store_true')
+    parser.add_argument('--fold-guardian', action='store_true',
+                        help='Exploratory phase pair only: keep published Standard BET FOLD')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--sessions-per-profile', type=int, default=6)
     parser.add_argument('--hands-per-session', type=int, default=20)
@@ -103,12 +119,15 @@ def main():
     if args.evaluation_manifest and (args.only_group or args.only_profile):
         raise ValueError('frozen product evaluations cannot filter groups or profiles')
     phase_pair = args.bet_onnx is not None and args.draw_onnx is not None
+    if args.fold_guardian and not phase_pair:
+        raise ValueError('fold guardian requires a BET candidate and published Standard DRAW ONNX')
     if ((args.bet_onnx is None) != (args.draw_onnx is None) or
             sum((args.reference, args.model is not None,
                  args.onnx_model is not None, phase_pair)) != 1):
         raise ValueError('choose exactly one of --model, --onnx-model, --reference or a phase pair')
     agent = (None if args.reference else
-             PhaseRoutedAgent(OnnxAgent(args.bet_onnx), OnnxAgent(args.draw_onnx))
+             (FoldGuardedPhaseAgent if args.fold_guardian else PhaseRoutedAgent)(
+                 OnnxAgent(args.bet_onnx), OnnxAgent(args.draw_onnx))
              if phase_pair else OnnxAgent(args.onnx_model) if args.onnx_model else
              DQNAgent.load(str(args.model), device='cpu'))
     if args.model and (agent.obs_dim != 96 or agent.n_actions != 6 or
@@ -116,7 +135,7 @@ def main():
         raise ValueError('candidate observation/action contract mismatch')
     candidate_path = args.model or args.onnx_model
     model_sha = (REFERENCE_POLICY_ID if args.reference else
-                 phase_model_sha(args.bet_onnx, args.draw_onnx) if phase_pair else
+                 phase_model_sha(args.bet_onnx, args.draw_onnx, args.fold_guardian) if phase_pair else
                  hashlib.sha256(candidate_path.read_bytes()).hexdigest())
     code_sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     manifest_sha = None
@@ -135,6 +154,8 @@ def main():
                 manifest.get('groupMatrix') != GROUP_NAMES or
                 manifest.get('opponentProfiles') != list(PROFILES)):
             raise ValueError('evaluation arguments differ from frozen manifest')
+        if manifest.get('foldGuardian', False) != args.fold_guardian:
+            raise ValueError('fold guardian differs from frozen manifest')
         if phase_pair and (manifest.get('betModelSha256') != hashlib.sha256(args.bet_onnx.read_bytes()).hexdigest() or
                            manifest.get('drawModelSha256') != hashlib.sha256(args.draw_onnx.read_bytes()).hexdigest()):
             raise ValueError('phase model identities differ from frozen manifest')
@@ -243,6 +264,7 @@ def main():
                                  if phase_pair else str(candidate_path) if candidate_path else None),
                'modelKind': ('phase-routed-onnx' if phase_pair else 'onnx' if args.onnx_model
                              else 'pytorch' if args.model else 'reference'),
+               'foldGuardian': args.fold_guardian,
                'seedBase': args.seed_base, 'sessions': len(rows),
                'hands': sum(row['hands'] for row in rows),
                'zeroSumSessions': sum(row['zeroSum'] for row in rows),

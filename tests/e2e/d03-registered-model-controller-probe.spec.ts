@@ -5,8 +5,8 @@ import { getProgressState, invokeE2E, performSafeAction, waitForE2EDriver } from
 
 // This is an isolated wiring probe. It never changes the shipped tier policy or proves strength.
 const MODELS = {
-  beginner: 'model-badugi-sixmax-standard-dqn-v2',
-  standard: 'model-badugi-sixmax-standard-e11',
+  beginner: 'model-badugi-beginner-controller-v2-20261104',
+  standard: 'model-badugi-standard-controller-v2-20261105',
   pro: 'model-badugi-pro-v1',
   iron: 'model-badugi-iron-v1',
   worldmaster: 'model-badugi-worldmaster-v1',
@@ -22,14 +22,16 @@ function forceRegisteredOnnxInTest(source: string) {
   return patched;
 }
 
-function captureDrawCardSelection(source: string) {
+function captureDrawCardSelection(source: string, tier: string) {
   const marker = 'const drawCount = discardIndexes.length;';
   expect(source.split(marker)).toHaveLength(2);
   return source.replace(marker, `${marker}
     if (onnxDrawDecision) window.__D03_MODEL_DRAW_SELECTION_AUDIT__.push({
       seat: seatToAct, drawRound,
       requestedDrawCount,
-      expectedIndexes: selectBadugiTrainingDiscardIndexes(me.hand, requestedDrawCount),
+      expectedIndexes: ${['beginner', 'standard'].includes(tier)
+        ? 'selectBadugiControllerDrawIndexesV2Draft'
+        : 'selectBadugiTrainingDiscardIndexes'}(me.hand, requestedDrawCount),
       plannedIndexes: [...discardIndexes],
     });`);
 }
@@ -46,7 +48,7 @@ for (const [tier, expectedModelId] of Object.entries(MODELS)) {
         const body = await response.text();
         patchedApp += 1;
         await route.fulfill({ response, body: captureDrawCardSelection(tier === 'beginner' || tier === 'standard'
-          ? body : forceRegisteredOnnxInTest(body)) });
+          ? body : forceRegisteredOnnxInTest(body), tier) });
       });
       await page.route('**/api/**', route => route.fulfill({
         status: 200, contentType: 'application/json',

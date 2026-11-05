@@ -21,7 +21,7 @@ describe("onnxPolicyAdapter Badugi schema", () => {
       outputShape: [6],
     });
     expect(selectModelForVariant({ variantId: "D03", tierId: "standard" })?.id).toBe(
-      "model-badugi-sixmax-standard-e11",
+      "model-badugi-standard-controller-v2-20261105",
     );
     expect(
       selectModelForVariant({
@@ -29,7 +29,7 @@ describe("onnxPolicyAdapter Badugi schema", () => {
         tierId: "standard",
         characterId: "badugi-sixmax-standard-ryo",
       })?.id,
-    ).toBe("model-badugi-sixmax-standard-e11");
+    ).toBe("model-badugi-standard-controller-v2-20261105");
     expect(selectModelForVariant({ variantId: "D03", tierId: "pro" })?.id).toBe(
       "model-badugi-pro-v1",
     );

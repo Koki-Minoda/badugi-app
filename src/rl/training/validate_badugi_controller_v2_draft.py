@@ -15,11 +15,18 @@ from collections import Counter
 from pathlib import Path
 
 import numpy as np
+import onnxruntime as ort
 
-from train_badugi_controller_v2_draft import (
-    ControllerBridge, DQNAgent, PROFILES, SCHEMA, check_decision, contract_hash,
-    opponent_action, observable_reference_action,
-)
+if __package__:
+    from .train_badugi_controller_v2_draft import (
+        ControllerBridge, DQNAgent, PROFILES, SCHEMA, check_decision, contract_hash,
+        opponent_action, observable_reference_action,
+    )
+else:
+    from train_badugi_controller_v2_draft import (
+        ControllerBridge, DQNAgent, PROFILES, SCHEMA, check_decision, contract_hash,
+        opponent_action, observable_reference_action,
+    )
 
 GROUPS = tuple((seats, occupied, tournament) for tournament in (False, True)
                for seats, occupied in ((2, 2), (3, 3), (6, 6), (6, 2), (6, 3)))
@@ -28,9 +35,33 @@ GROUP_NAMES = [f'{seats}/{occupied}-{("mtt" if tournament else "cash")}'
 REFERENCE_POLICY_ID = 'observable-reference-v1'
 
 
+class OnnxAgent:
+    """Use the same six Q values and legal mask as the browser adapter."""
+
+    def __init__(self, path):
+        self.session = ort.InferenceSession(str(path), providers=['CPUExecutionProvider'])
+        inputs, outputs = self.session.get_inputs(), self.session.get_outputs()
+        if (len(inputs) != 1 or len(outputs) != 1 or
+                inputs[0].name != 'observation' or outputs[0].name != 'q_values' or
+                inputs[0].shape[-1] != 96 or outputs[0].shape[-1] != 6):
+            raise ValueError('ONNX candidate observation/action contract mismatch')
+
+    def act(self, obs, epsilon, action_mask):
+        if epsilon != 0.0:
+            raise ValueError('controller validation requires greedy ONNX inference')
+        q_values = self.session.run(['q_values'], {'observation': obs[None, :]})[0][0]
+        if q_values.shape != (6,) or not np.all(np.isfinite(q_values)):
+            raise ValueError('ONNX candidate returned invalid Q values')
+        allowed = np.flatnonzero(np.asarray(action_mask) > 0)
+        if not len(allowed):
+            raise ValueError('controller validation requires legal ONNX actions')
+        return int(allowed[np.argmax(q_values[allowed])])
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=Path)
+    parser.add_argument('--onnx-model', type=Path)
     parser.add_argument('--reference', action='store_true')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--sessions-per-profile', type=int, default=6)
@@ -38,15 +69,20 @@ def main():
     parser.add_argument('--seed-base', type=int, default=410040001)
     parser.add_argument('--evaluation-manifest', type=Path)
     args = parser.parse_args()
-    if args.output.exists() or not 1 <= args.sessions_per_profile <= 100 or not 1 <= args.hands_per_session <= 100:
+    if args.output.exists() or not 1 <= args.sessions_per_profile <= 250 or not 1 <= args.hands_per_session <= 100:
         raise ValueError('new output directory and bounded session counts required')
-    if args.reference == (args.model is not None):
-        raise ValueError('choose exactly one of --model or --reference')
-    agent = None if args.reference else DQNAgent.load(str(args.model), device='cpu')
-    if agent and (agent.obs_dim != 96 or agent.n_actions != 6 or
+    if args.sessions_per_profile > 100 and not args.evaluation_manifest:
+        raise ValueError('large controller evaluations require a frozen manifest')
+    if sum((args.reference, args.model is not None, args.onnx_model is not None)) != 1:
+        raise ValueError('choose exactly one of --model, --onnx-model or --reference')
+    agent = (None if args.reference else
+             OnnxAgent(args.onnx_model) if args.onnx_model else
+             DQNAgent.load(str(args.model), device='cpu'))
+    if args.model and (agent.obs_dim != 96 or agent.n_actions != 6 or
                   agent.checkpoint_training_state.get('schemaVersion') != SCHEMA):
         raise ValueError('candidate observation/action contract mismatch')
-    model_sha = REFERENCE_POLICY_ID if args.reference else hashlib.sha256(args.model.read_bytes()).hexdigest()
+    candidate_path = args.model or args.onnx_model
+    model_sha = REFERENCE_POLICY_ID if args.reference else hashlib.sha256(candidate_path.read_bytes()).hexdigest()
     code_sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     manifest_sha = None
     if args.evaluation_manifest:
@@ -160,7 +196,9 @@ def main():
     summary = {'status': 'FROZEN_EVALUATION' if manifest_sha else 'EXPLORATORY_VALIDATION_ONLY',
                'evaluationManifestSha256': manifest_sha, 'codeGitSha': code_sha,
                'modelSha256': model_sha,
-               'contractSha256': contract_hash(), 'candidatePath': str(args.model) if args.model else None,
+               'contractSha256': contract_hash(),
+               'candidatePath': str(candidate_path) if candidate_path else None,
+               'modelKind': 'onnx' if args.onnx_model else 'pytorch' if args.model else 'reference',
                'seedBase': args.seed_base, 'sessions': len(rows),
                'hands': sum(row['hands'] for row in rows),
                'zeroSumSessions': sum(row['zeroSum'] for row in rows),

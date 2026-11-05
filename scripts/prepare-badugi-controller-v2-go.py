@@ -14,8 +14,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from src.rl.training.train_badugi_controller_v2_draft import (  # noqa: E402
-    BRIDGE, PLAN, SCHEMA, checkout_identity, contract_hash,
+    BRIDGE, PLAN, SCHEMA, STANDARD_PLAN, checkout_identity, contract_hash,
 )
+from src.rl.agents.dqn_agent import DQNAgent  # noqa: E402
 
 
 def digest(path):
@@ -42,14 +43,19 @@ def main():
     parser.add_argument("--diagnosis-run", type=Path)
     parser.add_argument("--candidate-validation", type=Path)
     parser.add_argument("--reference-validation", type=Path)
+    parser.add_argument("--tier", choices=("beginner", "standard"), default="beginner")
+    parser.add_argument("--init-model", type=Path)
     args = parser.parse_args()
     require(not (args.followup and args.anchor), "choose only one cause-based run")
+    require(args.tier == "beginner" or not (args.followup or args.anchor),
+            "Standard first diagnostic run cannot use a Beginner cause-based followup")
     require(not args.out.exists(), "GO output already exists")
     require(len(args.audit_dir) == 2, "require both native and sparse independent audits")
     code_sha, dirty = checkout_identity()
     require(not dirty, "training checkout must be committed and clean")
-    plan = load(PLAN)
-    expected_status = ("FROZEN_FOR_REFERENCE_ANCHOR_RUN" if args.anchor else
+    plan = load(STANDARD_PLAN if args.tier == "standard" else PLAN)
+    expected_status = ("FROZEN_FOR_STANDARD_ANCHOR_RUN" if args.tier == "standard" else
+                       "FROZEN_FOR_REFERENCE_ANCHOR_RUN" if args.anchor else
                        "FROZEN_FOR_CAUSE_BASED_BOOTSTRAP_RUN" if args.followup else
                        "FROZEN_FOR_FIRST_MAC_RUN")
     require(plan.get("status") == expected_status and
@@ -57,6 +63,20 @@ def main():
             plan.get("firstTrainingRunHands") == 200 and
             len(plan.get("trainingGroups", [])) == 10,
             "training plan is not frozen for the requested Mac run")
+    initial_model_sha = None
+    if args.tier == "standard":
+        require(args.init_model is not None and args.init_model.is_file(),
+                "Standard needs the evaluated v2 Beginner checkpoint")
+        initial_model = DQNAgent.load(str(args.init_model), device="cpu")
+        require(initial_model.obs_dim == 96 and initial_model.n_actions == 6 and
+                initial_model.checkpoint_training_state.get("schemaVersion") == SCHEMA and
+                initial_model.checkpoint_training_state.get("tier") == "beginner",
+                "Standard initial checkpoint contract mismatch")
+        initial_model_sha = digest(args.init_model)
+        require(initial_model_sha == plan.get("initialCheckpointSha256"),
+                "Standard initial checkpoint differs from the frozen evaluated Beginner")
+    else:
+        require(args.init_model is None, "Beginner run must not receive an initial model")
     audit_evidence = []
     covered = set()
     for directory in args.audit_dir:
@@ -132,7 +152,7 @@ def main():
     require(free >= 20 * 1024 ** 3 and mem >= 16 * 1024 ** 3,
             "Mac resource floor for first run not met")
     followup_evidence = None
-    if args.followup or args.anchor:
+    if args.followup or args.anchor or args.tier == "standard":
         require(all((args.diagnosis_run, args.candidate_validation,
                      args.reference_validation)), "followup requires training and both validation reports")
         prior = load(args.diagnosis_run / "run-summary.json")
@@ -147,8 +167,18 @@ def main():
             values = [row["chipPerHand"] / (50 if row["isTournament"] else 20)
                       for row in rows if row["profile"] == "pressure"]
             return sum(values) / len(values)
+        def cash_mean(rows):
+            values = [row["chipBbPerHand"] for row in rows if row["group"].endswith("cash")]
+            return sum(values) / len(values)
         expected_hands = 2000 if args.anchor else 200
+        prior_action_ok = (
+            sum(row["heroActions"].get("BET:0", 0) for row in candidate_rows) <
+            sum(row["heroActions"].get("BET:0", 0) for row in reference_rows) / 10
+            if args.tier == "standard" else
+            "BET:0" not in candidate_actions and
+            (args.anchor or "DRAW:0" not in candidate_actions))
         require(prior.get("status") == "TRAINING_CHECKPOINT" and
+                prior.get("tier") == args.tier and
                 prior.get("trained") and prior.get("hands") == expected_hands and
                 prior.get("optimizerSteps", 0) > 0 and
                 prior.get("zeroSumHands") == expected_hands and
@@ -157,10 +187,11 @@ def main():
                 candidate_summary.get("hands") == reference_summary.get("hands") == 4800 and
                 candidate_summary.get("zeroSumSessions") == 240 and
                 reference_summary.get("zeroSumSessions") == 240 and
-                "BET:0" not in candidate_actions and
-                (args.anchor or "DRAW:0" not in candidate_actions) and
-                pressure_mean(candidate_rows) < 0 and
-                pressure_mean(reference_rows) > pressure_mean(candidate_rows),
+                prior_action_ok and
+                ((cash_mean(candidate_rows) < cash_mean(reference_rows))
+                 if args.tier == "standard" else
+                 pressure_mean(candidate_rows) < 0 and
+                 pressure_mean(reference_rows) > pressure_mean(candidate_rows)),
                 "followup cause evidence does not match the documented action collapse")
         followup_evidence = {
             "firstRunSummarySha256": digest(args.diagnosis_run / "run-summary.json"),
@@ -169,22 +200,31 @@ def main():
             "referenceValidationSha256": digest(args.reference_validation / "sessions.jsonl"),
             "candidatePressureBbPerHand": pressure_mean(candidate_rows),
             "referencePressureBbPerHand": pressure_mean(reference_rows),
+            "candidateCashBbPerHand": cash_mean(candidate_rows),
+            "referenceCashBbPerHand": cash_mean(reference_rows),
             "candidateActions": sorted(candidate_actions),
         }
-    max_hands = (plan["anchorTrainingRunHands"] if args.anchor else
+    max_hands = (plan["anchorTrainingRunHands"] if args.tier == "standard" else
+                 plan["anchorTrainingRunHands"] if args.anchor else
                  plan["followupTrainingRunHands"] if args.followup else 200)
     manifest = {
-        "status": "GO", "tier": "beginner", "trainingHost": "mac", "maxHands": max_hands,
-        "bootstrapHands": (plan["anchorBootstrapHands"] if args.anchor else
+        "status": "GO", "tier": args.tier, "trainingHost": "mac", "maxHands": max_hands,
+        "bootstrapHands": (plan["anchorBootstrapHands"] if args.anchor or args.tier == "standard" else
                            plan["followupBootstrapHands"] if args.followup else 0),
-        "imitationSteps": (plan["anchorImitationSteps"] if args.anchor else
+        "imitationSteps": (plan["anchorImitationSteps"] if args.anchor or args.tier == "standard" else
                            plan["followupImitationSteps"] if args.followup else 0),
-        "referenceAnchorEvery": plan["anchorEveryRlHand"] if args.anchor else 0,
-        "seedBase": plan["anchorSeedBase"] if args.anchor else
+        "referenceAnchorEvery": plan["anchorEveryRlHand"] if args.anchor or args.tier == "standard" else 0,
+        "seedBase": plan["trainingSeedBase"] if args.tier == "standard" else
+                    plan["anchorSeedBase"] if args.anchor else
                     plan["followupSeedBase"] if args.followup else 310040001,
         "schemaVersion": SCHEMA, "codeGitSha": code_sha,
         "contractSha256": contract_hash(), "bridgeSha256": digest(BRIDGE),
         "planSha256": digest(PLAN),
+        "tierPlanSha256": digest(STANDARD_PLAN) if args.tier == "standard" else None,
+        "initialModelSha256": initial_model_sha,
+        "initialModelPath": str(args.init_model) if args.init_model else None,
+        "explorationEpsilon": plan["explorationEpsilon"] if args.tier == "standard" else None,
+        "anchorPolicyId": plan["anchorPolicyId"] if args.tier == "standard" else None,
         "independentSlotAuditPassed": True, "uiEventAuditPassed": True,
         "controllerActionAuditPassed": True, "seedAndOpponentPlanFrozen": True,
         "macResourcePassed": True, "preparedAtUtc": datetime.now(timezone.utc).isoformat(),
@@ -200,7 +240,7 @@ def main():
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(manifest, indent=2) + "\n")
-    print(json.dumps({"status": "GO", "tier": "beginner", "maxHands": max_hands,
+    print(json.dumps({"status": "GO", "tier": args.tier, "maxHands": max_hands,
                       "codeGitSha": code_sha, "manifestSha256": digest(args.out)}, indent=2))
 
 

@@ -34,8 +34,9 @@ function buildObservation(payload) {
 
 export function createBadugiControllerV2Inference(entry) {
   if (!entry?.id || !entry?.onnx || entry.featureSet !== 'badugi-controller-observation-v2-draft' ||
-      entry.inputShape?.[0] !== 96 || entry.outputShape?.[0] !== 6 || entry.tier !== 'beginner') {
-    throw new TypeError('D03 v2 inference requires a versioned 96-input/6-output Beginner entry');
+      entry.inputShape?.[0] !== 96 || entry.outputShape?.[0] !== 6 ||
+      !['beginner', 'standard'].includes(entry.tier)) {
+    throw new TypeError('D03 v2 inference requires a versioned 96-input/6-output Beginner or Standard entry');
   }
   async function infer(payload, phase) {
     const started = Date.now();

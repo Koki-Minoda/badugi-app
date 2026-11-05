@@ -47,9 +47,9 @@ def test_ten_game_beginner_standard_routes_are_explicit_and_safe():
     badugi_standard = next(tier for tier in badugi["tiers"] if tier["tier"] == "standard")
 
     assert badugi_beginner["routeStatus"] == "variant-model"
-    assert badugi_beginner["modelId"] == "model-badugi-sixmax-standard-dqn-v2"
+    assert badugi_beginner["modelId"] == "model-badugi-beginner-controller-v2-20261104"
     assert badugi_beginner["fallbackAllowed"] is False
-    assert badugi_standard["modelId"] == "model-badugi-sixmax-standard-e11"
+    assert badugi_standard["modelId"] == "model-badugi-standard-controller-v2-20261105"
 
     for row in plan["variants"]:
         if row["variantId"] in {"D03", "B09"}:

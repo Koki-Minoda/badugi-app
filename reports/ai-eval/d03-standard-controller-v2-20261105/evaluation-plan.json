@@ -1,0 +1,50 @@
+{
+  "status": "FROZEN_BEFORE_EVALUATION",
+  "frozenAtUtc": "2026-11-04T23:47:41.977047+00:00",
+  "codeGitSha": "7fe453d8239d4206ad42e98a4baa855814d823ee",
+  "candidateModelSha256": "af31b433508c5e5a941ed04463380721e32fc7ebfe6715fa7b790396be91c80c",
+  "publishedBeginnerCheckpointSha256": "c1d7a335953c188ba6edd512c6596cf0803a84a8405bc33fbd4e3b505d0a2322",
+  "publishedBeginnerOnnxSha256": "61681aa1c652410e52249be2834834eca569b56fb29305b462ac4de2e7a80f5d",
+  "candidateSeedBase": 4030040001,
+  "beginnerSeedBase": 4130040001,
+  "cells": 40,
+  "sessionsPerCellPerArm": 200,
+  "sessionsPerArm": 8000,
+  "handsPerSessionMax": 20,
+  "maxHandsPerArm": 160000,
+  "groupMatrix": [
+    "2/2-cash",
+    "3/3-cash",
+    "6/6-cash",
+    "6/2-cash",
+    "6/3-cash",
+    "2/2-mtt",
+    "3/3-mtt",
+    "6/6-mtt",
+    "6/2-mtt",
+    "6/3-mtt"
+  ],
+  "opponentProfiles": [
+    "passive",
+    "pressure",
+    "draw_heavy",
+    "random_legal"
+  ],
+  "quality": {
+    "bootstrapReplicates": 5000,
+    "bootstrapSeed": 4230040001,
+    "minimumImprovementBbPerHand": 0.05,
+    "minimumCellMeanBbPerHand": -1.0,
+    "maximumMaterialCellRegressionBbPerHand": 0.1,
+    "minimumFoldRate": 0.02,
+    "minimumPatRate": 0.15,
+    "deltaInterpretation": "At least 1 BB improvement per 20-hand session over published Beginner, two-sided 95% lower bound above 0.05 BB/hand for overall, cash and MTT. No of 40 cell differences may have a two-sided 95% upper bound below -0.10 BB/hand; this is an adoption veto, with no multiplicity claim."
+  },
+  "browserEvidenceIndexSha256": "d36837a653f684a4a10b026f97578749f6cc0a4c5f06a958ff9f5d2a73cc7fd5",
+  "selectionDisclosure": "Public heads-up MTT route was chosen after previous frozen evaluation found a severe 2/2-MTT pressure regression. Current correction was selected on exploratory seeds 3830040001 and 3930040001. Neither previous frozen nor exploratory sessions enter this new final evaluation.",
+  "limitations": [
+    "Scripted opponents do not prove human or ICM strength.",
+    "Unpaired sessions cannot establish hand-level causal paired EV.",
+    "A controller gate pass does not publish the model or prove production routing."
+  ]
+}

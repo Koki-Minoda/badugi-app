@@ -570,7 +570,21 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
             // The legacy Badugi snapshot can retain the previous hand ID
             // after the overlay has closed, so only require a new ID while
             // deciding whether a still-visible result belongs to a new hand.
-            if (!progress.handId || progress.handId === before.handId) return "previous";
+            if (!progress.handId || progress.handId === before.handId) {
+              // When a short stack is all-in from the new hand's blinds, that
+              // hand can settle before the legacy controller snapshot updates.
+              // Only accept it after its distinct HAND_END was persisted.
+              const nextHandId = await page.evaluate(() =>
+                (window as any).__BADUGI_E2E__?.getNextHandDebug?.()?.handId ?? null
+              );
+              if (nextHandId && nextHandId !== before.handId &&
+                  (await historyRecords(page)).some((record: any) =>
+                    record.handId === nextHandId &&
+                    record.events?.some((event: any) => event.type === "HAND_END"))) {
+                return "settled";
+              }
+              return "previous";
+            }
             // A blind all-in or walk can settle the new hand before the old
             // result overlay disappears. Require its own history record so a
             // stale overlay cannot be mistaken for the next hand's result.

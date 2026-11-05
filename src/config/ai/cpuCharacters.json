@@ -4,26 +4,26 @@
     "label": "Ryo",
     "variantIds": ["D03"],
     "tierId": "standard",
-    "modelId": "model-badugi-sixmax-standard-e11",
+    "modelId": "model-badugi-standard-controller-v2-20261105",
     "style": "profile-diverse",
-    "notes": "Badugi Standard E11 fixed 3k checkpoint. Regression gate PASS across 3 seeds and 7 opponent profiles."
+    "notes": "Badugi Standard controller v2 evaluated in independent real-controller sessions; character style is presentation metadata."
   },
   {
     "id": "badugi-standard-reader",
     "label": "Reading Standard",
     "variantIds": ["D03"],
     "tierId": "standard",
-    "modelId": "model-badugi-sixmax-standard-e11",
+    "modelId": "model-badugi-standard-controller-v2-20261105",
     "style": "opponent-reading",
-    "notes": "Routes to the shared Badugi Standard E11 base model; opponent-reading behavior is applied as character style metadata."
+    "notes": "Routes to the evaluated Badugi Standard controller v2; opponent-reading style is presentation metadata."
   },
   {
     "id": "badugi-standard-balanced",
     "label": "Balanced Standard",
     "variantIds": ["D03"],
     "tierId": "standard",
-    "modelId": "model-badugi-sixmax-standard-e11",
+    "modelId": "model-badugi-standard-controller-v2-20261105",
     "style": "baseline-balanced",
-    "notes": "Routes to the shared Badugi Standard E11 base model. The former Standard v2 is now Beginner; older models remain comparison-only."
+    "notes": "Routes to the evaluated Badugi Standard controller v2; older E11 remains registered for comparison."
   }
 ]

@@ -13,8 +13,8 @@ const REPORT_PATH = path.join(REPORT_DIR, "badugi-value-bet-live-observation.jso
 const AI_TIER_OVERRIDE = process.env.E2E_AI_TIER_OVERRIDE?.trim() || null;
 const ONNX_RESPONSE_DELAY_MS = Number(process.env.E2E_ONNX_RESPONSE_DELAY_MS ?? 0);
 const EXPECTED_ONNX_MODEL_BY_TIER: Record<string, string> = {
-  beginner: "model-badugi-sixmax-standard-dqn-v2",
-  standard: "model-badugi-sixmax-standard-e11",
+  beginner: "model-badugi-beginner-controller-v2-20261104",
+  standard: "model-badugi-standard-controller-v2-20261105",
 };
 
 function ensureReportDir() {

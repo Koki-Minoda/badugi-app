@@ -62,4 +62,12 @@ describe("GameSelectorScreen", () => {
     fireEvent.click(screen.getByTestId("game-selector-play-badugi"));
     expect(onLaunchVariant).toHaveBeenCalledWith("badugi", { cashTierId: "beginner" });
   });
+
+  it("passes a selected Badugi Pro cash tier through the normal launch", () => {
+    const onLaunchVariant = vi.fn();
+    render(<GameSelectorScreen language="ja" onLaunchVariant={onLaunchVariant} />);
+    fireEvent.change(screen.getByTestId("badugi-cash-tier"), { target: { value: "pro" } });
+    fireEvent.click(screen.getByTestId("game-selector-play-badugi"));
+    expect(onLaunchVariant).toHaveBeenCalledWith("badugi", { cashTierId: "pro" });
+  });
 });

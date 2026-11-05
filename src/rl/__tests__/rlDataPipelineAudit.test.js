@@ -84,9 +84,12 @@ describe("RL data pipeline audit guards", () => {
     expect(vector[34]).toBe(1);
     expect(vector[36]).toBe(1);
 
-    const entry = selectModelForVariant({ variantId: "D03", tierId: "pro" });
+    const entry = selectModelForVariant({ variantId: "D03", tierId: "iron" });
+    const pro = selectModelForVariant({ variantId: "D03", tierId: "pro" });
     expect(entry.inputShape).toEqual([96]);
     expectFiniteVector(buildBadugiOnnxFeatures(entry, payload), 96);
+    expect(pro.featureSet).toBe("badugi-controller-observation-v2-draft");
+    expect(() => buildBadugiOnnxFeatures(pro, payload)).toThrow(/Unsupported Badugi ONNX feature set/);
   });
 
   it.each([

@@ -382,6 +382,16 @@ jobs:
           path: test-results/d03-v2-beginner-production-*/
           if-no-files-found: ignore
           retention-days: 30
+      - name: Badugi Pro real cash and tournament model use, legal actions, chips, and timeout fallback
+        run: npx playwright test tests/e2e/d03-v2-pro-production-runtime.spec.ts --project=badugi-flow --project=d03-v2-iphone-webkit --workers=2
+      - name: Upload Badugi Pro browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d03-pro-browser-qa
+          path: test-results/d03-v2-pro-production-*/
+          if-no-files-found: ignore
+          retention-days: 30
       - name: Candidate MIX rotation and BET/DRAW mobile layout
         env:
           E2E_APP_URL: http://127.0.0.1:3000/

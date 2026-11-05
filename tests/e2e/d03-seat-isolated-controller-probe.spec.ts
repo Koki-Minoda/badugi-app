@@ -16,12 +16,9 @@ function isolateSeatOne(source: string, modelTier: string | null, seats: number)
     `const onnxTier = seatToAct === 1 ? ${JSON.stringify(modelTier ?? 'teacher')} : "teacher";`);
   patched = patched.replace(drawTier,
     `const onnxTier = activeSeat === 1 ? ${JSON.stringify(modelTier ?? 'teacher')} : "teacher";`);
-  const guard = 'const shouldUseOnnx = onnxTier === "beginner" || onnxTier === "standard";';
+  const guard = 'const shouldUseOnnx = ["beginner", "standard", "pro"].includes(onnxTier);';
   expect(patched.split(guard)).toHaveLength(3);
   patched = patched.replaceAll(guard, 'const shouldUseOnnx = onnxTier !== "teacher";');
-  const proOverlay = /activeAiTierConfig\?\.id === "pro"(\s*\?\s*chooseProAction\()/g;
-  expect([...patched.matchAll(proOverlay)]).toHaveLength(2);
-  patched = patched.replace(proOverlay, 'false$1');
   if (seats < 6) {
     const initialSeats = 'const [seatConfig, setSeatConfig] = useState(() => [...DEFAULT_SEAT_TYPES]);';
     expect(patched.split(initialSeats)).toHaveLength(2);
@@ -35,7 +32,7 @@ function isolateSeatOne(source: string, modelTier: string | null, seats: number)
 const MODEL_IDS = {
   beginner: 'model-badugi-beginner-controller-v2-20261104',
   standard: 'model-badugi-standard-controller-v2-20261105',
-  pro: 'model-badugi-pro-v1',
+  pro: 'model-badugi-pro-controller-v2-20261105',
   iron: 'model-badugi-iron-v1',
   worldmaster: 'model-badugi-worldmaster-v1',
 } as const;

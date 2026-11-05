@@ -33,6 +33,14 @@ describe("ai tier context resolution", () => {
       .toBe("standard");
   });
 
+  it("preserves an explicit Pro choice in cash and custom practice MTT", () => {
+    expect(resolveAiTierForGameContext({ mode: "cash", cashTierId: "pro" })?.id)
+      .toBe("pro");
+    expect(resolveAiTierForGameContext({ mode: "tournament-mtt",
+      config: { stageId: "store", practiceOnly: true, aiTierId: "pro" } })?.id)
+      .toBe("pro");
+  });
+
   it("allows Beginner in a custom practice MTT without changing ranked stages", () => {
     expect(resolveAiTierForGameContext({ mode: "tournament-mtt",
       config: { stageId: "store", practiceOnly: true, aiTierId: "beginner" } })?.id)

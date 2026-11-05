@@ -10,6 +10,7 @@ import HandResultOverlay from '../../components/HandResultOverlay.jsx';
 import HeroBustOverlay from '../../components/HeroBustOverlay.jsx';
 import TournamentResultOverlay from '../../components/TournamentResultOverlay.jsx';
 import TournamentEliminatedRail from '../../components/TournamentEliminatedRail.jsx';
+import Modal from '../../components/Modal.jsx';
 import '../../../styles/mobile-table.css';
 import '../../../styles/oval-table.css';
 
@@ -52,7 +53,7 @@ export default function MobileGameLayout({headerProps:h,sidePanelProps:s,tablePr
  const invoke=a=>{if(!a)return;const fn={onFold:c.playerFold,onCall:c.playerCall,onCheck:c.playerCheck,onRaise:c.playerRaise}[a.handler];fn?.();};
  const renderSeat=({seat,index},isHero=false)=><MobileTableSeat seat={seat} index={index} hero={isHero} active={t.controllerTurn===index} dealer={t.controllerDealerIdx===index} position={t.positionNameFn(index,t.controllerDealerIdx,t.seatLayouts.length)} variant={t.gameVariant} language={h.language} selection={isHero?t.heroDrawSelection:[]} canDraw={isHero&&t.heroCanDraw} onCardClick={t.handleCardClick}/>;
  return <div className={`mgx-play mgx-play--oval ${viewport.width>viewport.height?'is-landscape':'is-portrait'}`} data-layout-mode={viewport.width>viewport.height?'mobile-landscape':'mobile-portrait'} data-testid="mobile-play-layout" data-phase-tone={phaseTone} style={{width:viewport.width,height:viewport.height,left:viewport.left,top:viewport.top}}>
-  <header className="mgx-play-header"><div><span className="mgx-wordmark">MGX</span><h1>{h.gameTitle}</h1></div><div className="mgx-play-tools">{t.isTournament&&<TournamentEliminatedRail entries={t.eliminatedRailEntries} layoutMode="mobile" language={h.language}/>}<VariantRuleReminder variantId={t.gameVariant} language={h.language} mobile/><details><summary aria-label={ja?'対局メニュー':'Table menu'}>{ja?'メニュー':'Menu'}</summary><nav><button onClick={h.onNavigateHistory}>{ja?'履歴':'History'}</button><button onClick={h.onNavigateSettings}>{ja?'設定':'Settings'}</button><button onClick={c.isCashGame?c.onCashOut:h.onNavigateTitle}>{ja?(c.isCashGame?'精算して退出':'大会を中断'):(c.isCashGame?'Cash out':'Pause tournament')}</button></nav></details></div></header>
+  <header className="mgx-play-header"><div><span className="mgx-wordmark">MGX</span><h1>{h.gameTitle}</h1></div><div className="mgx-play-tools">{t.isTournament&&<TournamentEliminatedRail entries={t.eliminatedRailEntries} layoutMode="mobile" language={h.language}/>}<VariantRuleReminder variantId={t.gameVariant} language={h.language} mobile/><details><summary aria-label={ja?'対局メニュー':'Table menu'}>{ja?'メニュー':'Menu'}</summary><nav><button onClick={h.onNavigateHistory}>{ja?'履歴':'History'}</button><button onClick={h.onNavigateSettings}>{ja?'設定':'Settings'}</button>{c.isCashGame&&<button type="button" data-testid="open-seat-manager" onClick={event=>{event.currentTarget.closest('details').open=false;s.onOpenSeatManager();}}>{ja?'席設定':'Seats'}</button>}<button onClick={c.isCashGame?c.onCashOut:h.onNavigateTitle}>{ja?(c.isCashGame?'精算して退出':'大会を中断'):(c.isCashGame?'Cash out':'Pause tournament')}</button></nav></details></div></header>
   <main className="mgx-play-main">
    <OvalTableScene others={others} hero={hero} renderSeat={renderSeat}>
     <div className="mgx-community" data-testid="table-community"><div data-testid="table-total-pot"><span>POT</span><strong>{Number(s.totalPot||0).toLocaleString()}</strong></div><div className="mgx-board-cards">{t.boardCards.map((card,i)=><TableCard key={i} card={card} testId={`board-card-${i}`}/>)}</div><span className="mgx-community-phase" data-testid="table-phase-badge">{phase}</span></div>
@@ -83,5 +84,11 @@ export default function MobileGameLayout({headerProps:h,sidePanelProps:s,tablePr
   <HandResultOverlay players={s.seatViews} heroSeat={s.heroIndex} language={h.language} guestTrial={o.guestTrial} reviewHandId={o.reviewHandId} visible={o.handResultVisible} summary={o.handResultSummary} onNext={o.onNextHand} buttonLabel={o.nextHandLabel} onReplayTarget={o.onReplayTarget} onHistory={h.onNavigateHistory} onCashOut={c.isCashGame?c.onCashOut:null}/>
   <HeroBustOverlay visible={o.heroBustOverlayVisible} language={h.language} title={o.heroBustSummary?.title} heroSummary={o.heroBustSummary?.hero} inMoneyPlacements={o.heroBustSummary?.inMoney??[]} tournamentReview={o.tournamentReview} onOpenReviewReplay={o.onOpenTournamentReviewReplay} onBackToMenu={o.onTournamentBackToMenu}/>
   <TournamentResultOverlay visible={o.tournamentOverlayVisible} language={h.language} placements={o.tournamentPlacements} title={o.tournamentTitle} tournamentReview={o.tournamentReview} onOpenReviewReplay={o.onOpenTournamentReviewReplay} onBackToMenu={o.onTournamentBackToMenu} onEnterNewTournament={o.onEnterNewTournament}/>
+  <Modal open={s.seatManagerOpen} title={ja?'席設定':'Seat Manager'} onClose={s.onCloseSeatManager} className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
+   <div className="space-y-2">
+    <p>{ja?'変更は次のハンドから反映されます':'Changes apply on the next hand.'}</p>
+    {s.seatConfig.map((seatType,index)=><label key={index} className="flex items-center justify-between gap-3 text-sm"><span>{ja?`席 ${index+1}`:`Seat ${index+1}`}</span><select data-testid={`seat-type-${index}`} className="rounded border border-white/20 bg-slate-900 px-3 py-2" value={seatType} disabled={index===0} onChange={event=>s.onSeatTypeChange(index,event.target.value)}>{s.seatTypeOptions.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
+   </div>
+  </Modal>
  </div>;
 }

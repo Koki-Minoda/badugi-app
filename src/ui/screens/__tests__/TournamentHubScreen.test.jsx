@@ -77,6 +77,19 @@ describe("TournamentHubScreen", () => {
     });
   });
 
+  it("offers Pro in a normal custom Badugi practice tournament", () => {
+    const handleStart = vi.fn();
+    render(<TournamentHubScreen onStartTournament={handleStart} />);
+    fireEvent.click(screen.getByLabelText("自分で設定した練習大会を開く（Badugi）"));
+    fireEvent.change(screen.getByTestId("badugi-practice-tier"),
+      { target: { value: "pro" } });
+    expect(screen.getByTestId("tournament-stage-detail").textContent).toContain("Pro");
+    fireEvent.click(screen.getByTestId("tournament-start"));
+    expect(handleStart.mock.calls[0][0]).toMatchObject({
+      practiceOnly: true, aiTierId: "pro", gameVariant: "badugi",
+    });
+  });
+
   it.each([
     ["local", "local-mtt", "Pro", { store: 1 }, 1_000],
     ["national", "national-mtt", "Iron", { local: 1 }, 3_000],

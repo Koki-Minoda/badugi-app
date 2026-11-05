@@ -23,25 +23,14 @@ function injectCandidate(source: string) {
     'const onnxTier = seatToAct === 1 ? "pro" : "teacher";');
   patched = patched.replace(originalTier,
     'const onnxTier = activeSeat === 1 ? "pro" : "teacher";');
-  // The public Pro route is unchanged; patch only this isolated browser test.
+  // Patch only the isolated candidate call; the registered public Pro route stays intact.
   for (const [oldName, newName] of [
-    ['? inferBadugiStandardControllerV2Draw', '? inferBadugiControllerV2ProGuardedCandidateDraw'],
-    ['? inferBadugiStandardControllerV2Bet', '? inferBadugiControllerV2ProGuardedCandidateBet'],
+    ['? inferBadugiProControllerV2Draw', '? inferBadugiControllerV2ProGuardedCandidateDraw'],
+    ['? inferBadugiProControllerV2Bet', '? inferBadugiControllerV2ProGuardedCandidateBet'],
   ]) {
     if (patched.split(oldName).length !== 2) throw new Error(`D03 inference site changed: ${oldName}`);
     patched = patched.replace(oldName, newName);
   }
-  patched = patched.replaceAll('onnxTier === "standard"', 'onnxTier === "pro"');
-  let overlaySites = 0;
-  patched = patched.replace(/activeAiTierConfig\?\.id === "pro"(\s+\? chooseProAction)/g,
-    (_, suffix) => {
-      overlaySites += 1;
-      return `activeAiTierConfig?.id === "pro" && onnxTier !== "pro"${suffix}`;
-    });
-  if (overlaySites !== 2) throw new Error('D03 Pro overlay sites changed');
-  const oldDrawSelector = '["beginner", "standard"].includes(onnxTier)';
-  if (patched.split(oldDrawSelector).length !== 3) throw new Error('D03 draw selector changed');
-  patched = patched.replaceAll(oldDrawSelector, '["beginner", "standard", "pro"].includes(onnxTier)');
   return patched;
 }
 

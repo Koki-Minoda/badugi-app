@@ -134,7 +134,7 @@ export default function TournamentHubScreen({
     stageViews[0] ??
     null;
   const customBase = buildTournamentConfigFromStage('store');
-  const selected = custom ? { ...stageViews.find(v => v.stage.id === 'store'), stage:TOURNAMENT_STAGES[0], config:customBase, stageLabel:ja?'練習大会':'Practice', title:structure.name, subtitle:ja?'CPUと対局。成績や参加条件には影響しません。':'Play against CPUs. Does not affect career progress or unlocks.', players:customBase.totalPlayers, tables:customBase.tables, startingStack:structure.startingStack, aiTierLabel:practiceAiTierId === 'beginner' ? 'Beginner' : 'Standard', blindSheetLabel:structure.name, variantUnlocked:true, playable:true, eligibility:{eligible:true}, affordability:{ok:true} } : selectedStage;
+  const selected = custom ? { ...stageViews.find(v => v.stage.id === 'store'), stage:TOURNAMENT_STAGES[0], config:customBase, stageLabel:ja?'練習大会':'Practice', title:structure.name, subtitle:ja?'CPUと対局。成績や参加条件には影響しません。':'Play against CPUs. Does not affect career progress or unlocks.', players:customBase.totalPlayers, tables:customBase.tables, startingStack:structure.startingStack, aiTierLabel:practiceAiTierId === 'beginner' ? 'Beginner' : practiceAiTierId === 'pro' ? 'Pro' : 'Standard', blindSheetLabel:structure.name, variantUnlocked:true, playable:true, eligibility:{eligible:true}, affordability:{ok:true} } : selectedStage;
   const canStartSelected = Boolean((custom || selected?.playable) && !resumeableSnapshot);
 
   const handleStart = () => {
@@ -195,6 +195,7 @@ export default function TournamentHubScreen({
               className="min-h-11 rounded-md border border-white/20 bg-slate-900 px-3 text-white">
               <option value="standard">Standard</option>
               <option value="beginner">Beginner</option>
+              <option value="pro">Pro</option>
             </select>
           </label>
         ) : null}

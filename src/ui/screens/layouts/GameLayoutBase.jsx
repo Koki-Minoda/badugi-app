@@ -202,6 +202,7 @@ export default function GameLayoutBase({
     notificationVariant,
     notificationMessage,
     seatManagerOpen,
+    onOpenSeatManager,
     onCloseSeatManager,
     autoRotateSeats,
     onToggleAutoRotateSeats,
@@ -821,6 +822,16 @@ export default function GameLayoutBase({
           >
             {labels.history ?? "History"}
           </button>
+          {isCashGame && (
+            <button
+              type="button"
+              data-testid="open-seat-manager"
+              onClick={onOpenSeatManager}
+              className="hover:text-yellow-400 transition"
+            >
+              {language === "ja" ? "席設定" : "Seats"}
+            </button>
+          )}
           {!isMobileLayout && <VariantRuleReminder variantId={gameVariant} language={language} />}
         </nav>
       </header>
@@ -1444,21 +1455,26 @@ export default function GameLayoutBase({
               }
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-xs uppercase tracking-wider text-slate-400">
-              Seat Layout
-            </label>
-            <select
-              className="w-full rounded border border-white/20 bg-slate-900/80 px-3 py-2 text-sm"
-              value={seatConfig}
-              onChange={(event) => onSeatTypeChange(event.target.value)}
-            >
-              {seatTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-wider text-slate-400">Seat Layout</p>
+            {seatConfig.map((seatType, index) => (
+              <label key={index} className="flex items-center justify-between gap-3 text-sm">
+                <span>{language === "ja" ? `席 ${index + 1}` : `Seat ${index + 1}`}</span>
+                <select
+                  data-testid={`seat-type-${index}`}
+                  className="rounded border border-white/20 bg-slate-900/80 px-3 py-2 text-sm"
+                  value={seatType}
+                  disabled={index === 0}
+                  onChange={(event) => onSeatTypeChange(index, event.target.value)}
+                >
+                  {seatTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
           </div>
           <div className="space-y-1">
             <label className="text-xs uppercase tracking-wider text-slate-400">

@@ -200,6 +200,7 @@ function VariantCard({ profile, onLaunch, copy }) {
           >
             <option value="standard">Standard</option>
             <option value="beginner">Beginner</option>
+            <option value="pro">Pro</option>
           </select>
         </label>
       ) : null}

@@ -16,7 +16,7 @@ from statistics import mean, stdev
 MODEL_IDS = {
     "beginner": "model-badugi-sixmax-standard-dqn-v2",
     "standard": "model-badugi-sixmax-standard-e11",
-    "pro": "model-badugi-pro-v1",
+    "pro": "model-badugi-pro-controller-v2-20261105",
     "iron": "model-badugi-iron-v1",
     "worldmaster": "model-badugi-worldmaster-v1",
 }

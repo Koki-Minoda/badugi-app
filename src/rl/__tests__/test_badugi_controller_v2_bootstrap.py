@@ -14,6 +14,7 @@ from rl.training.train_badugi_controller_v2_draft import (
     training_opponent_profile,
 )
 from rl.training.export_badugi_controller_v2_mode_ensemble import ModeEnsemble
+from rl.training.export_badugi_controller_v2_candidate import check_parity
 from rl.training.export_badugi_controller_v2_phase_candidate import PhaseEnsemble
 from rl.training.validate_badugi_controller_v2_draft import (
     FoldGuardedPhaseAgent, OnnxAgent, PhaseRoutedAgent,
@@ -31,6 +32,15 @@ def decision(phase, made, high, round_index, to_call_bb, mask):
 
 
 class BootstrapPolicyTests(unittest.TestCase):
+    def test_fp32_export_rounding_requires_unchanged_action(self):
+        expected = np.asarray([[0.1, 0.5, 0.2], [0.5, 0.1, 0.2]], dtype=np.float32)
+        rounded = expected.copy()
+        rounded[0, 1] += 1.52587890625e-5
+        self.assertEqual(check_parity(expected, rounded)[1], 0)
+        with self.assertRaises(ValueError):
+            check_parity(expected, np.asarray([[0.1, 0.49, 0.5], [0.5, 0.1, 0.2]],
+                                                   dtype=np.float32))
+
     def test_fresh_session_profile_covers_pressure_at_first_hand(self):
         bootstrap = Counter(training_opponent_profile(index, index, True)
                             for index in range(100))

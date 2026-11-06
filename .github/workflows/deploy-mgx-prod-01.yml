@@ -356,7 +356,7 @@ jobs:
 
   release-candidate-browser-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6

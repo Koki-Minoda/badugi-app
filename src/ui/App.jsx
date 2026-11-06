@@ -69,6 +69,7 @@ import {
 } from "./utils/actorSourceOfTruth.js";
 import { BOARD_NPC_AUTO_ACTION_DELAY_MS, NPC_AUTO_ACTION_DELAY_MS, runNpcDrawAllInAutoFastPath } from "./utils/npcAutoActionTiming.js";
 import { resolveControllerDrawHistory } from "./utils/controllerDrawHistory.js";
+import { resolveBadugiBetControls } from "./app/badugiBetControls.js";
 
 import {
   nextAliveFrom,
@@ -11976,16 +11977,19 @@ export default function App() {
       typeof liveControllerSnapshot.players[0] === "object"
         ? liveControllerSnapshot.players[0]
         : null;
-    const maxNow = Number.isFinite(Number(liveControllerSnapshot?.currentBet))
+    const badugiActionBet = normalizedGameVariant === APP_VARIANT_IDS.BADUGI
+      ? resolveBadugiBetControls(liveControllerSnapshot)
+      : null;
+    const maxNow = badugiActionBet?.currentBet ?? (Number.isFinite(Number(liveControllerSnapshot?.currentBet))
       ? Number(liveControllerSnapshot.currentBet)
-      : maxBetThisRound(snap);
-    const heroCommitted = Number.isFinite(Number(controllerHero?.betThisStreet))
+      : maxBetThisRound(snap));
+    const heroCommitted = badugiActionBet?.heroBet ?? (Number.isFinite(Number(controllerHero?.betThisStreet))
       ? Number(controllerHero.betThisStreet)
       : Number.isFinite(Number(controllerHero?.betThisRound))
         ? Number(controllerHero.betThisRound)
         : Number.isFinite(Number(me.betThisRound))
           ? Number(me.betThisRound)
-          : 0;
+          : 0);
     const toCall = Math.max(0, maxNow - heroCommitted);
     const pay = toCall;
     const raiseCountBeforeControllerAction =
@@ -12092,16 +12096,19 @@ export default function App() {
       typeof liveControllerSnapshot.players[0] === "object"
         ? liveControllerSnapshot.players[0]
         : null;
-    const maxNow = Number.isFinite(Number(liveControllerSnapshot?.currentBet))
+    const badugiActionBet = normalizedGameVariant === APP_VARIANT_IDS.BADUGI
+      ? resolveBadugiBetControls(liveControllerSnapshot)
+      : null;
+    const maxNow = badugiActionBet?.currentBet ?? (Number.isFinite(Number(liveControllerSnapshot?.currentBet))
       ? Number(liveControllerSnapshot.currentBet)
-      : maxBetThisRound(snap);
-    const heroCommitted = Number.isFinite(Number(controllerHero?.betThisStreet))
+      : maxBetThisRound(snap));
+    const heroCommitted = badugiActionBet?.heroBet ?? (Number.isFinite(Number(controllerHero?.betThisStreet))
       ? Number(controllerHero.betThisStreet)
       : Number.isFinite(Number(controllerHero?.betThisRound))
         ? Number(controllerHero.betThisRound)
         : Number.isFinite(Number(me.betThisRound))
           ? Number(me.betThisRound)
-          : 0;
+          : 0);
     if (isControllerDrivenSingleTable && maxNow > heroCommitted) {
       playerCall();
       return;
@@ -12197,10 +12204,13 @@ export default function App() {
       return;
     }
 
-    const maxNow = Number.isFinite(Number(liveControllerSnapshot?.currentBet))
+    const badugiActionBet = normalizedGameVariant === APP_VARIANT_IDS.BADUGI
+      ? resolveBadugiBetControls(liveControllerSnapshot)
+      : null;
+    const maxNow = badugiActionBet?.currentBet ?? (Number.isFinite(Number(liveControllerSnapshot?.currentBet))
       ? Number(liveControllerSnapshot.currentBet)
-      : maxBetThisRound(snap);
-    const heroCommitted = Number(
+      : maxBetThisRound(snap));
+    const heroCommitted = badugiActionBet?.heroBet ?? Number(
       liveControllerSnapshot?.players?.[0]?.betThisStreet ??
         liveControllerSnapshot?.players?.[0]?.betThisRound ??
         me.betThisRound ??
@@ -14021,12 +14031,18 @@ export default function App() {
       "-",
   };
   const heroSeatView = seatViews.find((seat) => seat?.seatIndex === 0) ?? null;
-  const heroPlayerForControls = heroSeatView
+  const badugiBetControls = normalizedGameVariant === APP_VARIANT_IDS.BADUGI
+    ? resolveBadugiBetControls(effectiveControllerSnapshot)
+    : null;
+  const heroPlayerForControlsBase = heroSeatView
     ? {
         ...(playersSrc[0] ? clonePlayerState(playersSrc[0]) : {}),
         ...heroSeatView,
       }
     : (playersSrc[0] ?? null);
+  const heroPlayerForControls = badugiBetControls && heroPlayerForControlsBase
+    ? { ...heroPlayerForControlsBase, betThisRound: badugiBetControls.heroBet, stack: badugiBetControls.heroStack }
+    : heroPlayerForControlsBase;
   const controllerRaiseCountForUi =
     (isSingleTableBoardGame || isSingleTableBadugi) &&
     typeof gameControllerRef.current?.raiseCountThisStreet === "number"
@@ -14035,7 +14051,7 @@ export default function App() {
 
   const controlsPhase =
     effectiveControllerSnapshot?.phase ?? controlsConfig?.phase ?? tablePhase;
-  const controlsCurrentBet = resolveActionCurrentBet({
+  const controlsCurrentBet = badugiBetControls?.currentBet ?? resolveActionCurrentBet({
     preferController: preferControllerActionActor,
     controllerCurrentBet: effectiveControllerSnapshot?.currentBet,
     legacyCurrentBet: controlsConfig?.currentBet ?? currentBetSrc,
@@ -14043,7 +14059,8 @@ export default function App() {
   const heroBetThisRound = Math.max(
     0,
     Number(
-      heroPlayerForControls?.betThisStreet ??
+      badugiBetControls?.heroBet ??
+        heroPlayerForControls?.betThisStreet ??
         heroPlayerForControls?.betThisRound,
     ) || 0,
   );
@@ -14104,6 +14121,11 @@ export default function App() {
   });
   const heroSeatIndex =
     typeof heroSeatView?.seatIndex === "number" ? heroSeatView.seatIndex : 0;
+  const badugiLegalActions = badugiBetControls
+    ? (sessionControllerRef.current ?? gameControllerRef.current)?.getLegalActions?.(
+        { snapshot: effectiveControllerSnapshot }, heroSeatIndex,
+      ) ?? null
+    : null;
   const currentActorSeat =
     typeof controllerTurn === "number" ? controllerTurn : null;
   const currentActorView =
@@ -14739,6 +14761,7 @@ export default function App() {
     heroPlayerForControls,
     controlsPhase,
     controlsCurrentBet,
+    legalActions: badugiLegalActions,
     actionPanelInfo,
     betSizingModel,
     playerFold,

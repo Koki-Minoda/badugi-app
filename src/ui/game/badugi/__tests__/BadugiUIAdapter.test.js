@@ -215,6 +215,22 @@ describe("BadugiUIAdapter", () => {
     expect(actions).toContain("raise");
   });
 
+  it("uses live street commitments when the cached bet still says 60", () => {
+    const adapter = new BadugiUIAdapter({});
+    const snapshot = mockSnapshot({
+      currentBet: 60,
+      players: [
+        { name: "Hero", stack: 460, betThisRound: 40, betThisStreet: 0, hand: ["AS", "KH", "QC", "JD"] },
+        { name: "CPU 1", stack: 460, betThisRound: 40, hand: ["2S", "3H", "4C", "5D"] },
+      ],
+    });
+    const controls = adapter.buildViewProps({ controllerSnapshot: snapshot, tableConfig: mockTableConfig }).controlsConfig;
+    expect(controls.currentBet).toBe(40);
+    expect(controls.canCheck).toBe(true);
+    expect(adapter.getAvailableActions({ controllerSnapshot: snapshot, seatIndex: 0 })).toContain("check");
+    expect(adapter.getAvailableActions({ controllerSnapshot: snapshot, seatIndex: 0 })).not.toContain("call");
+  });
+
   it("exposes fixed-limit bet sizing per street", () => {
     const adapter = new BadugiUIAdapter({});
     const preDraw = adapter.buildViewProps({

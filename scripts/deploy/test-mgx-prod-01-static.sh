@@ -43,6 +43,11 @@ grep -q 'friend-match deep link did not return the current SPA asset' "$script"
 grep -q 'npm run test:build:onnx' "$script"
 test "$(grep -c -- '-o ServerAliveInterval=30 -o ServerAliveCountMax=20' "$workflow")" -eq 3
 grep -q 'scripts/deploy/create_verified_backup.py' "$workflow"
+browser_qa_timeout="$(awk '/^  release-candidate-browser-qa:/{in_job=1;next} in_job && /^  [a-z][a-z0-9-]*:/{exit} in_job && /timeout-minutes:/{print $2;exit}' "$workflow")"
+if [[ ! "$browser_qa_timeout" =~ ^[0-9]+$ ]] || (( browser_qa_timeout < 180 )); then
+  echo "release-candidate-browser-qa must allow 180 minutes for cold browser setup and full QA" >&2
+  exit 1
+fi
 deploy_checkout_line="$(awk '/^  deploy:/{in_deploy=1} in_deploy && /uses: actions\/checkout@v6/{print NR;exit}' "$workflow")"
 deploy_backup_line="$(awk '/^  deploy:/{in_deploy=1} in_deploy && /name: Back up and verify the current production release/{print NR;exit}' "$workflow")"
 if [[ -z "$deploy_checkout_line" || -z "$deploy_backup_line" || "$deploy_checkout_line" -ge "$deploy_backup_line" ]]; then

@@ -4,6 +4,14 @@ import { buildBadugiControllerSeatEventViewV2Draft } from '../rl/badugiControlle
 
 const BET_ACTIONS = ['FOLD', 'CHECK', 'CALL', 'BET', 'RAISE'];
 
+export function resolveBadugiControllerModelUrl(onnx, {
+  baseUrl = import.meta.env?.BASE_URL ?? '/',
+  origin = globalThis.location?.origin,
+} = {}) {
+  if (!onnx || !origin) return onnx;
+  return new URL(onnx, new URL(baseUrl, origin)).href;
+}
+
 function emitTrace(payload, entry, phase, status, reason, started) {
   try {
     payload.onInferenceTrace?.({
@@ -44,11 +52,18 @@ export function createBadugiControllerV2Inference(entry) {
       const observation = buildObservation(payload);
       if (observation.length !== 96) throw new TypeError('v2 model requires 96 inputs');
       const mask = observation.slice(32, 38);
-      let session = await getOrCreateSession(entry);
+      // The model registry uses a relative path. Resolve it against Vite's
+      // deployment base, not the current page URL (which may be /game while
+      // the local preview serves assets under /dev/).
+      const runtimeEntry = {
+        ...entry,
+        onnx: resolveBadugiControllerModelUrl(entry.onnx),
+      };
+      let session = await getOrCreateSession(runtimeEntry);
       // WebKit can reject one WASM session creation under concurrent load and
       // succeed on the next attempt. Retry once within the controller deadline;
       // a second failure still takes the existing legal fallback path.
-      if (!session) session = await getOrCreateSession(entry);
+      if (!session) session = await getOrCreateSession(runtimeEntry);
       const runtime = await getOrt();
       if (!session || !runtime) throw new Error('v2 ONNX runtime unavailable');
       const input = new runtime.Tensor('float32', observation, [1, 96]);

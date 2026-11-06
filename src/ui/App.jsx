@@ -14659,7 +14659,9 @@ export default function App() {
     language,
     ratingState,
     rankInfo,
-    gameTitle: guestTrial ? `${currentGameTitle} · ${language === 'ja' ? '体験' : 'Trial'}` : currentGameTitle,
+    gameTitle: guestTrial
+      ? `${currentGameTitle} · ${language === 'ja' ? '体験' : 'Trial'}${currentGameVariantId === APP_VARIANT_IDS.BADUGI ? ` · ${language === 'ja' ? 'CPU設定' : 'CPU setting'} ${activeAiTierConfig?.label ?? activeAiTierConfig?.id ?? 'Standard'}` : ''}`
+      : currentGameTitle,
     labels: headerLabels,
     onNavigateTitle: handleBackToMenu,
     onNavigateLeaderboard: () => navigate("/leaderboard"),

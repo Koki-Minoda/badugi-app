@@ -1,12 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { writeFile } from 'node:fs/promises';
 import { APP_URL, enterTitleIfPresent, selectGameVariantFromSelector } from './authHelper';
 import { getProgressState, invokeE2E, performSafeAction, waitForE2EDriver } from './helpers/gameProgressHelper.js';
 import { installSoakSeed } from './helpers/gameplaySoakHarness';
 
-const onnxPath = new URL('../../public/models/badugi_pro_controller_v2_20261105.onnx', import.meta.url).pathname;
+const onnxPath = fileURLToPath(new URL('../../public/models/badugi_pro_controller_v2_20261105.onnx', import.meta.url));
 const onnxBytes = readFileSync(onnxPath);
 const onnxSha256 = createHash('sha256').update(onnxBytes).digest('hex');
 const modelId = 'model-badugi-pro-controller-v2-20261105';

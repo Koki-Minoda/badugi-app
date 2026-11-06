@@ -166,6 +166,19 @@ describe("BadugiGameController – new hand", () => {
 });
 
 describe("BadugiGameController – betting", () => {
+  it("offers only DRAW during exchange and no betting action after the hand", () => {
+    const controller = createController();
+    const initial = controller.createInitialState({ seatConfig: ["HERO", "CPU", "CPU", "CPU"] });
+    const started = controller.createNewHandState(initial, {});
+    const drawing = ensureDrawPhase(controller, started);
+    expect(controller.getLegalActions(drawing, 0).map((action) => action.type)).toEqual(["DRAW"]);
+    const finished = controller.syncFromExternalState({
+      snapshot: { ...controller.getUiSnapshot(drawing), phase: "SHOWDOWN", turn: 0, nextTurn: 0 },
+      handIndex: drawing.handIndex,
+    });
+    expect(controller.getLegalActions(finished, 0)).toEqual([]);
+  });
+
   it("reconciles stale legacy street bets before accepting a visible check", () => {
     const controller = createController();
     const initial = controller.createInitialState({

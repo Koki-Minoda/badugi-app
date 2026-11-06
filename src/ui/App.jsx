@@ -12110,6 +12110,13 @@ export default function App() {
           ? Number(me.betThisRound)
           : 0);
     if (isControllerDrivenSingleTable && maxNow > heroCommitted) {
+      if (isSingleTableBadugi) {
+        console.warn("[CTRL][BET] stale Badugi check rejected", {
+          currentBet: maxNow,
+          heroBet: heroCommitted,
+        });
+        return;
+      }
       playerCall();
       return;
     }
@@ -12290,6 +12297,10 @@ export default function App() {
     }
     if (controllerOutcome?.rejected) {
       if (controllerOutcome.code === "FL_RAISE_CAP") {
+        if (isSingleTableBadugi) {
+          console.warn("[CTRL][BET] stale Badugi raise rejected at cap");
+          return;
+        }
         playerCall();
         return;
       }

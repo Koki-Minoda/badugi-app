@@ -132,7 +132,9 @@ export async function getProgressState(page) {
     const actor = resolveActor(snapshot, phaseState, state, uiTerminal);
     const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
     const pot = Number(snapshot?.pot ?? state?.potTotal ?? 0);
-    const handId = snapshot?.handId ?? phaseState?.handId ?? state?.handId ?? null;
+    // The UI owns the current hand identity. A controller snapshot may still
+    // describe the just-finished hand while the next hand is being dealt.
+    const handId = state?.handId ?? phaseState?.handId ?? snapshot?.handId ?? null;
     const maxExplicitStreetBet = Math.max(
       0,
       ...(players ?? []).map((player) => Number(player?.betThisStreet ?? player?.committedThisStreet ?? 0) || 0),
@@ -161,11 +163,11 @@ export async function getProgressState(page) {
         phaseState?.drawRound ??
         state?.drawRound ??
         null,
+      // lastHandResult persists into the following hand. It is history, not a
+      // terminal marker for the currently displayed BET/DRAW phase.
       isTerminal: Boolean(
         uiTerminal ||
-        ["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND", "TABLE_FINISHED", "COMPLETE", "TERMINAL"].includes(String(phase)) ||
-          snapshot?.lastHandResult ||
-          state?.lastHandResult,
+        ["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND", "TABLE_FINISHED", "COMPLETE", "TERMINAL"].includes(String(phase)),
       ),
     };
   }, { browserSignalSource: collectBrowserSignals.toString(), actorResolverSource: resolveProgressActor.toString() });
@@ -468,7 +470,7 @@ export async function waitForProgressChange(page, previousKey, { timeout = 8000 
       const actor = resolveActor(snapshot, phaseState, state, uiTerminal);
       const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
       const pot = Number(snapshot?.pot ?? state?.potTotal ?? 0);
-      const handId = snapshot?.handId ?? phaseState?.handId ?? state?.handId ?? null;
+      const handId = state?.handId ?? phaseState?.handId ?? snapshot?.handId ?? null;
       const maxExplicitStreetBet = Math.max(
         0,
         ...(players ?? []).map((player) => Number(player?.betThisStreet ?? player?.committedThisStreet ?? 0) || 0),
@@ -484,7 +486,7 @@ export async function waitForProgressChange(page, previousKey, { timeout = 8000 
       const nextKey = JSON.stringify(
         summarizeProgress({ handId, phase, actor, currentBet, pot, drawRoundIndex, players, snapshot }),
       );
-      return nextKey !== key || uiTerminal || phase === "HAND_RESULT" || phase === "SHOWDOWN" || snapshot?.lastHandResult;
+      return nextKey !== key || uiTerminal || phase === "HAND_RESULT" || phase === "SHOWDOWN";
     },
     {
       key: previousKey,
@@ -513,7 +515,7 @@ export async function waitForTurnChange(page, prevActor) {
               : typeof phaseState?.turn === "number"
                 ? phaseState.turn
                 : state?.turn;
-      return current !== actor || phaseState?.phase === "HAND_RESULT" || snapshot?.lastHandResult;
+      return current !== actor || phaseState?.phase === "HAND_RESULT";
     },
     prevActor,
     { timeout: 10000 },
@@ -528,7 +530,7 @@ export async function waitForPhaseChange(page, prevPhase) {
       const phaseState = api?.getPhaseState?.() ?? null;
       const snapshot = state?.controllerSnapshot ?? null;
       const current = phaseState?.phase ?? snapshot?.phase ?? snapshot?.street ?? state?.phase;
-      return current !== phase || current === "HAND_RESULT" || current === "SHOWDOWN" || snapshot?.lastHandResult;
+      return current !== phase || current === "HAND_RESULT" || current === "SHOWDOWN";
     },
     prevPhase,
     { timeout: 15000 },
@@ -537,15 +539,18 @@ export async function waitForPhaseChange(page, prevPhase) {
 
 export async function waitForHandEnd(page) {
   await page.waitForFunction(
-    () => {
+    (browserSignalSource) => {
+      const collectBrowserSignals = new Function(`return (${browserSignalSource})`)();
+      const ui = collectBrowserSignals();
       const api = window.__BADUGI_E2E__;
       const state = api?.getStateSnapshot?.() ?? null;
       const phaseState = api?.getPhaseState?.() ?? null;
       const snapshot = state?.controllerSnapshot ?? null;
       const phase = snapshot?.phase ?? snapshot?.street ?? phaseState?.phase ?? state?.phase;
-      return phase === "HAND_RESULT" || phase === "SHOWDOWN" || phase === "TABLE_FINISHED" || Boolean(snapshot?.lastHandResult);
+      return ui.resultVisible || ui.nextHandVisible ||
+        phase === "HAND_RESULT" || phase === "SHOWDOWN" || phase === "TABLE_FINISHED";
     },
-    undefined,
+    collectBrowserSignals.toString(),
     { timeout: 30000 },
   );
 }
@@ -658,7 +663,9 @@ export async function expectMobileActionsInViewport(page) {
     "[data-testid='action-check'],[data-testid='action-call'],[data-testid='action-raise'],[data-testid='action-fold'],[data-testid='action-draw-selected']",
   );
   if (!heroIsActor) {
-    await expect(actions).toHaveCount(0);
+    // Disabled controls may remain mounted during a CPU turn. Only an
+    // interactable Hero action would indicate that a decision is exposed.
+    expect(await getLegalActions(page)).toHaveLength(0);
     return;
   }
 

@@ -1,4 +1,4 @@
-export function getAvailableActions({ currentBet = 0, player, canRaise = true } = {}) {
+export function getAvailableActions({ currentBet = 0, player, canRaise = true, legalActions = null } = {}) {
   if (!player) return [];
 
   const playerBet = typeof player.betThisRound === "number" ? player.betThisRound : 0;
@@ -11,6 +11,14 @@ export function getAvailableActions({ currentBet = 0, player, canRaise = true } 
   }
 
   const actions = [];
+
+  const restrictToController = (available) => {
+    if (!Array.isArray(legalActions)) return available;
+    const legal = new Set(legalActions.map((action) =>
+      String(typeof action === "string" ? action : action?.type ?? "").toUpperCase(),
+    ));
+    return available.filter((action) => legal.has(action.key === "ALLIN_CALL" ? "CALL" : action.key));
+  };
 
   if (toCall === 0) {
     actions.push({
@@ -33,7 +41,7 @@ export function getAvailableActions({ currentBet = 0, player, canRaise = true } 
       handler: "onFold",
       variant: "fold",
     });
-    return actions;
+    return restrictToController(actions);
   }
 
   if (isAllInCall) {
@@ -68,7 +76,7 @@ export function getAvailableActions({ currentBet = 0, player, canRaise = true } 
     variant: "fold",
   });
 
-  return actions;
+  return restrictToController(actions);
 }
 
 export default getAvailableActions;

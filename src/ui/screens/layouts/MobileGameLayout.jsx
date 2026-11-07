@@ -36,7 +36,7 @@ export default function MobileGameLayout({headerProps:h,sidePanelProps:s,tablePr
  const hero=seats.find(({index})=>index===heroIndex);
  const others=seats.filter(({index})=>index!==heroIndex);
  // Seat order is fixed; only the exposed cards differ between poker families.
- const actions=c.heroCanAct?getAvailableActions({currentBet:c.controlsCurrentBet,player:c.heroPlayerForControls,canRaise:!c.actionPanelInfo?.capReached}):[];
+ const actions=c.heroCanAct?getAvailableActions({currentBet:c.controlsCurrentBet,player:c.heroPlayerForControls,canRaise:!c.actionPanelInfo?.capReached,legalActions:c.legalActions}):[];
  const action=kind=>actions.find(a=>kind==='call'?['call','check','allin'].includes(a.variant):a.variant===kind);
  const call=action('call'),raise=action('raise'),fold=action('fold');
  const variableBet=Boolean(c.betSizingModel?.enabled);

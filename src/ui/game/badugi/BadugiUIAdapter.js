@@ -1,6 +1,7 @@
 // src/ui/game/badugi/BadugiUIAdapter.js
 
 import { BaseGameUIAdapter } from "../GameUIAdapter.js";
+import { maxBetThisRound } from "../../../games/badugi/flow/actionUtils.js";
 import {
   formatBadugiHandLabel,
   formatBadugiRanksLabel,
@@ -71,7 +72,7 @@ function buildControlsConfig(snapshot, tableConfig) {
   const phase = snapshot.phase ?? "BET";
   const canonicalHeroTurn = Boolean(hero && snapshot.turn === 0 && !hero.folded && !hero.seatOut);
   const heroBet = hero?.betThisRound ?? 0;
-  const currentBet = snapshot.currentBet ?? 0;
+  const currentBet = maxBetThisRound(players);
   const needsToCall = hero ? currentBet > heroBet : false;
   const heroStack = hero?.stack ?? 0;
   const metadata = snapshot.metadata ?? {};

@@ -42,4 +42,18 @@ describe("getAvailableActions", () => {
 
     expect(actions.map((action) => action.key)).toEqual(["CHECK", "FOLD"]);
   });
+
+  it("keeps only actions authorized by the controller", () => {
+    const actions = getAvailableActions({
+      currentBet: 20,
+      player: readyPlayer,
+      legalActions: [{ type: "CHECK" }],
+    });
+    expect(actions.map((action) => action.key)).toEqual(["CHECK"]);
+    expect(getAvailableActions({
+      currentBet: 200,
+      player: { stack: 50, betThisRound: 0 },
+      legalActions: [{ type: "CALL" }, { type: "FOLD" }],
+    }).map((action) => action.key)).toEqual(["ALLIN_CALL", "FOLD"]);
+  });
 });

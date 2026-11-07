@@ -132,7 +132,9 @@ export async function getProgressState(page) {
     const actor = resolveActor(snapshot, phaseState, state, uiTerminal);
     const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
     const pot = Number(snapshot?.pot ?? state?.potTotal ?? 0);
-    const handId = snapshot?.handId ?? phaseState?.handId ?? state?.handId ?? null;
+    // The UI owns the current hand identity. A controller snapshot may still
+    // describe the just-finished hand while the next hand is being dealt.
+    const handId = state?.handId ?? phaseState?.handId ?? snapshot?.handId ?? null;
     const maxExplicitStreetBet = Math.max(
       0,
       ...(players ?? []).map((player) => Number(player?.betThisStreet ?? player?.committedThisStreet ?? 0) || 0),
@@ -537,15 +539,19 @@ export async function waitForPhaseChange(page, prevPhase) {
 
 export async function waitForHandEnd(page) {
   await page.waitForFunction(
-    () => {
+    (browserSignalSource) => {
+      const collectBrowserSignals = new Function(`return (${browserSignalSource})`)();
+      const ui = collectBrowserSignals();
       const api = window.__BADUGI_E2E__;
       const state = api?.getStateSnapshot?.() ?? null;
       const phaseState = api?.getPhaseState?.() ?? null;
       const snapshot = state?.controllerSnapshot ?? null;
       const phase = snapshot?.phase ?? snapshot?.street ?? phaseState?.phase ?? state?.phase;
-      return phase === "HAND_RESULT" || phase === "SHOWDOWN" || phase === "TABLE_FINISHED" || Boolean(snapshot?.lastHandResult);
+      return ui.resultVisible || ui.nextHandVisible ||
+        phase === "HAND_RESULT" || phase === "SHOWDOWN" || phase === "TABLE_FINISHED" ||
+        Boolean(snapshot?.lastHandResult);
     },
-    undefined,
+    collectBrowserSignals.toString(),
     { timeout: 30000 },
   );
 }
@@ -658,7 +664,9 @@ export async function expectMobileActionsInViewport(page) {
     "[data-testid='action-check'],[data-testid='action-call'],[data-testid='action-raise'],[data-testid='action-fold'],[data-testid='action-draw-selected']",
   );
   if (!heroIsActor) {
-    await expect(actions).toHaveCount(0);
+    // Disabled controls may remain mounted during a CPU turn. Only an
+    // interactable Hero action would indicate that a decision is exposed.
+    expect(await getLegalActions(page)).toHaveLength(0);
     return;
   }
 

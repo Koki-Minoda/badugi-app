@@ -163,11 +163,11 @@ export async function getProgressState(page) {
         phaseState?.drawRound ??
         state?.drawRound ??
         null,
+      // lastHandResult persists into the following hand. It is history, not a
+      // terminal marker for the currently displayed BET/DRAW phase.
       isTerminal: Boolean(
         uiTerminal ||
-        ["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND", "TABLE_FINISHED", "COMPLETE", "TERMINAL"].includes(String(phase)) ||
-          snapshot?.lastHandResult ||
-          state?.lastHandResult,
+        ["SHOWDOWN", "HAND_RESULT", "WAITING_NEXT_HAND", "TABLE_FINISHED", "COMPLETE", "TERMINAL"].includes(String(phase)),
       ),
     };
   }, { browserSignalSource: collectBrowserSignals.toString(), actorResolverSource: resolveProgressActor.toString() });
@@ -470,7 +470,7 @@ export async function waitForProgressChange(page, previousKey, { timeout = 8000 
       const actor = resolveActor(snapshot, phaseState, state, uiTerminal);
       const players = snapshot?.players ?? phaseState?.players ?? state?.players ?? [];
       const pot = Number(snapshot?.pot ?? state?.potTotal ?? 0);
-      const handId = snapshot?.handId ?? phaseState?.handId ?? state?.handId ?? null;
+      const handId = state?.handId ?? phaseState?.handId ?? snapshot?.handId ?? null;
       const maxExplicitStreetBet = Math.max(
         0,
         ...(players ?? []).map((player) => Number(player?.betThisStreet ?? player?.committedThisStreet ?? 0) || 0),
@@ -486,7 +486,7 @@ export async function waitForProgressChange(page, previousKey, { timeout = 8000 
       const nextKey = JSON.stringify(
         summarizeProgress({ handId, phase, actor, currentBet, pot, drawRoundIndex, players, snapshot }),
       );
-      return nextKey !== key || uiTerminal || phase === "HAND_RESULT" || phase === "SHOWDOWN" || snapshot?.lastHandResult;
+      return nextKey !== key || uiTerminal || phase === "HAND_RESULT" || phase === "SHOWDOWN";
     },
     {
       key: previousKey,
@@ -515,7 +515,7 @@ export async function waitForTurnChange(page, prevActor) {
               : typeof phaseState?.turn === "number"
                 ? phaseState.turn
                 : state?.turn;
-      return current !== actor || phaseState?.phase === "HAND_RESULT" || snapshot?.lastHandResult;
+      return current !== actor || phaseState?.phase === "HAND_RESULT";
     },
     prevActor,
     { timeout: 10000 },
@@ -530,7 +530,7 @@ export async function waitForPhaseChange(page, prevPhase) {
       const phaseState = api?.getPhaseState?.() ?? null;
       const snapshot = state?.controllerSnapshot ?? null;
       const current = phaseState?.phase ?? snapshot?.phase ?? snapshot?.street ?? state?.phase;
-      return current !== phase || current === "HAND_RESULT" || current === "SHOWDOWN" || snapshot?.lastHandResult;
+      return current !== phase || current === "HAND_RESULT" || current === "SHOWDOWN";
     },
     prevPhase,
     { timeout: 15000 },
@@ -548,8 +548,7 @@ export async function waitForHandEnd(page) {
       const snapshot = state?.controllerSnapshot ?? null;
       const phase = snapshot?.phase ?? snapshot?.street ?? phaseState?.phase ?? state?.phase;
       return ui.resultVisible || ui.nextHandVisible ||
-        phase === "HAND_RESULT" || phase === "SHOWDOWN" || phase === "TABLE_FINISHED" ||
-        Boolean(snapshot?.lastHandResult);
+        phase === "HAND_RESULT" || phase === "SHOWDOWN" || phase === "TABLE_FINISHED";
     },
     collectBrowserSignals.toString(),
     { timeout: 30000 },

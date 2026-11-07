@@ -140,6 +140,7 @@ def evaluate_against_profiles(
     max_steps: int = 80,
     profiles: tuple[str, ...] = ("beginner", "standard", "tight", "loose", "aggressive"),
     seed: int = 20260601,
+    observation_schema: str = "legacy",
 ) -> list[ProfileResult]:
     results: list[ProfileResult] = []
 
@@ -149,6 +150,7 @@ def evaluate_against_profiles(
             opponent_profile=profile_name,
             max_draws=max_draws,
             seed=seed,
+            observation_schema=observation_schema,
         )
         wins = losses = draws = 0
         showdowns = showdown_wins = folds = opponent_folds = 0
@@ -371,6 +373,7 @@ def build_report_payload(
     seed: int,
     profiles: tuple[str, ...],
     results: list[ProfileResult],
+    observation_schema: str = "legacy",
 ) -> dict:
     summary = summarize_results(results)
     return {
@@ -380,6 +383,7 @@ def build_report_payload(
         "variantId": variant_id,
         "family": family,
         "maxDraws": max_draws,
+        "observationSchema": observation_schema,
         "episodesPerProfile": episodes,
         "episodes_per_profile": episodes,
         "maxSteps": max_steps,
@@ -409,6 +413,12 @@ def main() -> int:
 
     device = args.device or "cpu"
     agent = DQNAgent.load(str(checkpoint_path), device=device)
+    checkpoint_schema = agent.checkpoint_training_state.get("observation_schema", "legacy")
+    observation_schema = checkpoint_schema if args.observation_schema == "auto" else args.observation_schema
+    if observation_schema != checkpoint_schema:
+        print(f"[ERROR] Observation schema mismatch: checkpoint={checkpoint_schema}, evaluation={observation_schema}",
+              file=sys.stderr)
+        return 1
 
     variant_config = infer_variant_config(args.variant_id, args.family, args.max_draws)
     profiles = tuple(p.strip() for p in args.profiles.split(",") if p.strip())
@@ -421,6 +431,7 @@ def main() -> int:
         max_steps=args.max_steps,
         profiles=profiles,
         seed=args.seed,
+        observation_schema=observation_schema,
     )
 
     print_report(
@@ -449,6 +460,7 @@ def main() -> int:
             seed=args.seed,
             profiles=profiles,
             results=results,
+            observation_schema=observation_schema,
         )
         json_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf8")
         print(f"JSON report saved → {json_path}")
@@ -472,6 +484,7 @@ def _parse_args():
     parser.add_argument("--profiles", default=default_profiles,
                         help="Comma-separated list of profiles to evaluate against")
     parser.add_argument("--seed", type=int, default=20260601)
+    parser.add_argument("--observation-schema", choices=["auto", "legacy", "browser-v1"], default="auto")
     parser.add_argument("--device", default=None)
     parser.add_argument("--json-out", default="",
                         help="Optional path to write a JSON evaluation report")

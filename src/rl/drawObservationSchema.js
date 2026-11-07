@@ -123,11 +123,20 @@ function getActor(state = {}, seatIndex = null) {
 }
 
 function sumPot(state = {}) {
-  if (Number.isFinite(Number(state.pot))) return Math.max(0, Number(state.pot));
-  return (Array.isArray(state.pots) ? state.pots : []).reduce(
-    (sum, pot) => sum + Math.max(0, Number(pot?.amount) || 0),
+  if (state.pot != null && Number.isFinite(Number(state.pot))) {
+    return Math.max(0, Number(state.pot));
+  }
+  const collected = state.metadata?.potAmount != null && Number.isFinite(Number(state.metadata.potAmount))
+    ? Math.max(0, Number(state.metadata.potAmount))
+    : (Array.isArray(state.pots) ? state.pots : []).reduce(
+      (sum, pot) => sum + Math.max(0, Number(pot?.amount) || 0),
+      0,
+    );
+  const streetBets = (Array.isArray(state.players) ? state.players : []).reduce(
+    (sum, player) => sum + Math.max(0, Number(player?.bet ?? player?.betThisRound) || 0),
     0,
   );
+  return collected + streetBets;
 }
 
 function legalActionMask(legalActions = []) {

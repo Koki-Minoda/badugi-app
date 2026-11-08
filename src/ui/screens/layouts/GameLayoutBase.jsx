@@ -682,6 +682,7 @@ export default function GameLayoutBase({
             onCheck={playerCheck}
             onRaise={playerRaise}
             canRaise={!actionPanelInfo?.capReached}
+            legalActions={controlsProps.legalActions}
             betSizing={betSizingModel}
             language={language}
             layoutMode={mobileLayoutMode}

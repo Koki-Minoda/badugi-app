@@ -19,7 +19,7 @@ vi.mock('../../rl/badugiControllerEventProjectionV2Draft.js', () => ({
   }),
 }));
 
-const { createBadugiControllerV2Inference } = await import('../badugiControllerV2Inference.js');
+const { createBadugiControllerV2Inference, resolveBadugiControllerModelUrl } = await import('../badugiControllerV2Inference.js');
 const adapter = createBadugiControllerV2Inference({
   id: 'beginner-v2-test', onnx: 'test.onnx', tier: 'beginner',
   featureSet: 'badugi-controller-observation-v2-draft',
@@ -37,6 +37,15 @@ const proAdapter = createBadugiControllerV2Inference({
 });
 
 describe('Badugi controller-v2 live legality', () => {
+  it('resolves model assets from the deployment base even on a root-level trial route', () => {
+    expect(resolveBadugiControllerModelUrl('models/standard.onnx', {
+      baseUrl: '/dev/', origin: 'http://127.0.0.1:3000',
+    })).toBe('http://127.0.0.1:3000/dev/models/standard.onnx');
+    expect(resolveBadugiControllerModelUrl('models/standard.onnx', {
+      baseUrl: '/', origin: 'https://mgx-poker.com',
+    })).toBe('https://mgx-poker.com/models/standard.onnx');
+  });
+
   it('does not select a raise rejected by the current UI action gate', async () => {
     run.mockResolvedValueOnce({ output: { data: [0, 1, 2, 3, 100, 0] } });
     const traces = [];
@@ -53,12 +62,16 @@ describe('Badugi controller-v2 live legality', () => {
   });
 
   it('keeps the Standard tier and current legal mask in its decision trace', async () => {
+    vi.mocked(getOrCreateSession).mockClear();
     run.mockResolvedValueOnce({ output: { data: [100, 0, 3, 0, 0, 0] } });
     const traces = [];
     const decision = await standardAdapter.inferBet({ legalActions: ['CALL'],
       onInferenceTrace: (row) => traces.push(row) });
     expect(decision).toMatchObject({ action: 'CALL', tierId: 'standard', modelId: 'standard-v2-test' });
     expect(traces[0]).toMatchObject({ status: 'used', tierId: 'standard', usedModelId: 'standard-v2-test' });
+    expect(getOrCreateSession).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'standard-v2-test', onnx: expect.stringMatching(/\/standard-test\.onnx$/),
+    }));
   });
 
   it('accepts the isolated Pro tier while preserving the live legal mask', async () => {

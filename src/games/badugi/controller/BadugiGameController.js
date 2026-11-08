@@ -104,6 +104,13 @@ function deriveLegalActions(snapshot, seatIndex) {
     return [];
   }
 
+  if (snapshot?.phase === "DRAW") {
+    return isSeatEligibleForDraw(player) && !player.hasDrawn
+      ? [{ type: "DRAW" }]
+      : [];
+  }
+  if (snapshot?.phase !== "BET") return [];
+
   const currentBet = maxBetThisRound(players);
   const betThisRound =
     typeof player.betThisRound === "number"
@@ -136,11 +143,6 @@ function deriveLegalActions(snapshot, seatIndex) {
     hasActiveNonAllInOpponent(players, seatIndex)
   ) {
     baseActions.push({ type: "RAISE" });
-  }
-
-  const isDrawPhase = snapshot?.phase === "DRAW";
-  if (isDrawPhase && isSeatEligibleForDraw(player) && !player.hasDrawn) {
-    baseActions.push({ type: "DRAW" });
   }
 
   return baseActions;

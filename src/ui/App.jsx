@@ -1171,6 +1171,10 @@ export default function App() {
         blindStructure: activeBlindStructure,
         lastStructureIndex,
         structure: { sb: SB, bb: BB, ante: currentAnte },
+        evaluateHand:
+          normalizedVariant === APP_VARIANT_IDS.BADUGI
+            ? evaluateBadugi
+            : undefined,
       };
       const controllerFactory =
         normalizedVariant === APP_VARIANT_IDS.BADUGI
@@ -1203,6 +1207,7 @@ export default function App() {
     BB,
     activeBlindStructure,
     currentAnte,
+    evaluateBadugi,
     gameVariant,
     heroProfile,
     lastStructureIndex,

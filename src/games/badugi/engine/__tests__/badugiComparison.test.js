@@ -2,8 +2,36 @@ import { describe, expect, it } from "vitest";
 import { BadugiEngine } from "../BadugiEngine.js";
 import { buildHandResultSummary } from "../../flow/handResultUtils.js";
 import { evaluateBadugi } from "../../utils/badugiEvaluator.js";
+import { evaluateBadugiHand } from "../../../evaluators/badugi.js";
 
 describe("Badugi showdown comparisons", () => {
+  it("labels an actual four-card winner when the controller did not supply a UI evaluator", () => {
+    const hand = ["2D", "10C", "AS", "6H"];
+    const summary = buildHandResultSummary({
+      players: [{ name: "Jun", hand, stack: 2600 }],
+      summary: [{ potAmount: 2520, payouts: [{ seatIndex: 0, payout: 2520 }] }],
+      totalPot: 2520,
+    });
+
+    expect(summary.winners[0]).toMatchObject({
+      hand,
+      handLabel: "Badugi 4-card",
+      ranksLabel: "A-2-6-10",
+      deadCards: [],
+    });
+  });
+
+  it("accepts the shared Badugi evaluator shape without downgrading its size", () => {
+    const hand = ["2D", "10C", "AS", "6H"];
+    const evaluation = evaluateBadugiHand({ cards: hand });
+    const summary = buildHandResultSummary({
+      players: [{ name: "Jun", hand, stack: 2600 }],
+      summary: [{ potAmount: 2520, payouts: [{ seatIndex: 0, payout: 2520, evaluation }] }],
+      totalPot: 2520,
+    });
+    expect(summary.winners[0].handLabel).toBe("Badugi 4-card");
+  });
+
   it("ensures four-card Badugi beats three-card hands in UI summaries", () => {
     const engine = new BadugiEngine();
     const state = {

@@ -78,16 +78,17 @@ test('draw phase keeps the winning-hand cue visible beside the stand-pat action'
   const drawButton = page.getByTestId('action-draw-selected');
   const deadline = Date.now() + 40_000;
   while (!(await drawButton.isVisible()) && Date.now() < deadline) {
-    let clicked = false;
-    for (const id of ['action-check', 'action-call']) {
-      const button = page.getByTestId(id);
-      if (await button.isVisible() && await button.isEnabled()) {
-        await button.click();
-        clicked = true;
-        break;
+    const button = page.locator('[data-testid="action-check"]:not([disabled]), [data-testid="action-call"]:not([disabled])').first();
+    if (await button.count()) {
+      try {
+        await button.click({ timeout: 1_500 });
+      } catch (error) {
+        // BET can finish between locating the action and clicking it.
+        if (!(await drawButton.isVisible())) throw error;
       }
+    } else {
+      await page.waitForTimeout(100);
     }
-    if (!clicked) await page.waitForTimeout(100);
   }
   await expect(drawButton).toBeVisible();
   await expect(cue).toHaveText('2-7ロー · Aは高い');

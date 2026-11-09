@@ -113,8 +113,17 @@ async function driveHandLikePlayer(page: Page, hand: number) {
       if (hand % 3 === 0 && !selectedDrawCard) {
         const firstCard = page.getByTestId("player-0-card-0").first();
         if (await firstCard.isVisible().catch(() => false)) {
-          await firstCard.click({ timeout: 5_000 });
-          selectedDrawCard = true;
+          try {
+            await firstCard.click({ timeout: 1_000 });
+            selectedDrawCard = true;
+          } catch (error) {
+            // The hand can settle between reading the DRAW controls and this click.
+            // A result overlay legitimately prevents further card interaction.
+            if (await page.getByTestId("hand-result-overlay").first().isVisible().catch(() => false)) {
+              return { trace, heroButtonClicks, drawClicks };
+            }
+            throw error;
+          }
         }
       }
       target = "action-draw-selected";

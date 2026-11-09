@@ -81,10 +81,17 @@ test('draw phase keeps the winning-hand cue visible beside the stand-pat action'
     let clicked = false;
     for (const id of ['action-check', 'action-call']) {
       const button = page.getByTestId(id);
-      if (await button.isVisible() && await button.isEnabled()) {
-        await button.click();
+      if (!(await button.isVisible().catch(() => false))) continue;
+      // The hero's legal action can switch from check to call while CPUs act.
+      if (!(await button.isEnabled({ timeout: 500 }).catch(() => false))) continue;
+      try {
+        await button.click({ timeout: 1_000 });
         clicked = true;
         break;
+      } catch (error) {
+        if (await drawButton.isVisible().catch(() => false) ||
+            !(await button.isVisible().catch(() => false))) break;
+        throw error;
       }
     }
     if (!clicked) await page.waitForTimeout(100);

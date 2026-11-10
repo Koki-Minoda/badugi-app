@@ -73,7 +73,7 @@ class SelfPlayConfig:
     call_margin_weight: float = 0.30
     fold_margin_interval: int = 5
     # opp_epsilon: exploration rate for the frozen opponent agent.
-    #   0.0 (default) = pure GTO self-play (opponent is fully greedy).
+    #   0.0 (default) = fully greedy frozen-opponent actions, not a GTO guarantee.
     #   0.05–0.15 = stochastic diversity; hero learns to handle loose/aggressive
     #   style deviations without explicitly encoding personality types.
     #   Avoid > 0.20: excessively random opponent degrades training signal.
@@ -391,7 +391,7 @@ def parse_args():
     parser.add_argument("--call-margin-weight", type=float, default=SelfPlayConfig.call_margin_weight)
     parser.add_argument(
         "--opp-epsilon", type=float, default=SelfPlayConfig.opp_epsilon,
-        help="Opponent exploration rate. 0.0=pure GTO, 0.05-0.15=personality diversity.",
+        help="Opponent exploration rate. 0.0=greedy frozen opponent, 0.05-0.15=stochastic diversity. Neither guarantees GTO.",
     )
     parser.add_argument("--opponent-update-interval", type=int, default=SelfPlayConfig.opponent_update_interval)
     parser.add_argument("--output-dir", default=SelfPlayConfig.output_dir)

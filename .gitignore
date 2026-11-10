@@ -115,3 +115,6 @@ reports/ui/
 
 reports/learning-entry/simulator-artifacts/
 reports/gameplay-device/artifacts/
+
+# v1 browser evidence stays local; reviewed summaries/manifests may be committed.
+reports/release-v1/browser-*/

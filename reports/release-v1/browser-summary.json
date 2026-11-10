@@ -1,0 +1,262 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-02T04:06:41.026Z",
+  "expectedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+  "minimumHands": 100,
+  "expectedCases": 30,
+  "completedCases": 17,
+  "status": "FAIL",
+  "releaseGatePassed": false,
+  "remaining": [
+    "120-minute continuous sessions",
+    "Tournament matrix",
+    "Independent winner fixtures and strategic review",
+    "Physical iPhone and Android"
+  ],
+  "rows": [
+    {
+      "id": "B01",
+      "device": "desktop",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-desktop-result-id/nlh-desktop-100-hands.json"
+    },
+    {
+      "id": "B01",
+      "device": "android",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-android-root/nlh-android-100-hands.json"
+    },
+    {
+      "id": "B01",
+      "device": "iphone",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-iphone-root/nlh-iphone-100-hands.json"
+    },
+    {
+      "id": "B05",
+      "device": "desktop",
+      "status": "FAIL",
+      "reason": "Recorded failed run; complete report missing",
+      "path": "reports/release-v1/browser-desktop-result-id/plo-desktop-failure.json"
+    },
+    {
+      "id": "B05",
+      "device": "android",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-android-root/plo-android-100-hands.json"
+    },
+    {
+      "id": "B05",
+      "device": "iphone",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-iphone-root/plo-iphone-100-hands.json"
+    },
+    {
+      "id": "B09",
+      "device": "desktop",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-desktop-remaining/flo8-desktop-100-hands.json"
+    },
+    {
+      "id": "B09",
+      "device": "android",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-android-root/flo8-android-100-hands.json"
+    },
+    {
+      "id": "B09",
+      "device": "iphone",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-iphone-root/flo8-iphone-100-hands.json"
+    },
+    {
+      "id": "ST1",
+      "device": "desktop",
+      "status": "NOT_VERIFIED",
+      "reason": "Complete report missing",
+      "path": "reports/release-v1/browser-desktop-stud/stud-desktop-failure.json"
+    },
+    {
+      "id": "ST1",
+      "device": "android",
+      "status": "NOT_VERIFIED",
+      "reason": "Complete report missing",
+      "path": "reports/release-v1/browser-android-stud/stud-android-failure.json"
+    },
+    {
+      "id": "ST1",
+      "device": "iphone",
+      "status": "NOT_VERIFIED",
+      "reason": "Complete report missing",
+      "path": "reports/release-v1/browser-iphone-stud/stud-iphone-failure.json"
+    },
+    {
+      "id": "ST2",
+      "device": "desktop",
+      "status": "NOT_VERIFIED",
+      "reason": "Complete report missing",
+      "path": "reports/release-v1/browser-desktop-stud/stud8-desktop-failure.json"
+    },
+    {
+      "id": "ST2",
+      "device": "android",
+      "status": "NOT_VERIFIED",
+      "reason": "Complete report missing",
+      "path": "reports/release-v1/browser-android-stud/stud8-android-failure.json"
+    },
+    {
+      "id": "ST2",
+      "device": "iphone",
+      "status": "NOT_VERIFIED",
+      "reason": "Complete report missing",
+      "path": "reports/release-v1/browser-iphone-stud/stud8-iphone-failure.json"
+    },
+    {
+      "id": "ST3",
+      "device": "desktop",
+      "status": "NOT_VERIFIED",
+      "reason": "Complete report missing",
+      "path": "reports/release-v1/browser-desktop-stud/razz-desktop-failure.json"
+    },
+    {
+      "id": "ST3",
+      "device": "android",
+      "status": "NOT_VERIFIED",
+      "reason": "Complete report missing",
+      "path": "reports/release-v1/browser-android-stud/razz-android-failure.json"
+    },
+    {
+      "id": "ST3",
+      "device": "iphone",
+      "status": "NOT_VERIFIED",
+      "reason": "Complete report missing",
+      "path": "reports/release-v1/browser-iphone-stud/razz-iphone-failure.json"
+    },
+    {
+      "id": "D01",
+      "device": "desktop",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-desktop-remaining/d01-desktop-100-hands.json"
+    },
+    {
+      "id": "D01",
+      "device": "android",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-android-result-id/d01-android-100-hands.json"
+    },
+    {
+      "id": "D01",
+      "device": "iphone",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-iphone-result-id/d01-iphone-100-hands.json"
+    },
+    {
+      "id": "D02",
+      "device": "desktop",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-desktop-remaining/d02-desktop-100-hands.json"
+    },
+    {
+      "id": "D02",
+      "device": "android",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-android-result-id/d02-android-100-hands.json"
+    },
+    {
+      "id": "D02",
+      "device": "iphone",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-iphone-result-id/d02-iphone-100-hands.json"
+    },
+    {
+      "id": "D03",
+      "device": "desktop",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-desktop-result-id/badugi-desktop-100-hands.json"
+    },
+    {
+      "id": "D03",
+      "device": "android",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-android-root/badugi-android-100-hands.json"
+    },
+    {
+      "id": "D03",
+      "device": "iphone",
+      "status": "PASS_BROWSER_SCOPE",
+      "failures": [],
+      "hands": 100,
+      "servedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+      "path": "reports/release-v1/browser-iphone-root/badugi-iphone-100-hands.json"
+    },
+    {
+      "id": "S01",
+      "device": "desktop",
+      "status": "FAIL",
+      "reason": "Recorded failed run; complete report missing",
+      "path": "reports/release-v1/browser-desktop-remaining/s01-desktop-failure.json"
+    },
+    {
+      "id": "S01",
+      "device": "android",
+      "status": "FAIL",
+      "reason": "Recorded failed run; complete report missing",
+      "path": "reports/release-v1/browser-android-result-id/s01-android-failure.json"
+    },
+    {
+      "id": "S01",
+      "device": "iphone",
+      "status": "FAIL",
+      "reason": "Recorded failed run; complete report missing",
+      "path": "reports/release-v1/browser-iphone-result-id/s01-iphone-failure.json"
+    }
+  ]
+}

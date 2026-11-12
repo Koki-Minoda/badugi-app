@@ -39,7 +39,7 @@ jobs:
       - run: node --test scripts/deploy/public-cash-gate.test.mjs
 
   learning-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # A cold chromium+webkit system-dependency install exceeded 20 minutes in
     # the 2026-10-26 production dispatch before the actual QA could start.
     timeout-minutes: 90
@@ -108,7 +108,7 @@ jobs:
         run: python -m pytest backend/tests
 
   tournament-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Three natural full-field runs allow 15 minutes each, plus the other regressions.
     timeout-minutes: 90
     steps:
@@ -137,7 +137,7 @@ jobs:
 
 
   p2p-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
@@ -164,7 +164,7 @@ jobs:
           retention-days: 14
 
   history-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
@@ -189,7 +189,7 @@ jobs:
             --project=badugi-flow
 
   core5-device-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The added readable CPU pause exhausted the old serial 120-minute budget
     # after 60/70 cases. Each device retains all games and ten hands, on its own
     # backend/runner. The protected gate below still requires the full evidence.
@@ -273,7 +273,7 @@ jobs:
           retention-days: 30
 
   cash-playability-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
@@ -314,7 +314,7 @@ jobs:
           retention-days: 30
 
   mobile-webkit-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
@@ -355,7 +355,7 @@ jobs:
           retention-days: 14
 
   release-candidate-browser-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v6
@@ -416,7 +416,7 @@ jobs:
           retention-days: 30
 
   stud-razz-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # A cold browser install left too little time for the device matrix on 2026-10-27.
     timeout-minutes: 90
     steps:
@@ -430,7 +430,7 @@ jobs:
       - run: npm run test:qm:stud-razz-devices
 
   nlh-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
@@ -459,7 +459,7 @@ jobs:
           retention-days: 30
 
   dramaha-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The three-engine, six-variant matrix needs about 27 minutes after setup.
     # A cold browser install consumed the 60-minute job limit on 2026-10-27.
     timeout-minutes: 120
@@ -490,7 +490,7 @@ jobs:
           retention-days: 30
 
   omaha-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Browser dependency installation can consume >30 minutes on a cold runner;
     # keep the full desktop/Android/WebKit gameplay gate rather than truncating it.
     timeout-minutes: 90
@@ -524,7 +524,7 @@ jobs:
           retention-days: 30
 
   chinese-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6

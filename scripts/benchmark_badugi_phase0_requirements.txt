@@ -1,0 +1,4 @@
+numpy==2.4.6
+onnxruntime==1.32.0
+psutil==7.2.2
+torch==2.15.0

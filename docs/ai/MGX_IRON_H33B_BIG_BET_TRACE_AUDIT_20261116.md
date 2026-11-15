@@ -4,7 +4,7 @@
 
 ## 方法
 
-`src/rl/evaluation/audit_badugi_trace_units.py` は既存の `sessions.jsonl` と `hand-trace.jsonl` を一行ずつ読み、各sessionに属するhandのseed、group、profile、hero seat、連番を照合する。2/3/6席の全席 `startingStack + chipDelta = endingStack` と終局差分合計0、行動mask、公開actionのBET額とstack遷移、DRAW枚数、heroのモデル使用状態、fallback 0、推論期限、元session集計を検査する。これは**終局時のchip照合**であり、全遷移のpot/commit/再購入ledgerではない。
+`src/rl/evaluation/audit_badugi_trace_units.py` は既存の `sessions.jsonl` と `hand-trace.jsonl` を一行ずつ読み、各sessionに属するhandのseed、group、profile、hero seat、連番を照合する。2/3/6席の全席 `startingStack + chipDelta = endingStack` と終局差分合計0、hand間の全席stack連続性、負stackなし、session英雄chip差分の望遠和、行動mask、公開actionのBET額とstack遷移、DRAW枚数、heroのモデル使用状態、fallback 0、推論期限、元session集計を検査する。これは**各終局・hand境界のchip照合**であり、全遷移のpot/commit ledgerではない。
 
 各handの固定リミットbig bet額を `2 × activeBigBlind` とし、`netBigBets = Σ heroChipDelta / (2 × activeBigBlind)`、`score = 100 × netBigBets / sessionHands` を計算する。controllerの後半street bet unitがこの額であることを現行 `badugiControllerObservationV2Draft.js` と照合した。元評価の `chipBbPerHand = Σ heroChipDelta / activeBigBlind / sessionHands` との換算一致も全sessionで確認する。モデルSHAは凍結manifestが**申告したID**として出力し、モデルbodyの再ハッシュやブラウザ実使用の証明とは分ける。
 
@@ -22,7 +22,7 @@ python3 src/rl/evaluation/audit_badugi_trace_units.py \
 python3 -m unittest src/rl/__tests__/test_audit_badugi_trace_units.py
 ```
 
-元H33bはcandidate/reference各100,000独立20hand session、各2,000,000 hand。最初の各100 sessionは別のprefix診断JSONへ保全した。全量の入力/出力SHA、40 cellの件数、観測したsession収益範囲、最大推論時間は `/Users/koki/Documents/Codex/MGX-RL-Artifacts/mgx-phase1-trace-unit-diagnostic-20261116/` の `candidate-final.json` と `reference-final.json` を正本とする。両armのmanifest、session、hand入力SHAは既存H33b `strength-audit/audit.json` と完全一致した。adapter本体SHA256は `4233de0a9f111c6435d9980f0f7659a7ca440ac89df27b0daf0502507bd37829`。
+元H33bはcandidate/reference各100,000独立20hand session、各2,000,000 hand。最初の各100 sessionは別のprefix診断JSONへ保全した。全量の入力/出力SHA、40 cellの件数、観測したsession収益範囲、最大推論時間は `/Users/koki/Documents/Codex/MGX-RL-Artifacts/mgx-phase1-trace-unit-diagnostic-20261116/` の `candidate-continuity.json` と `reference-continuity.json` を正本とする。両armのmanifest、session、hand入力SHAは既存H33b `strength-audit/audit.json` と完全一致した。adapter本体SHA256は `d71d5e73214e75f9d93309d1e023501671f95ecb423312279ce17d368d9db766`。旧`*-final.json`はhand間連続性検査前の診断原本として残し、採用しない。
 
 ## 全量診断結果（既存データのみ）
 
@@ -34,14 +34,20 @@ python3 -m unittest src/rl/__tests__/test_audit_badugi_trace_units.py
 | MTT平均 big bet / 100 hand | 131.52346200 | 117.68026600 |
 | 観測session score範囲 | −100 ～ +500 | −100 ～ +500 |
 | 最大hero推論時間 | 11.414 ms | 15.560 ms |
-| 変換JSONL SHA256 | `9ed1fa38c570a61e32a57fb695f58dac39732ce5f45db1f7004a5324779762f0` | `9cd3a3f9f0d626abb495d2d497f733f64cdc1773415140ac076392bf765ada8f` |
-| 監査JSON SHA256 | `909aaf3845390daebdece185f9e48d926c8f7827566dd49ebbcaa0792a4ddee4` | `979ef2b3b129bed6738572ef4bc189c0bce45669bb48c3307450da7f7df045ba` |
+| 変換JSONL SHA256 | `efa84d3cd5a721407dfa015442837f251934e1252c3e80495284d341f2401813` | `fd6b4f259e8cd07223048809bcf841fb82088e1e16cf08f44a0d6737c4af69bd` |
+| 監査JSON SHA256 | `f4b68569a5df10fd8c0172bd592b4e2448a5d1fcfa942f918ffc617f2f40943b` | `9f35ffb40060938c265c3dd4f3f6e01a0fa2a023fc3ba068da3835443806674a` |
 
-candidate − Proの記述的な平均差は全体 +8.84856675、cash +3.85393750、MTT +13.84319600 big bet / 100 hand。これは元G4のBB/hand数値を50倍した結果と一致する。元G4の負のpoint cellは12のまま保持する。観測範囲は真の取り得る範囲の証明ではないため、この数値から逐次ゲートの `scoreBounds` を設定しない。
+candidate − Proの記述的な平均差は全体 +8.84856675、cash +3.85393750、MTT +13.84319600 big bet / 100 hand。これは元G4のBB/hand数値を50倍した結果と一致する。元G4の負のpoint cellは12のまま保持する。
+
+## H33b固定設定に限る収益範囲の証明
+
+凍結code `a0f29914f206bffc177856dbb779c6e11933841f` の `BadugiControllerInteractiveV2Draft` と評価器のreset呼出しでは、cashは参加席あたり初期500 chip・全hand BB20、MTTは初期2,000 chip・全hand BB50で、session中の補充指示はない。全200,000 sessionの変換原本で、参加席数2/3/6、初期stack、20handすべてのBB、hand間全席stack連続性、終局チップ総量を照合した。浮動小数点許容差 `1e-9` 以内で `netBigBets = (最終hero stack − 初期hero stack) / (2 × BB)` が全件成立した。
+
+参加席数を `O`、各席初期stackを `S`、固定BBを `B` とすると、負のstackがなくチップ総量 `O×S` が保存されるため、heroの20hand純増減は `−S ≤ Δchips ≤ (O−1)S`。したがって100hand正規化scoreの**理論範囲**はcash `[-62.5, 62.5×(O−1)]`、MTT `[-100, 100×(O−1)]` big bet/100hand、全cell共通では `[-100, +500]`。これは観測極値からの推測ではなく、この凍結設定・補充なし・連続ledgerを条件とする算術的上限である。ただし将来の新候補用ゲートでは、同じ設定、初期stack、固定BB、補充禁止、session長を**収集前の計画**へ固定し、実controllerと独立監査で再確認する。H33b過去データを新しいholdoutと見なす理由にはならない。
 
 ## 使える範囲と次の課題
 
 - 変換JSONLは後続の逐次評価器に必要なsession単位の形を示すが、H33bを新しい最終holdoutとして再採点するためのものではない。
-- `scoreBounds` は観測最小・最大から決めない。固定リミットのルール、スタックと再購入上限から取り得る範囲を証明し、事前manifestに固定する。
+- 新しい`scoreBounds` は観測最小・最大から決めない。H33bと違うstack、BB、補充、session長なら同じ範囲を使えない。実行設定から範囲を事前計算し、計画とcontrollerの一致を独立監査する。
 - 現行adapterは元トレースの正しさを構造的に照合する。行動maskと記録された額・stack遷移は確認するが、すべてのstreetでの額の完全な合法性や全中間ledgerは証明しない。モデルbody SHA、元学習seedとの不交差、逐次評価の予定look、未知相手分布も別の独立監査が必要。
 - より小さい改善幅を実用的な計算予算で検証するため、誤判定率を保つ分散適応型の逐次法を次の独立PRで検討する。既存の採用基準を事後的に緩めない。

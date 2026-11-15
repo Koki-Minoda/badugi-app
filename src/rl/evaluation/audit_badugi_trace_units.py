@@ -64,6 +64,9 @@ def audit_session(session, hand_stream, hand_digest, *, model_sha, contract_sha,
     max_latency = 0.0
     no_decision_hands = 0
     actions = Counter()
+    first_start = None
+    previous_ending = None
+    blind_values = set()
     for hand_index in range(count):
         hand = _next_json(hand_stream, hand_digest, "hand trace")
         if (hand.get("seed") != seed or hand.get("handIndex") != hand_index or
@@ -80,10 +83,17 @@ def audit_session(session, hand_stream, hand_digest, *, model_sha, contract_sha,
                     for x in (deltas, starting, ending)) or
                 any(type(value) is not int for array in (deltas, starting, ending)
                     for value in array) or
+                any(value < 0 for array in (starting, ending) for value in array) or
                 sum(deltas) != 0 or
                 any(starting[seat] + deltas[seat] != ending[seat]
                     for seat in range(seat_count))):
             raise ValueError("all-seat terminal chip ledger mismatch")
+        if previous_ending is not None and starting != previous_ending:
+            raise ValueError("inter-hand chip continuity mismatch")
+        if first_start is None:
+            first_start = starting
+        previous_ending = ending
+        blind_values.add(bb)
         hero_delta = deltas[hero]
         net_chips += hero_delta
         blind_units += hero_delta / bb
@@ -144,6 +154,8 @@ def audit_session(session, hand_stream, hand_digest, *, model_sha, contract_sha,
         raise ValueError("session summary and hand originals disagree")
     if requests == 0 or fallback != 0 or used != requests:
         raise ValueError("normal-flow model use is incomplete")
+    if net_chips != previous_ending[hero] - first_start[hero]:
+        raise ValueError("session hero chip ledger does not telescope")
     return {
         "sessionId": f"{seed}:{group}:{profile}:{hero}",
         "sessionIndex": index, "seed": seed,
@@ -155,6 +167,11 @@ def audit_session(session, hand_stream, hand_digest, *, model_sha, contract_sha,
         "illegalActions": 0, "fallbacks": fallback,
         "inferenceRequests": requests, "inferenceUsed": used,
         "maxInferenceMs": max_latency,
+        "initialStacks": first_start,
+        "finalStacks": previous_ending,
+        "initialChipPool": sum(first_start),
+        "activeBigBlindMin": min(blind_values),
+        "activeBigBlindMax": max(blind_values),
         "modelIdentityAttestedByManifest": True,
     }
 

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib.util
+import io
 import json
 import tempfile
 import unittest
@@ -84,11 +86,25 @@ class BadugiTraceUnitAuditTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "extra hand"):
             run_files(manifest, session, hand, extra_hand=True)
 
+    def test_rejects_inter_hand_chip_reset(self):
+        manifest, session, hand = originals()
+        session["hands"] = 2
+        later = copy.deepcopy(hand)
+        later["handIndex"] = 1
+        # Each hand balances internally, but chips are silently reset between hands.
+        stream = io.BytesIO((json.dumps(hand) + "\n" + json.dumps(later) + "\n").encode())
+        with self.assertRaisesRegex(ValueError, "inter-hand chip continuity"):
+            audit.audit_session(session, stream, hashlib.sha256(),
+                                model_sha=manifest["modelSha256"],
+                                contract_sha=manifest["contractSha256"],
+                                deadline_ms=8000, index=1)
+
     def test_rejects_malformed_trace_and_summary(self):
         cases = [
             ("wrong seed", lambda s, h: h.update(seed=18)),
             ("lost chips", lambda s, h: h.update(chipDeltaBySeat=[20, -10])),
             ("ending stack", lambda s, h: h.update(endingStacks=[510, 480])),
+            ("negative stack", lambda s, h: h.update(startingStacks=[-1, 1001])),
             ("illegal action", lambda s, h: h["decisions"][0].update(actionIndex=2)),
             ("bet amount", lambda s, h: h["publicActionTrace"][0].update(amount=10)),
             ("fallback", lambda s, h: h["decisions"][0].update(status="fallback")),

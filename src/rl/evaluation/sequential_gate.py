@@ -15,7 +15,7 @@ import math
 from collections import defaultdict
 from pathlib import Path
 
-SCHEMA = "mgx-sequential-gate/v1"
+SCHEMA = "mgx-sequential-gate/v2"
 METRICS = ("overall", "cash", "mtt")
 SHA_LENGTH = 64
 
@@ -33,6 +33,26 @@ def _window(value: object) -> tuple[int, int]:
     return value[0], value[1]
 
 
+def _finite_positive(value: object) -> bool:
+    return type(value) in (int, float) and math.isfinite(value) and value > 0
+
+
+def _conservation_bounds(cell: dict, hands: int) -> tuple[float, float]:
+    """True score bounds if the frozen no-rebuy constant-bet contract holds."""
+    seats = cell.get("tableSeats")
+    occupied = cell.get("occupiedSeats")
+    stack = cell.get("startingStackChips")
+    big_bet = cell.get("bigBetChips")
+    if (type(seats) is not int or seats not in (2, 3, 6) or
+            type(occupied) is not int or not 2 <= occupied <= seats or
+            not _finite_positive(stack) or not _finite_positive(big_bet) or
+            cell.get("noRebuy") is not True or
+            cell.get("constantBigBet") is not True):
+        raise ValueError("cell lacks a valid conserved-chip score-bound proof")
+    multiplier = 100.0 / (hands * big_bet)
+    return -stack * multiplier, (occupied - 1) * stack * multiplier
+
+
 def validate_manifest(plan: dict) -> None:
     if plan.get("schema") != SCHEMA or plan.get("scoreUnit") != "big_bet_per_100_hands":
         raise ValueError("unknown gate schema or score unit")
@@ -43,13 +63,14 @@ def validate_manifest(plan: dict) -> None:
         raise ValueError("candidate and reference models must differ")
     bounds = plan.get("scoreBounds")
     if (not isinstance(bounds, list) or len(bounds) != 2 or
-            any(not isinstance(x, (int, float)) or not math.isfinite(x) for x in bounds) or
+            any(type(x) not in (int, float) or not math.isfinite(x) for x in bounds) or
             bounds[0] >= bounds[1]):
         raise ValueError("finite predeclared score bounds required")
     alpha = plan.get("familywiseAlpha")
     delta = plan.get("minimumImprovement")
-    if (not isinstance(alpha, (int, float)) or not 0 < alpha <= 0.1 or
-            not isinstance(delta, (int, float)) or not math.isfinite(delta)):
+    if (type(alpha) not in (int, float) or not 0 < alpha <= 0.1 or
+            type(delta) not in (int, float) or not math.isfinite(delta) or
+            delta <= 0):
         raise ValueError("invalid alpha or minimum improvement")
     looks = plan.get("lookSessionsPerCell")
     if (not isinstance(looks, list) or not looks or
@@ -75,6 +96,11 @@ def validate_manifest(plan: dict) -> None:
     if (type(max_hands) is not int or max_hands < 1 or type(budget) is not int or
             budget < looks[-1] * len(cells) * max_hands):
         raise ValueError("hand budget does not cover the last planned look")
+    proved = [_conservation_bounds(cell, max_hands) for cell in cells]
+    required_low = min(pair[0] for pair in proved)
+    required_high = max(pair[1] for pair in proved)
+    if (bounds[0] > required_low or bounds[1] < required_high):
+        raise ValueError("scoreBounds exclude mathematically possible chip outcomes")
     windows = plan.get("seedWindows")
     if not isinstance(windows, dict) or set(windows) != {"candidate", "reference"}:
         raise ValueError("candidate/reference seed windows required")
@@ -95,7 +121,7 @@ def validate_manifest(plan: dict) -> None:
 def _validate_rows(plan: dict, rows: dict[str, list[dict]]) -> tuple[int, dict]:
     if set(rows) != {"candidate", "reference"}:
         raise ValueError("exactly candidate and reference arms required")
-    cells = {cell["name"] for cell in plan["cells"]}
+    cells = {cell["name"]: cell for cell in plan["cells"]}
     seen_seed = set()
     seen_id = set()
     grouped: dict[tuple[str, str], list[dict]] = defaultdict(list)
@@ -127,6 +153,27 @@ def _validate_rows(plan: dict, rows: dict[str, list[dict]]) -> tuple[int, dict]:
             low, high = plan["scoreBounds"]
             if score < low or score > high:
                 raise ValueError("session score outside predeclared bounds; no clipping")
+            cell = cells[row["cell"]]
+            seats = cell["tableSeats"]
+            occupied = cell["occupiedSeats"]
+            stack = cell["startingStackChips"]
+            big_bet = cell["bigBetChips"]
+            hero = row.get("heroSeat")
+            initial = row.get("initialStacks")
+            final = row.get("finalStacks")
+            expected = [stack if seat < occupied else 0 for seat in range(seats)]
+            if (type(hero) is not int or not 0 <= hero < occupied or
+                    initial != expected or not isinstance(final, list) or
+                    len(final) != seats or
+                    any(type(value) not in (int, float) or
+                        not math.isfinite(value) or value < 0 for value in final) or
+                    not math.isclose(sum(final), occupied * stack, abs_tol=1e-8) or
+                    row.get("initialChipPool") != occupied * stack or
+                    not math.isclose(net, (final[hero] - stack) / big_bet,
+                                     abs_tol=1e-8) or
+                    row.get("activeBigBlindMin") != big_bet / 2 or
+                    row.get("activeBigBlindMax") != big_bet / 2):
+                raise ValueError("row violates frozen conserved-chip score-bound proof")
             for field in ("illegalActions", "fallbacks", "inferenceRequests", "inferenceUsed"):
                 if type(row.get(field)) is not int or row[field] < 0:
                     raise ValueError(f"invalid {field}")
@@ -212,9 +259,16 @@ def evaluate(plan: dict, rows: dict[str, list[dict]]) -> dict:
         } for cell in plan["cells"]
     }
     return {
-        "schema": "mgx-sequential-gate-result/v1",
+        "schema": "mgx-sequential-gate-result/v2",
         "decision": decision, "reason": reason,
         "productAdoptionApproved": False,
+        "scoreBoundProofMethod": "conserved_finite_chip_pool_no_rebuy_constant_big_bet",
+        "derivedScoreBounds": [
+            min(_conservation_bounds(cell, plan["handsPerSession"])[0]
+                for cell in plan["cells"]),
+            max(_conservation_bounds(cell, plan["handsPerSession"])[1]
+                for cell in plan["cells"]),
+        ],
         "lookSessionsPerCell": n,
         "nextLookSessionsPerCell": next((look for look in plan["lookSessionsPerCell"] if look > n), None),
         "totalHandsByArm": details["totalHandsByArm"],

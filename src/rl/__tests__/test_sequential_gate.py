@@ -26,7 +26,7 @@ def plan():
         "candidateModelSha256": "a" * 64,
         "referenceModelSha256": "b" * 64,
         "controllerContractSha256": "c" * 64,
-        "scoreBounds": [-1, 1],
+        "scoreBounds": [-62.5, 62.5],
         "familywiseAlpha": 0.01,
         "minimumImprovement": 0.1,
         "lookSessionsPerCell": [20, 50, 100],
@@ -36,8 +36,12 @@ def plan():
                         "reference": [20_000, 29_999]},
         "excludedSeedWindows": [[1, 9_999]],
         "maxInferenceMs": 8000,
-        "cells": [{"name": "cash|balanced", "format": "cash", "weight": 0.5},
-                  {"name": "mtt|unknown", "format": "mtt", "weight": 0.5}],
+        "cells": [{"name": "cash|balanced", "format": "cash", "weight": 0.5,
+                   "tableSeats": 2, "occupiedSeats": 2, "startingStackChips": 500,
+                   "bigBetChips": 40, "noRebuy": True, "constantBigBet": True},
+                  {"name": "mtt|unknown", "format": "mtt", "weight": 0.5,
+                   "tableSeats": 2, "occupiedSeats": 2, "startingStackChips": 500,
+                   "bigBetChips": 40, "noRebuy": True, "constantBigBet": True}],
     }
 
 
@@ -52,6 +56,7 @@ def rows(config, n, candidate_score, reference_score):
                     "sessionIndex": index,
                     "seed": (10_000 if arm == "candidate" else 20_000) +
                             cell_number * 1000 + index,
+                    "heroSeat": 0,
                     "cell": cell["name"],
                     "hands": 20,
                     "netBigBets": value / 5,
@@ -61,20 +66,25 @@ def rows(config, n, candidate_score, reference_score):
                     "illegalActions": 0, "fallbacks": 0,
                     "inferenceRequests": 4, "inferenceUsed": 4,
                     "maxInferenceMs": 15,
+                    "initialStacks": [500, 500],
+                    "finalStacks": [500 + 8 * value, 500 - 8 * value],
+                    "initialChipPool": 1000,
+                    "activeBigBlindMin": 20,
+                    "activeBigBlindMax": 20,
                 })
     return result
 
 
 class SequentialGateTest(unittest.TestCase):
     def test_strong_candidate_is_only_a_promotion_recommendation(self):
-        result = gate.evaluate(plan(), rows(plan(), 100, 1, -1))
+        result = gate.evaluate(plan(), rows(plan(), 100, 62.5, -62.5))
         self.assertEqual(result["decision"], "PROMOTE")
         self.assertFalse(result["productAdoptionApproved"])
         self.assertEqual(result["lookSessionsPerCell"], 100)
         self.assertTrue(all(metric["lower"] > 0.1 for metric in result["metrics"].values()))
 
     def test_weak_candidate_rejected_and_ambiguous_is_continued(self):
-        self.assertEqual(gate.evaluate(plan(), rows(plan(), 100, -1, 1))["decision"],
+        self.assertEqual(gate.evaluate(plan(), rows(plan(), 100, -62.5, 62.5))["decision"],
                          "REJECT")
         interim = gate.evaluate(plan(), rows(plan(), 20, 0, 0))
         self.assertEqual(interim["decision"], "CONTINUE")
@@ -91,6 +101,14 @@ class SequentialGateTest(unittest.TestCase):
                                later["metrics"][name]["radius"])
             self.assertTrue(math.isclose(later["metrics"][name]["difference"], 0))
 
+    def test_nonzero_hero_seat_uses_its_own_terminal_stack(self):
+        config = plan()
+        data = rows(config, 20, 1, 0)
+        row = data["candidate"][0]
+        row["heroSeat"] = 1
+        row["finalStacks"] = list(reversed(row["finalStacks"]))
+        self.assertEqual(gate.evaluate(config, data)["decision"], "CONTINUE")
+
     def test_rejects_provenance_unit_and_safety_mismatches(self):
         config = plan()
         data = rows(config, 20, 0, 0)
@@ -102,6 +120,8 @@ class SequentialGateTest(unittest.TestCase):
             ("no ONNX use", lambda d: d["candidate"][0].update(inferenceUsed=3)),
             ("out of bounds", lambda d: d["candidate"][0].update(netBigBets=100)),
             ("variable session length", lambda d: d["candidate"][0].update(hands=19)),
+            ("falsified terminal stack", lambda d: d["candidate"][0].update(finalStacks=[500, 501])),
+            ("falsified fixed blind", lambda d: d["candidate"][0].update(activeBigBlindMax=50)),
             ("partial look", lambda d: d["candidate"].pop()),
             ("duplicate session", lambda d: d["candidate"][1].update(sessionId=d["candidate"][0]["sessionId"])),
         ]
@@ -125,6 +145,14 @@ class SequentialGateTest(unittest.TestCase):
         config = plan()
         config["maxHandsPerArm"] = 3999
         with self.assertRaisesRegex(ValueError, "budget"):
+            gate.validate_manifest(config)
+        config = plan()
+        config["scoreBounds"] = [-1, 1]
+        with self.assertRaisesRegex(ValueError, "mathematically possible"):
+            gate.validate_manifest(config)
+        config = plan()
+        config["cells"][0]["noRebuy"] = False
+        with self.assertRaisesRegex(ValueError, "score-bound proof"):
             gate.validate_manifest(config)
 
     def test_cli_records_input_hashes_and_refuses_overwrite(self):
@@ -156,8 +184,8 @@ class SequentialGateTest(unittest.TestCase):
         for _ in range(repetitions):
             config = plan()
             full = rows(config, 100,
-                        lambda: rng.choice((-1, 1)),
-                        lambda: rng.choice((-1, 1)))
+                        lambda: rng.choice((-62.5, 62.5)),
+                        lambda: rng.choice((-62.5, 62.5)))
             for look in config["lookSessionsPerCell"]:
                 truncated = {
                     arm: [row for row in full[arm] if row["sessionIndex"] <= look]

@@ -20,6 +20,7 @@ describe('Badugi v2 interactive controller training boundary', () => {
     (seatCount, occupiedSeatCount, isTournament) => {
       const session = new BadugiControllerInteractiveV2Draft({
         seatCount, occupiedSeatCount, isTournament, seed: 20261104 + seatCount,
+        includeLedger: true,
       });
       let betCount = 0;
       let drawCount = 0;
@@ -31,6 +32,13 @@ describe('Badugi v2 interactive controller training boundary', () => {
           expect(response.activeBigBlind).toBe(isTournament ? 50 : 20);
         }
         while (response.type === 'decision') {
+          expect(response.ledger.terminal).toBe(false);
+          expect(response.ledger.accounted).toBe(response.ledger.chipPool);
+          expect(response.ledger.stacks).toHaveLength(seatCount);
+          expect(response.ledger.committedBySeat).toHaveLength(seatCount);
+          expect(response.ledger.stacks.reduce((a, b) => a + b, 0) +
+            response.ledger.committedBySeat.reduce((a, b) => a + b, 0))
+            .toBe(response.ledger.chipPool);
           expect(response.observation).toHaveLength(96);
           expect(response.occupiedSeatCount).toBe(occupiedSeatCount);
           expect(response.observation[10]).toBeCloseTo(seatCount / 6);
@@ -45,6 +53,10 @@ describe('Badugi v2 interactive controller training boundary', () => {
           response = session.step(actionIndex);
         }
         expect(response.type).toBe('hand_end');
+        expect(response.ledger.terminal).toBe(true);
+        expect(response.ledger.committedBySeat).toBeNull();
+        expect(response.ledger.stacks.reduce((a, b) => a + b, 0))
+          .toBe(response.ledger.chipPool);
         expect(response.chipDeltaBySeat.reduce((a, b) => a + b, 0)).toBe(0);
         expect(response.publicActionTrace).toHaveLength(response.decisionCount);
         expect(response.publicActionTrace.every((action) =>
@@ -66,5 +78,14 @@ describe('Badugi v2 interactive controller training boundary', () => {
     expect(blocked).toBeGreaterThanOrEqual(0);
     expect(() => session.step(blocked)).toThrow('unmasked');
     expect(session.currentDecision()).toEqual(before);
+  });
+
+  it('fails closed if an intermediate all-seat ledger is altered', () => {
+    const session = new BadugiControllerInteractiveV2Draft({
+      seatCount: 2, isTournament: false, seed: 113, includeLedger: true,
+    });
+    session.nextHand();
+    session.state.snapshot.players[0].stack += 1;
+    expect(() => session.currentDecision()).toThrow('ledger mismatch');
   });
 });

@@ -65,6 +65,16 @@ function cardsAtDecision(hero, before, previousFrames) {
   return validatePracticeSetup("badugi", cards) ? cards : null;
 }
 
+function recordedPotBefore(before, previousFrames) {
+  const latestPotEvent = previousFrames.findLast(({ event }) =>
+    event?.type === "BET_ACTION" || (event?.type === "DRAW_ACTION" && Number.isFinite(event.potAfter)),
+  )?.event;
+  // Replay retains the preceding pot when a legacy BET event omitted potAfter.
+  if (latestPotEvent && !Number.isFinite(latestPotEvent.potAfter)) return null;
+  if (!latestPotEvent && !previousFrames.some(({ event }) => event?.type === "BLINDS_POSTED")) return null;
+  return Number.isFinite(before?.pot) ? before.pot : null;
+}
+
 export default function BadugiReplayDecisionPreview({ hand, frames, frameIndex, onJump, language }) {
   if (reviewVariant(hand) !== "badugi") return null;
   const hero = getHero(hand);
@@ -80,6 +90,7 @@ export default function BadugiReplayDecisionPreview({ hand, frames, frameIndex, 
   const before = frames[frameIndex - 1];
   const previousFrames = atDecision ? frames.slice(0, frameIndex) : [];
   const cards = atDecision ? cardsAtDecision(hero, before, previousFrames) : null;
+  const pot = atDecision ? recordedPotBefore(before, previousFrames) : null;
   const otherActions = previousFrames
     .filter(({ event }) => isDecision(event) && Number.isInteger(event.seat) && event.seat !== hero.seat)
     .slice(-4);
@@ -104,9 +115,11 @@ export default function BadugiReplayDecisionPreview({ hand, frames, frameIndex, 
                   {cards.map((value) => <Card key={value} value={value} style={{ width: 40, height: 54, fontSize: 17 }} />)}
                 </div>
               ) : <p className="text-sm text-slate-300">{ja ? "手札の記録なし" : "Cards unavailable"}</p>}
-              {Number.isFinite(before?.pot) && (
-                <p className="text-sm text-slate-300">{ja ? "操作前のポット" : "Pot before acting"} {number.format(before.pot)}</p>
-              )}
+              <p className="text-sm text-slate-300">
+                {ja ? "操作前のポット" : "Pot before acting"} {pot === null
+                  ? (ja ? "記録なし" : "Unavailable")
+                  : number.format(pot)}
+              </p>
             </div>
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-sky-100">{ja ? "それまでの相手の操作" : "Recent opponent actions"}</h3>

@@ -129,6 +129,28 @@ describe("ReplayScreen review integration", () => {
     expect(preview.textContent).not.toContain("999");
   });
 
+  it("withholds the pre-action pot when the preceding bet is missing its pot snapshot", async () => {
+    vi.stubEnv("VITE_MGX_BADUGI_REPLAY_PREVIEW", "1");
+    const hand = makeReviewHand();
+    hand.events.splice(1, 0,
+      { type: "BLINDS_POSTED", sbSeat: 0, sbAmount: 10, bbSeat: 1, bbAmount: 20 },
+      { type: "BET_ACTION", seat: 1, action: "raise", amount: 20 },
+    );
+    const show = (record) => (
+      <MemoryRouter><ReplayScreen initialHandSnapshot={record} /></MemoryRouter>
+    );
+    const { rerender } = render(show(hand));
+    fireEvent.click(await screen.findByRole("button", { name: "最初の判断へ" }));
+    const preview = screen.getByTestId("badugi-replay-decision-preview");
+    expect(preview.textContent).toContain("操作前のポット 記録なし");
+
+    const canonicalHand = { ...hand, events: hand.events.map((event, index) =>
+      index === 2 ? { ...event, potAfter: 50 } : event,
+    ) };
+    rerender(show(canonicalHand));
+    await waitFor(() => expect(preview.textContent).toContain("操作前のポット 50"));
+  });
+
   it("requires an explicit hero before exposing cards or a practice link", async () => {
     vi.stubEnv("VITE_MGX_BADUGI_REPLAY_PREVIEW", "1");
     const hand = makeReviewHand();

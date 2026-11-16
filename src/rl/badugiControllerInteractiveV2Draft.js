@@ -23,16 +23,17 @@ const sum = (values) => values.reduce((total, value) => total + value, 0);
 
 export class BadugiControllerInteractiveV2Draft {
   constructor({ seatCount, occupiedSeatCount = seatCount, isTournament, seed, startingStack = null,
-    blindStructure = null }) {
+    blindStructure = null, includeLedger = false }) {
     if (![2, 3, 6].includes(seatCount) || typeof isTournament !== 'boolean' ||
         ![2, 3, 6].includes(occupiedSeatCount) || occupiedSeatCount > seatCount ||
-        !Number.isInteger(seed)) {
+        !Number.isInteger(seed) || typeof includeLedger !== 'boolean') {
       throw new TypeError('v2 draft bridge requires 2/3/6 seats, occupied count, mode and seed');
     }
     this.seatCount = seatCount;
     this.occupiedSeatCount = occupiedSeatCount;
     this.isTournament = isTournament;
     this.seed = seed;
+    this.includeLedger = includeLedger;
     this.blindStructure = blindStructure ?? (isTournament
       ? [{ sb: 5, bb: 10, ante: 0, hands: 1 },
         { sb: 25, bb: 50, ante: 0, hands: 100 }]
@@ -53,6 +54,24 @@ export class BadugiControllerInteractiveV2Draft {
     this.state = this.controller.createInitialState({ seatConfig });
     this.handIndex = -1;
     this.complete = true;
+  }
+
+  captureLedger(snapshot, terminal = false) {
+    const stacks = snapshot.players.map((player) => player.stack);
+    const committedBySeat = terminal ? null :
+      snapshot.players.map((player) => player.totalInvested);
+    const values = committedBySeat ? [...stacks, ...committedBySeat] : stacks;
+    if (stacks.length !== this.seatCount ||
+        values.some((value) => !Number.isInteger(value) || value < 0)) {
+      throw new TypeError('v2 draft bridge ledger has a negative or invalid chip amount');
+    }
+    const chipPool = sum(this.startingStacks);
+    const accounted = sum(values);
+    if (accounted !== chipPool) {
+      throw new TypeError(`v2 draft bridge ledger mismatch: ${accounted} != ${chipPool}`);
+    }
+    return { handIndex: this.handIndex, decisionIndex: this.decisionCount,
+      terminal, stacks, committedBySeat, accounted, chipPool };
   }
 
   nextHand() {
@@ -101,7 +120,8 @@ export class BadugiControllerInteractiveV2Draft {
           player.isBusted || player.busted) ? [index] : []),
       observation: Array.from(observation),
       legalMask: Array.from(observation.slice(32, 38)),
-      activeBigBlind: this.blindStructure[snapshot.blindLevelIndex].bb };
+      activeBigBlind: this.blindStructure[snapshot.blindLevelIndex].bb,
+      ...(this.includeLedger ? { ledger: this.captureLedger(snapshot) } : {}) };
   }
 
   step(actionIndex) {
@@ -165,6 +185,7 @@ export class BadugiControllerInteractiveV2Draft {
       startingStacks: this.startingStacks, endingStacks: this.endingStacks,
       chipDeltaBySeat: this.endingStacks.map((value, seat) => value - this.startingStacks[seat]),
       decisionCount: this.decisionCount,
+      ...(this.includeLedger ? { ledger: this.captureLedger(snapshot, true) } : {}),
       publicActionTrace: this.publicEvents.map((event) => ({
         type: event.type, seat: event.seat, drawRoundIndex: event.drawRoundIndex,
         action: event.action ?? null, amount: event.amount ?? 0,

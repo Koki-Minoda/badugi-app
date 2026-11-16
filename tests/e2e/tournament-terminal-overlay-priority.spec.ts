@@ -4,6 +4,12 @@ import {waitForE2EDriver} from './helpers/gameProgressHelper.js';
 import {visibleHeroActions} from './helpers/visibleHeroActions';
 import {clickHeroAction} from './helpers/clickHeroAction';
 
+// These scenarios explicitly drive manual Next. The default countdown has its
+// own coverage in hand-result-auto-next.spec.ts.
+async function useManualNext(page) {
+ await page.addInitScript(()=>localStorage.setItem('mgx.handResult.autoNext','off'));
+}
+
 async function waitForTournamentHand(page) {
  await expect.poll(()=>page.evaluate(()=>({
   mode:window.__BADUGI_E2E__?.getControllerDebug?.().mode,
@@ -21,6 +27,7 @@ for(const size of [{width:1440,height:900},{width:393,height:695},{width:852,hei
    if(message.text().startsWith('[HAND_HISTORY] ')) histories.push(JSON.parse(message.text().slice(15)));
   });
   await page.setViewportSize(size);
+  await useManualNext(page);
   await page.route('**/api/**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:9001,username:'QA Hero',email:'qa@mgx-e2e.test'})}));
   await page.addInitScript(()=>localStorage.setItem('mgx_auth',JSON.stringify({accessToken:'test',tokenType:'Bearer',user:{id:9001,username:'QA Hero',email:'qa@mgx-e2e.test'},isAuthenticated:true})));
   await page.goto(`${APP_URL}?variant=nlh&mode=cash`);
@@ -81,6 +88,7 @@ for(const size of [{width:1440,height:900},{width:393,height:695},{width:852,hei
 
 test('Badugi tournament can deal the next hand after a folded hero settlement',async({page})=>{
  test.setTimeout(90000);await page.setViewportSize({width:852,height:283});
+ await useManualNext(page);
  await page.route('**/api/**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:9001,username:'QA Hero',email:'qa@mgx-e2e.test'})}));
  await page.addInitScript(()=>localStorage.setItem('mgx_auth',JSON.stringify({accessToken:'test',tokenType:'Bearer',user:{id:9001,username:'QA Hero'},isAuthenticated:true})));
  await page.goto(APP_URL);await enterTitleIfPresent(page);await page.getByTestId('menu-ring').click();await selectGameVariantFromSelector(page,'badugi');await waitForE2EDriver(page);

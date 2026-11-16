@@ -69,6 +69,7 @@ class BadugiTraceUnitAuditTest(unittest.TestCase):
         self.assertEqual(result["handsRead"], 1)
         self.assertEqual(result["observedScoreMin"], 50)
         self.assertEqual(row["netBigBets"], 0.5)
+        self.assertEqual(row["heroSeat"], 0)
         self.assertEqual(row["inferenceRequests"], 1)
         self.assertEqual(row["modelSha256"], manifest["modelSha256"])
         self.assertEqual(len(result["outputSha256"]), 64)

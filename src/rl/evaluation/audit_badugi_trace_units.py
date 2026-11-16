@@ -158,7 +158,7 @@ def audit_session(session, hand_stream, hand_digest, *, model_sha, contract_sha,
         raise ValueError("session hero chip ledger does not telescope")
     return {
         "sessionId": f"{seed}:{group}:{profile}:{hero}",
-        "sessionIndex": index, "seed": seed,
+        "sessionIndex": index, "seed": seed, "heroSeat": hero,
         "cell": f"{group}|{profile}", "hands": count,
         "netBigBets": net_big_bets,
         "modelSha256": model_sha,

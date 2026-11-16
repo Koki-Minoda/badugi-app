@@ -115,15 +115,16 @@ class IronPhase2TrainingGateTests(unittest.TestCase):
             "codeGitSha": old_code})
         plan = json.loads(self.plan.read_text())
         plan.update(maximumSegments=40, minimumRunIndex=21, handoffRunIndex=21,
+                    trainingSeedBase=300116001,
                     handoffSourceCodeSha=old_code,
                     handoffCheckpointSha256=sha(prior_path))
         self.plan.write_text(json.dumps(plan))
         valid = dict(self.base, runIndex=21, priorCumulativeHands=100000,
                      initialModelSha256=sha(prior_path),
-                     seedBase=2100116001, tierPlanSha256=sha(self.plan))
+                     seedBase=300116001, tierPlanSha256=sha(self.plan))
         self.assertEqual(self.check(valid, prior_path)["runIndex"], 21)
         with self.assertRaisesRegex(ValueError, "bounded segment"):
-            self.check(dict(valid, runIndex=20, seedBase=2080116001), prior_path)
+            self.check(dict(valid, runIndex=20, seedBase=280116001), prior_path)
         wrong = dict(plan, handoffCheckpointSha256="b" * 64)
         self.plan.write_text(json.dumps(wrong))
         with self.assertRaisesRegex(ValueError, "continuation chain"):
@@ -135,7 +136,7 @@ class IronPhase2TrainingGateTests(unittest.TestCase):
             "runIndex": 21, "cumulativeHands": 105000,
             "codeGitSha": "test-code-sha"})
         after = dict(valid, runIndex=22, priorCumulativeHands=105000,
-                     initialModelSha256=sha(after_path), seedBase=2120116001)
+                     initialModelSha256=sha(after_path), seedBase=320116001)
         self.assertEqual(self.check(after, after_path)["runIndex"], 22)
         DQNAgent(96, 6).save(str(after_path), training_state={
             "schemaVersion": trainer.SCHEMA, "tier": "iron",

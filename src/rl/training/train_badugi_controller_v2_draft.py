@@ -76,9 +76,13 @@ def validate_iron_seed_schedule(plan):
     if any(type(value) is not int or value <= 0 for value in values):
         raise ValueError("Iron seed schedule requires positive frozen integers")
     base, segment_stride, stage_stride, segments = values
+    first = plan.get("minimumRunIndex", 1)
+    if type(first) is not int or not 1 <= first <= segments:
+        raise ValueError("Iron first segment must be inside the frozen budget")
     windows = sorted((base + run * segment_stride + stage * stage_stride + group * 1_000_000,
                       base + run * segment_stride + stage * stage_stride + group * 1_000_000 + 2499)
-                     for run in range(segments) for stage in range(2) for group in range(10))
+                     for run in range(segments - first + 1)
+                     for stage in range(2) for group in range(10))
     if (windows[-1][1] >= 2 ** 32 or
             any(previous[1] >= current[0] for previous, current in zip(windows, windows[1:]))):
         raise ValueError("Iron training seeds collide across segments or modulo 2^32")
@@ -376,7 +380,8 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
                 not isinstance(manifest.get("priorCumulativeHands"), int) or
                 manifest["priorCumulativeHands"] < 0 or
                 manifest.get("seedBase") != tier_plan["trainingSeedBase"] +
-                (manifest["runIndex"] - 1) * tier_plan["segmentSeedStride"]):
+                (manifest["runIndex"] - tier_plan.get("minimumRunIndex", 1)) *
+                tier_plan["segmentSeedStride"]):
             raise ValueError("Iron requires its frozen Phase 2 plan, Pro anchor and bounded segment")
         prior = DQNAgent.load(str(init_model), device="cpu").checkpoint_training_state
         if manifest["runIndex"] == 1:

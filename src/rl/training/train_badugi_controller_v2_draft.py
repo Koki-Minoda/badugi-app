@@ -34,6 +34,7 @@ PRO_FOLD_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_fol
 PRO_ACTION_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_action_anchor_plan.json"
 PRO_FRESH_STACK_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_fresh_stack_plan.json"
 PRO_BET_ONLY_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_bet_only_plan.json"
+IRON_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_iron_phase2_plan.json"
 SCHEMA = "badugi-controller-observation-v2-draft"
 PROFILES = ("passive", "pressure", "draw_heavy", "random_legal")
 CONTRACT_FILES = (
@@ -326,6 +327,40 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
                 tier_plan.get("betOnlyStandardDraw", False) != bet_only_standard_draw or
                 manifest.get("tierPlanSha256") != hashlib.sha256(tier_plan_path.read_bytes()).hexdigest()):
             raise ValueError("Pro requires frozen v2 Standard initial checkpoint and published reference ONNX")
+    elif tier == "iron":
+        tier_plan = json.loads(IRON_PLAN.read_text())
+        if (tier_plan.get("status") != "FROZEN_FOR_ISOLATED_IRON_PHASE2_TRAINING" or
+                tier_plan.get("schemaVersion") != SCHEMA or
+                init_model is None or not init_model.is_file() or
+                reference_model is None or not reference_model.is_file() or
+                manifest.get("initialModelSha256") != hashlib.sha256(init_model.read_bytes()).hexdigest() or
+                manifest.get("referenceModelSha256") != hashlib.sha256(reference_model.read_bytes()).hexdigest() or
+                manifest.get("referenceModelSha256") != tier_plan["publishedProOnnxSha256"] or
+                manifest.get("anchorPolicyId") != "published-v2-pro" or
+                manifest.get("tierPlanSha256") != hashlib.sha256(IRON_PLAN.read_bytes()).hexdigest() or
+                manifest.get("explorationEpsilon") != tier_plan["explorationEpsilon"] or
+                manifest.get("bootstrapHands") != tier_plan["bootstrapHands"] or
+                manifest.get("imitationSteps") != tier_plan["imitationSteps"] or
+                manifest.get("referenceAnchorEvery") != tier_plan["referenceAnchorEvery"] or
+                manifest.get("maxHands") != tier_plan["segmentMaxHands"] or
+                not isinstance(manifest.get("runIndex"), int) or manifest["runIndex"] < 1 or
+                manifest["runIndex"] > tier_plan["maximumSegments"] or
+                not isinstance(manifest.get("priorCumulativeHands"), int) or
+                manifest["priorCumulativeHands"] < 0 or
+                manifest.get("seedBase") != tier_plan["trainingSeedBase"] +
+                (manifest["runIndex"] - 1) * tier_plan["segmentSeedStride"]):
+            raise ValueError("Iron requires its frozen Phase 2 plan, Pro anchor and bounded segment")
+        prior = DQNAgent.load(str(init_model), device="cpu").checkpoint_training_state
+        if manifest["runIndex"] == 1:
+            if (manifest["priorCumulativeHands"] != 0 or
+                    manifest["initialModelSha256"] != tier_plan["initialProCheckpointSha256"] or
+                    prior.get("tier") != "pro"):
+                raise ValueError("first Iron segment must start from the frozen Pro checkpoint")
+        elif (prior.get("tier") != "iron" or
+              prior.get("runIndex") != manifest["runIndex"] - 1 or
+              prior.get("cumulativeHands") != manifest["priorCumulativeHands"] or
+              prior.get("codeGitSha") != code_sha):
+            raise ValueError("Iron continuation chain or source SHA differs")
     elif init_model is not None:
         raise ValueError("initial model is only approved for this Standard diagnostic run")
     elif reference_model is not None:
@@ -379,6 +414,7 @@ def main():
         raise ValueError("BET-only Pro requires isolated training, 20-hand sessions and no DRAW anchor")
     if args.train and (args.output is None or args.output.exists()):
         raise ValueError("training requires a new isolated --output directory")
+    manifest = {}
     if args.train:
         manifest = require_go_manifest(args.go_manifest, args.tier, args.hands,
                                        args.init_model, args.reference_model,
@@ -397,10 +433,16 @@ def main():
     random.seed(seed_base)
     np.random.seed(seed_base)
     torch.manual_seed(seed_base)
-    agent = (DQNAgent.load(str(args.init_model), device="cpu") if args.init_model else
+    agent = (DQNAgent.load(str(args.init_model), device="cpu",
+                           restore_training_state=args.train and args.tier == "iron" and
+                           manifest["runIndex"] > 1) if args.init_model else
              DQNAgent(obs_dim=96, n_actions=6, device="cpu", hidden_dim=256,
                       hyperparams=DQNHyperParams(lr=0.0001, batch_size=64)))
-    expected_initial_tier = "beginner" if args.tier == "standard" else "standard"
+    if args.train and args.tier == "iron" and manifest["runIndex"] > 1 and not agent.checkpoint_has_optimizer:
+        raise ValueError("Iron continuation requires an optimizer-bearing checkpoint")
+    expected_initial_tier = ("beginner" if args.tier == "standard" else
+                             "pro" if args.tier == "iron" and manifest.get("runIndex") == 1 else
+                             "iron" if args.tier == "iron" else "standard")
     if args.init_model and (agent.obs_dim != 96 or agent.n_actions != 6 or
                             agent.checkpoint_training_state.get("schemaVersion") != SCHEMA or
                             agent.checkpoint_training_state.get("tier") != expected_initial_tier):
@@ -408,7 +450,7 @@ def main():
     bootstrap_agent = (DQNAgent.load(str(args.init_model), device="cpu")
                        if args.train and args.tier == "standard" else
                        FrozenOnnxPolicy(args.reference_model)
-                       if args.train and args.tier == "pro" else None)
+                       if args.train and args.tier in ("pro", "iron") else None)
     reference_draw_agent = (bootstrap_agent if args.bet_only_standard_draw else None)
     buffer = ReplayBuffer(capacity=100_000, seed=seed_base) if args.train else None
     bridge = ControllerBridge()
@@ -474,7 +516,7 @@ def main():
                         hero_seat = fixed_hero_seat
                     else:
                         hero_seat = eligible[(completed + session_index) % len(eligible)]
-                    epsilon = (manifest["explorationEpsilon"] if args.train and args.tier in ("standard", "pro") else
+                    epsilon = (manifest["explorationEpsilon"] if args.train and args.tier in ("standard", "pro", "iron") else
                                max(0.05, 0.2 - (len(results) - args.bootstrap_hands) * 0.15 /
                                    max(1, args.hands - args.bootstrap_hands)) if args.bootstrap_hands else
                                max(0.05, 1.0 - len(results) / 5000)) if args.train else 0.0
@@ -509,6 +551,10 @@ def main():
         bridge.close()
     report = {"status": "TRAINING_CHECKPOINT" if args.train else "NO_GRADIENT_PREFLIGHT",
               "tier": args.tier, "trained": args.train, "modelPublished": False,
+              "codeGitSha": checkout_identity()[0],
+              "trainingRunIndex": manifest.get("runIndex") if args.train else None,
+              "priorCumulativeHands": manifest.get("priorCumulativeHands") if args.train else None,
+              "goManifestSha256": hashlib.sha256(args.go_manifest.read_bytes()).hexdigest() if args.train else None,
               "schemaVersion": SCHEMA,
               "initialModelSha256": (hashlib.sha256(args.init_model.read_bytes()).hexdigest()
                                      if args.init_model else None),
@@ -567,7 +613,13 @@ def main():
         args.output.mkdir(parents=True, exist_ok=True)
         agent.save(str(args.output / "candidate.pt"), training_state={
             "schemaVersion": SCHEMA, "tier": args.tier, "hands": len(results),
-            "bridgeSha256": report["bridgeSha256"]})
+            "bridgeSha256": report["bridgeSha256"],
+            **({"runIndex": manifest["runIndex"],
+                "cumulativeHands": manifest["priorCumulativeHands"] + len(results),
+                "codeGitSha": report["codeGitSha"],
+                "goManifestSha256": report["goManifestSha256"],
+                "parentCheckpointSha256": report["initialModelSha256"]}
+               if args.tier == "iron" else {})})
         (args.output / "hand-trace.jsonl").write_text("".join(
             json.dumps(row, separators=(",", ":")) + "\n" for row in results))
         (args.output / "run-summary.json").write_text(json.dumps(report, indent=2) + "\n")

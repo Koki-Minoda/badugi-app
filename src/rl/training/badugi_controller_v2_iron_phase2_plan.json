@@ -1,0 +1,23 @@
+{
+  "status": "FROZEN_FOR_ISOLATED_IRON_PHASE2_TRAINING",
+  "game": "D03 Badugi fixed-limit only",
+  "schemaVersion": "badugi-controller-observation-v2-draft",
+  "controller": "real BadugiGameController through JSONL Python bridge",
+  "initialProCheckpointSha256": "f19acc604424d98027a06934babc6235ea0eb3b062c17c3af7b5c013cc3015b3",
+  "publishedProOnnxSha256": "40acfcc089873bb1660227ceae3be808917222e090abd8916b03cc174d92af49",
+  "bootstrapHands": 1000,
+  "imitationSteps": 1000,
+  "referenceAnchorEvery": 1,
+  "explorationEpsilon": 0.1,
+  "segmentMaxHands": 5000,
+  "maximumSegments": 20,
+  "trainingSeedBase": 1500116001,
+  "segmentSeedStride": 100000000,
+  "trainingSessionHands": 20,
+  "trainingGroups": ["2/2-cash", "3/3-cash", "6/6-cash", "6/2-cash", "6/3-cash", "2/2-mtt", "3/3-mtt", "6/6-mtt", "6/2-mtt", "6/3-mtt"],
+  "opponentProfiles": ["passive", "pressure", "draw_heavy", "random_legal"],
+  "reward": "terminal target-seat chip delta / active hand big blind; zero at intermediate target decisions",
+  "segmentRule": "Each 5000-hand segment is a safety and cause-diagnostic checkpoint. Inspect chip conservation, legal actions, optimizer steps, FOLD/PAT and resource use before a separately sealed next segment. No automatic continuation or promotion.",
+  "dataBoundary": "Training seeds and all previous H33b or Phase 1 diagnostic seeds are excluded from future candidate final evaluation. Pro anchor uses only actor observation and legal mask; scripted opponent profile is not an input.",
+  "publication": "No public model, registry, release or Iron adoption from this plan. Independent final 40-cell session evaluation, unknown opponents, human review and Company OS gate are separate."
+}

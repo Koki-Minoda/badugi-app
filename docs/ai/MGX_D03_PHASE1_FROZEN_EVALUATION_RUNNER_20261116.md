@@ -29,4 +29,4 @@ python src/rl/evaluation/run_frozen_badugi_eval.py \
   --look 2 --output /isolated/phase1/new-look-output
 ```
 
-The small first look above is a wiring diagnostic. It cannot establish Iron strength. Independent final opponents, a separate final evaluation, abnormal timeout/fallback injection, normal UI model-use evidence, and human product approval remain later gates. Historical H33b sessions and all Phase 1 diagnostics are excluded from a new candidate's final holdout.
+Set the plan's `evaluationPurpose` to `PHASE1_WIRING_DIAGNOSTIC_ONLY` for the small first look. Its `candidatePromotionEligible` output remains false regardless of the mathematical gate decision. A future candidate run must freeze `PROMOTION_CANDIDATE` before collecting data. The wiring diagnostic cannot establish Iron strength. Independent final opponents, a separate final evaluation, abnormal timeout/fallback injection, normal UI model-use evidence, and human product approval remain later gates. Historical H33b sessions and all Phase 1 diagnostics are excluded from a new candidate's final holdout.

@@ -59,6 +59,9 @@ def validate_preflight(plan: dict, manifests: dict[str, dict],
                        model_shas: dict[str, str], plan_sha: str,
                        code_sha: str, look: int) -> dict[str, list[int]]:
     gate.validate_manifest(plan)
+    if plan.get("evaluationPurpose") not in ("PHASE1_WIRING_DIAGNOSTIC_ONLY",
+                                             "PROMOTION_CANDIDATE"):
+        raise ValueError("evaluation purpose must be frozen before collection")
     if plan["handsPerSession"] != 20:
         raise ValueError("this D03 frozen runner requires 20-hand sessions")
     if look not in plan["lookSessionsPerCell"] or not 2 <= look <= MAX_SESSIONS_PER_CELL:
@@ -291,6 +294,10 @@ def run(*, plan_path: Path, manifests: dict[str, Path], models: dict[str, Path],
         rows = {arm: [json.loads(line) for line in audited_paths[arm].open()]
                 for arm in ("candidate", "reference")}
         result = gate.evaluate(plan, rows)
+        result["evaluationPurpose"] = plan["evaluationPurpose"]
+        result["candidatePromotionEligible"] = (
+            plan["evaluationPurpose"] == "PROMOTION_CANDIDATE" and
+            result["decision"] == "PROMOTE")
         result["inputSha256"] = {
             "plan": sha256(plan_path),
             "seedHistoryPreflight": sha256(output_dir / "seed-history-preflight.json"),

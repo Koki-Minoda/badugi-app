@@ -23,6 +23,7 @@ def inputs():
     model_shas = {"candidate": "a" * 64, "reference": "b" * 64}
     plan = {
         "schema": runner.gate.SCHEMA,
+        "evaluationPurpose": "PHASE1_WIRING_DIAGNOSTIC_ONLY",
         "scoreUnit": "big_bet_per_100_hands",
         "candidateModelSha256": model_shas["candidate"],
         "referenceModelSha256": model_shas["reference"],

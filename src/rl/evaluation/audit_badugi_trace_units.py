@@ -177,12 +177,18 @@ def audit_session(session, hand_stream, hand_digest, *, model_sha, contract_sha,
                     raise ValueError("illegal draw count")
             if require_decision_ledger and ordinal + 1 < len(ledgers):
                 next_stacks = ledgers[ordinal + 1]["stacks"]
+                next_committed = ledgers[ordinal + 1]["committedBySeat"]
                 amount = event.get("amount")
                 if (type(amount) is not int or
                         next_stacks[seat] != ledgers[ordinal]["stacks"][seat] - amount or
+                        next_committed[seat] !=
+                        ledgers[ordinal]["committedBySeat"][seat] + amount or
                         any(next_stacks[other] != ledgers[ordinal]["stacks"][other]
+                            for other in range(seat_count) if other != seat) or
+                        any(next_committed[other] !=
+                            ledgers[ordinal]["committedBySeat"][other]
                             for other in range(seat_count) if other != seat)):
-                    raise ValueError("intermediate decision stack transition mismatch")
+                    raise ValueError("intermediate decision chip transition mismatch")
             if seat == hero:
                 hero_decisions += 1
                 requests += 1

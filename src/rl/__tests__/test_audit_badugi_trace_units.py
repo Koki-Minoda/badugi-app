@@ -137,6 +137,42 @@ class BadugiTraceUnitAuditTest(unittest.TestCase):
                 mutate(altered)
                 run_files(manifest, session, altered)
 
+    def test_rejects_wrong_seat_commit_even_when_pool_balances(self):
+        manifest, session, hand = originals()
+        manifest["requireDecisionLedger"] = True
+        session["heroActions"] = {"BET:2": 1}
+        hand["decisions"] = [
+            {"seat": 0, "phase": "BET", "actionIndex": 2,
+             "legalMask": [0, 0, 1, 0, 0, 0], "status": "used",
+             "elapsedMs": 15,
+             "ledger": {"handIndex": 0, "decisionIndex": 0,
+                        "terminal": False, "stacks": [490, 500],
+                        "committedBySeat": [10, 0], "accounted": 1000,
+                        "chipPool": 1000}},
+            {"seat": 1, "phase": "BET", "actionIndex": 1,
+             "legalMask": [0, 1, 0, 0, 0, 0], "status": "opponent",
+             "elapsedMs": 0,
+             "ledger": {"handIndex": 0, "decisionIndex": 1,
+                        "terminal": False, "stacks": [480, 500],
+                        "committedBySeat": [20, 0], "accounted": 1000,
+                        "chipPool": 1000}},
+        ]
+        hand["publicActionTrace"] = [
+            {"seat": 0, "type": "BET_ACTION", "action": "call",
+             "amount": 10, "stackBefore": 490, "stackAfter": 480},
+            {"seat": 1, "type": "BET_ACTION", "action": "check",
+             "amount": 0, "stackBefore": 500, "stackAfter": 480},
+        ]
+        hand["terminalLedger"] = {
+            "handIndex": 0, "decisionIndex": 2, "terminal": True,
+            "stacks": [520, 480], "committedBySeat": None,
+            "accounted": 1000, "chipPool": 1000,
+        }
+        run_files(manifest, session, hand)
+        hand["decisions"][1]["ledger"]["committedBySeat"] = [19, 1]
+        with self.assertRaisesRegex(ValueError, "chip transition"):
+            run_files(manifest, session, hand)
+
     def test_rejects_malformed_trace_and_summary(self):
         cases = [
             ("wrong seed", lambda s, h: h.update(seed=18)),

@@ -16,7 +16,9 @@ function Showdown({ result, players, actions, ja }) {
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 id="equity-results" className="text-lg font-bold">{ja ? 'ショーダウン結果' : 'Showdown result'}</h3>
         <p className="text-xs text-slate-300">
-          {result.method === 'simulation'
+          {result.range && result.method === 'simulation'
+            ? (ja ? '候補の重みを反映した推定値' : 'Weighted range estimate')
+            : result.method === 'simulation'
             ? (ja ? `${integer.format(result.outcomes)} 回の試行・推定値` : `${integer.format(result.outcomes)} simulated deals`)
             : (ja ? `${integer.format(result.outcomes)} 通りを全列挙` : `${integer.format(result.outcomes)} exact outcomes`)}
           <span className="mx-2" aria-hidden="true">·</span>
@@ -25,7 +27,7 @@ function Showdown({ result, players, actions, ja }) {
       </div>
       {actions && (
         <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-300">
-          {actions.map((cards, seat) => <span key={seat}>{players[seat]} · {actionName(cards, ja)}</span>)}
+          {actions.map((cards, seat) => <span key={seat}>{players[seat]} · {typeof cards === 'string' ? cards : actionName(cards, ja)}</span>)}
         </p>
       )}
       <div className="grid grid-cols-2 gap-2" aria-live="polite" aria-atomic="true">
@@ -55,7 +57,7 @@ function Showdown({ result, players, actions, ja }) {
               <th scope="row" className="py-2 font-medium">{label}</th>
               {result.players.map((player, seat) => (
                 <td key={seat} className="py-2 text-right">
-                  {percent.format(player[key] / result.outcomes)} <span className="text-xs text-slate-300">({integer.format(player[key])})</span>
+                  {percent.format(result.range ? player[key] : player[key] / result.outcomes)} {!result.range && <span className="text-xs text-slate-300">({integer.format(player[key])})</span>}
                 </td>
               ))}
             </tr>
@@ -91,15 +93,17 @@ function ComparisonOptions({ options, selected, onChoose, ja }) {
 }
 
 export default function BadugiEquityResults({ result, columns, choices, hero, opponent, onHero, onOpponent, players, ja }) {
-  const heroOptions = choices.map((cards, id) => ({ id, cards, label: actionName(cards, ja), value: columns[opponent].results[id] }));
+  const selectedColumn = columns[opponent];
+  const heroOptions = selectedColumn ? choices.map((cards, id) => ({ id, cards, label: actionName(cards, ja), value: selectedColumn.results[id] })) : [];
   const opponentOptions = columns.slice(0, 5).map(({ cards, results }, id) => ({
     id,
-    label: ja ? `${id}枚 · ${actionName(cards, ja)}` : `${id} ${id === 1 ? 'card' : 'cards'} · ${actionName(cards, ja)}`,
+    label: `${ja ? `${id}枚` : `${id} ${id === 1 ? 'card' : 'cards'}`}${cards ? ` · ${actionName(cards, ja)}` : ''}`,
     value: results[hero],
   }));
+  const opponentAction = selectedColumn?.cards ?? (opponent >= 0 ? (ja ? `${opponent}枚交換` : `Draw ${opponent}`) : '');
   return (
     <>
-      {!result.error && <Showdown result={result} players={players} actions={columns[opponent] && [choices[hero], columns[opponent].cards]} ja={ja} />}
+      {result && !result.error && <Showdown result={result} players={players} actions={selectedColumn && [choices[hero], opponentAction]} ja={ja} />}
       {heroOptions.some(option => !option.value.error) && (
         <section aria-labelledby="equity-actions" className="space-y-3 rounded-2xl border border-white/20 p-4 sm:p-5">
           <h3 id="equity-actions" className="text-lg font-bold">{ja ? '自分が切るカードを比べる' : 'Compare your discards'}</h3>
@@ -114,7 +118,7 @@ export default function BadugiEquityResults({ result, columns, choices, hero, op
       {opponentOptions.some(option => !option.value.error) && (
         <section aria-labelledby="equity-opponent" className="space-y-3 rounded-2xl border border-white/20 p-4 sm:p-5">
           <h3 id="equity-opponent" className="text-lg font-bold">{ja ? '相手の交換枚数を比べる' : 'Compare opponent draw counts'}</h3>
-          <p className="text-sm text-slate-300">{ja ? '自分の交換を固定したときの、自分のエクイティです。相手が切ると仮定したカードも表示します。' : 'Your pot equity with your draw held fixed. Each option shows the assumed opponent discards.'}</p>
+          <p className="text-sm text-slate-300">{ja ? '自分の交換を固定したときのエクイティです。枚数を選ぶと、自分が切るカードの比較が表示されます。' : 'Your equity with your draw held fixed. Select a count to compare your discard choices.'}</p>
           <ComparisonOptions options={opponentOptions} selected={opponent} onChoose={onOpponent} ja={ja} />
         </section>
       )}

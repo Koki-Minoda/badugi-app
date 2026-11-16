@@ -1,4 +1,6 @@
 import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import BadugiEquityCalculator from "../tools/BadugiEquityCalculator.jsx";
+import { badugiReplaySpot } from "../personalResults/badugiReplayReview.js";
 import { replayHandFromHistory } from "../../games/badugi/flow/handReplay.js";
 import {
   extractDecisionContext,
@@ -394,6 +396,7 @@ export default function ReplayScreen({
   const [flashSeat, setFlashSeat] = useState(null);
   const [hoverSeat, setHoverSeat] = useState(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [equitySpot, setEquitySpot] = useState(null);
   const [trainingRequestKey, setTrainingRequestKey] = useState(0);
   const [trainingState, setTrainingState] = useState({ status: "idle", index: null, metadata: null });
   const trainingCacheRef = useRef({ key: null, index: null });
@@ -620,6 +623,18 @@ export default function ReplayScreen({
     [coachingAnnotation, onCoachingTelemetry],
   );
 
+  const spot = badugiReplaySpot(handSnapshot, frames, clampedIndex);
+  if (equitySpot) {
+    return <div className="min-h-screen bg-slate-950 px-4 py-6 text-white">
+      <main className="mx-auto max-w-4xl space-y-4">
+        <button type="button" className="min-h-11 rounded-xl border border-white/25 px-4" onClick={() => setEquitySpot(null)}>
+          {language === "ja" ? "リプレイへ戻る" : "Back to replay"}
+        </button>
+        <BadugiEquityCalculator ja={language === "ja"} spot={equitySpot} />
+      </main>
+    </div>;
+  }
+
   return (
     <div
       className="min-h-screen bg-slate-950/95 px-6 py-8 text-slate-100"
@@ -678,6 +693,10 @@ export default function ReplayScreen({
                 : "—"}
             </div>
           </div>
+          {spot && <button type="button" className="mt-3 min-h-11 rounded-xl border border-emerald-300/60 px-4 text-sm text-emerald-100"
+            onClick={() => { setIsPlaying(false); setEquitySpot(spot); }}>
+            {language === "ja" ? "このドローを計算機で復習" : "Review this draw in the calculator"}
+          </button>}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               type="button"

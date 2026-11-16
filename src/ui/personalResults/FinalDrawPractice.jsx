@@ -16,6 +16,27 @@ const confidenceLabels = {
   low: ["低い", "Low"], medium: ["中くらい", "Medium"], high: ["高い", "High"],
 };
 
+function ReviewResults({ reviews, ja, onReplay, practiceLabel, onPractice }) {
+  const latest = reviews[0];
+  const displayCards = cards => cards.length ? cards.map(cardLabel).join(" ") : actionLabel("pat", ja);
+  const mean = reviews.reduce((sum, review) => sum + review.loss / review.bet, 0) / reviews.length;
+  return <div className="mt-3 rounded-xl border border-white/15 p-3 text-sm">
+    <h3 className="font-semibold">{ja ? "対局の判断レビュー" : "Reviewed decisions"}</h3>
+    <p className="mt-1 text-slate-300">{ja ? `保存 ${reviews.length}件 · モデル上の平均EV差 ${mean.toFixed(3)} ベット` : `${reviews.length} saved · Mean modeled EV gap ${mean.toFixed(3)} bets`}</p>
+    <p className="mt-1">{ja ? "直近の選択" : "Latest choice"} {displayCards(latest.cards)} · {ja ? "最良候補" : "Best in model"} {displayCards(latest.best)} · {ja ? "差" : "Gap"} {latest.loss.toFixed(3)} {ja ? "チップ" : "chips"}</p>
+    {latest.settings && <details className="mt-2 text-slate-300">
+      <summary className="cursor-pointer">{ja ? "保存した計算の前提" : "Saved assumptions"}</summary>
+      <p className="my-1">{ja ? `ポット ${latest.settings.pot} · 1ベット ${latest.bet} · 相手は${latest.opponentCount}枚交換` : `Pot ${latest.settings.pot} · Bet ${latest.bet} · Opponent draws ${latest.opponentCount}`}</p>
+      <p>{ja ? `ベットする上限 ${latest.settings.lead || "なし"} · チェック後にコールする上限 ${latest.settings.call || "なし"}` : `Lead through ${latest.settings.lead || "off"} · Check-call through ${latest.settings.call || "off"}`}</p>
+      {latest.rangeText && <pre className="mt-1 whitespace-pre-wrap break-words text-xs">{latest.rangeText}</pre>}
+    </details>}
+    <div className="mt-3 flex flex-wrap gap-2">
+      {onReplay && <button type="button" className={actionStyle} onClick={() => onReplay(latest.handId, { handId: latest.handId, actionSeqStart: latest.actionSeq, actionSeqEnd: latest.actionSeq })}>{ja ? "この判断に戻る" : "Return to this decision"}</button>}
+      {practiceLabel && <button type="button" className={actionStyle} onClick={onPractice}>{practiceLabel}</button>}
+    </div>
+  </div>;
+}
+
 function readProgress(key) {
   if (!key) return {};
   try { return JSON.parse(localStorage.getItem(key)) ?? {}; } catch { return {}; }
@@ -84,9 +105,10 @@ function Question({ question, index, ja, mode, onNext, onCompare }) {
   const [reason, setReason] = useState("");
   const [result, setResult] = useState(null);
   const [alternative, setAlternative] = useState(null);
+  const feedbackAtEnd = ["retest", "transfer", "transferRetest"].includes(mode);
   function submit(event) {
     event.preventDefault();
-    if (mode === "retest") {
+    if (feedbackAtEnd) {
       const loss = evaluateFinalDraw(question).actions.find((action) => action.id === answer).loss;
       onNext({ loss, confidence, reason });
     } else {
@@ -112,7 +134,7 @@ function Question({ question, index, ja, mode, onNext, onCompare }) {
           <option value="">—</option>{Object.entries(confidenceLabels).map(([id, labels]) => <option key={id} value={id}>{labels[ja ? 0 : 1]}</option>)}
         </select>
       </label>
-      <button className={actionStyle} type="submit">{mode === "retest" ? (ja ? "回答を記録" : "Record answer") : (ja ? "EVを比較" : "Compare EV")}</button>
+      <button className={actionStyle} type="submit">{feedbackAtEnd ? (ja ? "回答を記録" : "Record answer") : (ja ? "EVを比較" : "Compare EV")}</button>
     </form> : <>
       <p className="text-xs text-slate-400">{ja ? "あなたが重視した情報" : "What you prioritized"} · {reasons[reason][ja ? 0 : 1]}</p>
       <Results question={question} answer={answer} result={result} ja={ja} />
@@ -147,7 +169,7 @@ function Summary({ title, data, ja }) {
   </div>;
 }
 
-export default function FinalDrawPractice({ userId, ja, review, onReplay }) {
+export default function FinalDrawPractice({ userId, ja, review, decisionReviews = [], onReplay }) {
   const key = userId == null ? null : `mgx.badugiFinalDraw.v1:${userId}`;
   const [progress, setProgress] = useState(() => readProgress(key));
   const [mode, setMode] = useState(null);
@@ -185,11 +207,20 @@ export default function FinalDrawPractice({ userId, ja, review, onReplay }) {
   }
 
   const reviewQuestion = reviewRange && review ? { ...review, range: reviewRange } : null;
+  const practiceLabel = progress.transferRetest ? null : progress.transfer
+    ? (ja ? "新しい5問で再測定" : "Retest on five new spots")
+    : (ja ? "別の局面で5問練習" : "Practice five different spots");
+  const modeDescription = {
+    retest: ["未出題の5問 · 終了後に結果を表示", "Five unseen questions · Results at the end"],
+    transfer: ["相手の交換やレンジが異なる5局面 · 終了後に結果を表示", "Five different draws and ranges · Results at the end"],
+    transferRetest: ["初回とは異なる5問 · 終了後に結果を表示", "Five different questions · Results at the end"],
+    practice: ["条件を変えて5問練習", "Five questions with changing conditions"],
+  };
   return <section className="rounded-2xl border border-emerald-400/25 bg-emerald-950/20 p-4">
     <h2 className="font-semibold">{ja ? "Badugi · 3rdドロー判断" : "Badugi · Third-draw decisions"}</h2>
     {mode ? <div className="mt-3">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="text-sm text-slate-300">{mode === "retest" ? (ja ? "未出題の5問 · 終了後に結果を表示" : "Five unseen questions · Results at the end") : (ja ? "条件を変えて5問練習" : "Five questions with changing conditions")}</p>
+        <p className="text-sm text-slate-300">{(modeDescription[mode] ?? modeDescription.practice)[ja ? 0 : 1]}</p>
         <button type="button" className={actionStyle} onClick={() => setMode(null)}>{ja ? "練習を閉じる" : "Close drill"}</button>
       </div>
       <Question key={`${mode}:${attempts.length}`} question={question} index={attempts.length} ja={ja} mode={mode} onNext={next} onCompare={compare} />
@@ -197,6 +228,9 @@ export default function FinalDrawPractice({ userId, ja, review, onReplay }) {
       <p className="mt-2 text-sm text-slate-300">{ja
         ? "パットと1枚交換を、相手のレンジごとに比較します。練習用のEVはレーダーの実戦スコアに反映されません。"
         : "Compare standing pat and drawing one under different opponent ranges. Drill EV is excluded from the live-play radar."}</p>
+      {decisionReviews.length > 0 && <ReviewResults reviews={decisionReviews} ja={ja} onReplay={onReplay} practiceLabel={practiceLabel} onPractice={() => start(progress.transfer ? "transferRetest" : "transfer")} />}
+      {progress.transfer && <Summary title={ja ? "別の5局面での練習結果" : "Practice on five different spots"} data={progress.transfer} ja={ja} />}
+      {progress.transferRetest && <Summary title={ja ? "新しい5局面での再測定結果" : "Retest on five new spots"} data={progress.transferRetest} ja={ja} />}
       {review && <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" className={actionStyle} onClick={() => onReplay(review.handId, { handId: review.handId, actionSeqStart: review.actionSeq, actionSeqEnd: review.actionSeq })}>{ja ? "自分の3rdドローを見返す" : "Replay your third draw"}</button>
         <button type="button" className={actionStyle} onClick={() => setReviewRange(reviewRange ? null : review.range)}>{ja ? "自分の局面を仮定別に比較" : "Compare your spot under modeled ranges"}</button>

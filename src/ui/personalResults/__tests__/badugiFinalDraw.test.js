@@ -33,6 +33,29 @@ describe("third-draw decision model", () => {
     expect(() => evaluateFinalDraw({ ...spot, opponentDraw: 2 })).toThrow();
   });
 
+  it("uses different hands under matching conditions for replay follow-up and retest", () => {
+    const first = finalDrawQuestions("transfer");
+    const second = finalDrawQuestions("transferRetest");
+    const hands = ["practice", "retest", "transfer", "transferRetest"].flatMap(mode =>
+      finalDrawQuestions(mode).map(question => [...question.cards].sort().join(",")));
+    // The ordinary practice deliberately repeats the same hand with new information.
+    expect(second).toHaveLength(first.length);
+    expect(second.map(({ pot, range, opponentDraw }) => [pot, range, opponentDraw]))
+      .toEqual(first.map(({ pot, range, opponentDraw }) => [pot, range, opponentDraw]));
+    expect(hands.slice(-10).every(hand => hands.indexOf(hand) === hands.lastIndexOf(hand))).toBe(true);
+    const measure = questions => questions.map(question => {
+      const { actions } = evaluateFinalDraw(question);
+      return { pat: actions[0].id === "pat", gap: actions[1].loss };
+    });
+    const firstScores = measure(first);
+    const secondScores = measure(second);
+    expect(firstScores.filter(score => !score.pat)).toHaveLength(2);
+    secondScores.forEach((score, index) => {
+      expect(score.pat).toBe(firstScores[index].pat);
+      expect(Math.abs(score.gap - firstScores[index].gap)).toBeLessThan(0.15);
+    });
+  });
+
   it("uses only the actor's pre-draw cards and public information in a saved review", () => {
     const hand = {
       handId: "eligible", variantId: "badugi", endedAt: 5, userId: 7, level: { bb: 20 },

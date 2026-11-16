@@ -1,4 +1,5 @@
 import { compareBadugiEvaluations, evaluateBadugi } from "../../games/badugi/utils/badugiEvaluator.js";
+import { calledBetValue } from "./finalBetValue.js";
 
 const suits = ["S", "H", "D", "C"];
 const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
@@ -34,8 +35,27 @@ const retest = [
   { cards: ["AH", "4S", "5C", "10D"], pot: 3, range: "low", opponentDraw: 0 },
 ];
 
+const transfer = [
+  { cards: ["AD", "4C", "6H", "JS"], pot: 4, range: "onlyLow", opponentDraw: 0 },
+  { cards: ["AC", "3D", "6S", "JH"], pot: 4, range: "low", opponentDraw: 1 },
+  { cards: ["3S", "5H", "7C", "10D"], pot: 2, range: "high", opponentDraw: 0 },
+  { cards: ["AC", "2H", "6D", "QS"], pot: 5, range: "onlyLow", opponentDraw: 1 },
+  { cards: ["AD", "5S", "6C", "QH"], pot: 5, range: "onlyLow", opponentDraw: 0 },
+];
+
+const transferRetest = [
+  { cards: ["AS", "3H", "6D", "JC"], pot: 4, range: "onlyLow", opponentDraw: 0 },
+  { cards: ["AD", "4H", "7C", "JS"], pot: 4, range: "low", opponentDraw: 1 },
+  { cards: ["3C", "6D", "8S", "10H"], pot: 2, range: "high", opponentDraw: 0 },
+  { cards: ["AS", "3H", "7D", "QC"], pot: 5, range: "onlyLow", opponentDraw: 1 },
+  { cards: ["3D", "5S", "6H", "QC"], pot: 5, range: "onlyLow", opponentDraw: 0 },
+];
+
 export function finalDrawQuestions(mode) {
-  return mode === "retest" ? retest : practice;
+  if (mode === "retest") return retest;
+  if (mode === "transfer") return transfer;
+  if (mode === "transferRetest") return transferRetest;
+  return practice;
 }
 
 function keptRange(templates, blocked) {
@@ -89,7 +109,7 @@ export function evaluateFinalDraw({ cards, pot, range, opponentDraw = 1, knownDe
   function addOutcome(branch, observation, hero, opponent, weight, bets) {
     const share = showdownShare(hero, opponent);
     const totals = branch.get(observation) ?? { check: 0, call: 0 };
-    if (bets) totals.call += weight * (share * (pot + 2) - 1);
+    if (bets) totals.call += weight * (calledBetValue(pot, 1, share));
     else totals.check += weight * share * pot;
     branch.set(observation, totals);
   }

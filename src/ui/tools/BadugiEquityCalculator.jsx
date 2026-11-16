@@ -1,10 +1,16 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useBadugiCalculation } from './useBadugiCalculation.js';
+import BadugiFinalBet from './BadugiFinalBet.jsx';
 import BadugiEquityResults from './BadugiEquityResults.jsx';
 import CardPicker from './CardPicker.jsx';
 import { badugiDiscardOptions } from './badugiEquity.js';
 import { cardText } from './cardText.js';
 
+const rangeExample = '9S 7C 5D 4H 3\n8S 6C 4D 2H 1';
+
 const example = {
+  mode: 'fixed',
+  rangeText: '',
   hands: [['AC', '2D', '3H', 'KH'], ['9S', '7C', '5D', '4H']],
   remainingDraws: 1,
   heroDiscards: ['KH'],
@@ -14,7 +20,12 @@ const example = {
 };
 
 const errors = {
+  heroSize: ['自分の手札を4枚選んでください。', 'Choose four cards for your hand.'],
   handSize: ['自分と相手の手札を4枚ずつ選ぶと、ここに結果が表示されます。', 'Choose four cards for each player to see the result.'],
+  rangeEmpty: ['相手の候補手札を1組以上入力してください。', 'Enter at least one possible opponent hand.'],
+  rangeLimit: ['レンジは24行まで入力できます。', 'The range can contain at most 24 lines.'],
+  rangeLine: ['1行に異なる4枚と、正の重みを入力してください。', 'Enter four distinct cards and a positive weight on each line.'],
+  rangeBlocked: ['自分の手札や除外カードと重ならない候補がありません。', 'Every candidate overlaps your hand or the dead cards.'],
   card: ['カードの入力を確認してください。', 'Check the cards you entered.'],
   duplicate: ['同じカードが含まれています。手札と除外カードを確認してください。', 'A card appears more than once. Check the hands and dead cards.'],
   discard: ['交換するカードが手札にあるか確認してください。', 'Check that each discard is in its player’s hand.'],
@@ -47,42 +58,27 @@ function DiscardPicker({ hand, discards, onChange, ja }) {
   );
 }
 
-export default function BadugiEquityCalculator({ ja }) {
-  const [scenario, setScenario] = useState(example);
-  const [response, setResponse] = useState(null);
-  const [retry, setRetry] = useState(0);
-  const { hands, remainingDraws, heroDiscards, opponentChoice, opponentDiscards, deadCards } = scenario;
+export default function BadugiEquityCalculator({ ja, spot = null }) {
+  const [scenario, setScenario] = useState(() => spot ? {
+    ...example, mode: 'range', hands: [spot.cards, []], remainingDraws: spot.remainingDraws,
+    heroDiscards: spot.actualDiscards ?? [], opponentChoice: spot.observedCount ?? -1, deadCards: spot.deadCards,
+  } : example);
+  const { hands, remainingDraws, heroDiscards, opponentChoice, opponentDiscards, deadCards, mode, rangeText } = scenario;
+  const ranged = mode === 'range';
   const players = ja ? ['自分', '相手'] : ['You', 'Opponent'];
-  const manual = remainingDraws && opponentChoice === 5 ? opponentDiscards : null;
-  const ready = hands.every(hand => hand.length === 4);
-  const request = useMemo(() => ready ? { hands, remainingDraws, deadCards, opponentDiscards: manual } : null,
-    [ready, hands, remainingDraws, deadCards, manual]);
-
-  useEffect(() => {
-    if (!request) return;
-    let worker;
-    const timer = setTimeout(() => {
-      try {
-        worker = new Worker(new URL('./badugiEquity.worker.js', import.meta.url), { type: 'module' });
-        worker.onmessage = event => setResponse({ request, retry, data: event.data });
-        worker.onerror = () => setResponse({ request, retry, failed: true });
-        worker.postMessage(request);
-      } catch {
-        setResponse({ request, retry, failed: true });
-      }
-    }, 100);
-    return () => {
-      clearTimeout(timer);
-      worker?.terminate();
-    };
-  }, [request, retry]);
-
-  const current = response?.request === request && response?.retry === retry ? response : null;
+  const manual = !ranged && remainingDraws && opponentChoice === 5 ? opponentDiscards : null;
+  const ready = hands[0].length === 4 && (ranged || hands[1].length === 4);
+  const activeRange = ranged ? rangeText : null;
+  const request = useMemo(() => ready ? { hands, remainingDraws, deadCards, opponentDiscards: manual, rangeText: activeRange } : null,
+    [ready, hands, remainingDraws, deadCards, manual, activeRange]);
+  const { current, retry } = useBadugiCalculation(request);
   const choices = remainingDraws ? badugiDiscardOptions(hands[0]) : [];
   const hero = hands[0].reduce((mask, card, index) => heroDiscards.includes(card) ? mask | (1 << index) : mask, 0);
   const columns = current?.data?.columns ?? [];
   const result = current?.data?.showdown ?? columns[opponentChoice]?.results[hero];
-  const error = ready ? (current?.data?.error ?? result?.error) : 'handSize';
+  const range = current?.data?.range;
+  const reviewSpot = spot && remainingDraws === spot.remainingDraws && spot.cards.every(card => hands[0].includes(card)) ? spot : null;
+  const error = ready ? (current?.data?.error ?? result?.error) : (ranged ? 'heroSize' : 'handSize');
 
   const update = (key, value) => setScenario(previous => ({ ...previous, [key]: value }));
   function setHand(seat, cards) {
@@ -99,8 +95,19 @@ export default function BadugiEquityCalculator({ ja }) {
       <header className="space-y-2">
         <h2 id="badugi-equity-title" className="text-xl font-bold sm:text-2xl">{ja ? 'Badugi エクイティ計算機' : 'Badugi equity calculator'}</h2>
         <p className="max-w-2xl text-sm text-slate-300">
-          {ja ? '2人の手札をもとに、今のドローで切るカードと相手の交換枚数が、ショーダウン時の取り分にどう影響するかを比べます。' : 'Enter two known hands to compare how your discards and the opponent’s draw count affect equity at showdown.'}
+          {ja ? '自分の手札と相手の手札またはレンジを入力し、交換によるショーダウンの取り分を比較します。' : 'Enter your hand and the opponent’s hand or range to compare showdown equity after different draws.'}
         </p>
+        {spot && <p className="text-sm text-emerald-200">{spot.observedCount == null
+          ? (ja ? '履歴から読み込みました。自分の手番の時点では、相手の交換枚数は未観測です。' : 'Loaded from replay. The opponent’s draw count was unknown at your decision.')
+          : (ja ? `履歴から読み込みました。自分の手番までに相手は${spot.observedCount}枚交換しています。` : `Loaded from replay. The opponent had drawn ${spot.observedCount} cards before your decision.`)}</p>}
+        {spot?.drawHistory.length > 0 && <details className="text-sm text-slate-300">
+          <summary className="min-h-11 cursor-pointer py-2 text-emerald-200">{ja ? '手番までの交換履歴' : 'Draws observed before your turn'}</summary>
+          <ul className="space-y-1 pb-2">
+            {spot.drawHistory.map(({ round, player, count }, index) => <li key={index}>
+              {ja ? `${round}回目 · ${player === 'hero' ? '自分' : '相手'} ${count}枚` : `Draw ${round} · ${player === 'hero' ? 'You' : 'Opponent'}: ${count}`}
+            </li>)}
+          </ul>
+        </details>}
       </header>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <label className="grid gap-1 text-sm font-semibold">
@@ -112,35 +119,55 @@ export default function BadugiEquityCalculator({ ja }) {
             <option value={3}>{ja ? '3回（1stドローから）' : '3 (from the 1st draw)'}</option>
           </select>
         </label>
-        <div className="flex flex-wrap gap-2 text-sm">
-          <button type="button" className="min-h-11 rounded-lg border border-white/20 px-3 text-emerald-200" onClick={() => setScenario({ ...example, remainingDraws })}>{ja ? '入力例を使う' : 'Load example'}</button>
-          <button type="button" className="min-h-11 rounded-lg border border-white/20 px-3" onClick={() => setScenario({ ...example, hands: [[], []], remainingDraws, heroDiscards: [] })}>{ja ? 'カードをクリア' : 'Clear cards'}</button>
-        </div>
+        {!spot && <div className="flex flex-wrap gap-2 text-sm">
+          <button type="button" className="min-h-11 rounded-lg border border-white/20 px-3 text-emerald-200" onClick={() => setScenario({ ...example, remainingDraws, mode, rangeText: ranged ? rangeExample : '' })}>{ja ? '入力例を使う' : 'Load example'}</button>
+          <button type="button" className="min-h-11 rounded-lg border border-white/20 px-3" onClick={() => setScenario({ ...example, hands: [[], []], remainingDraws, heroDiscards: [], mode })}>{ja ? 'カードをクリア' : 'Clear cards'}</button>
+        </div>}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <CardPicker bySuit cards={hands[0]} count={4} blocked={[...hands[1], ...deadCards]} label={players[0]} ja={ja} onChange={cards => setHand(0, cards)}>
+        <CardPicker bySuit cards={hands[0]} count={4} blocked={ranged ? deadCards : [...hands[1], ...deadCards]} label={players[0]} ja={ja} onChange={cards => setHand(0, cards)}>
           {remainingDraws > 0 && <DiscardPicker hand={hands[0]} discards={heroDiscards} ja={ja} onChange={cards => update('heroDiscards', cards)} />}
         </CardPicker>
-        <CardPicker bySuit cards={hands[1]} count={4} blocked={[...hands[0], ...deadCards]} label={players[1]} ja={ja} onChange={cards => setHand(1, cards)}>
-          {remainingDraws > 0 && (
-            <div className="space-y-2">
-              <label className="grid grid-cols-[auto,minmax(0,1fr)] items-center gap-3 text-sm font-medium">
-                {ja ? '相手の交換' : 'Opponent’s draw'}
-                <select className={selectClass} value={opponentChoice} onChange={event => update('opponentChoice', Number(event.target.value))}>
-                  <option value={0}>{ja ? 'パット（0枚）' : 'Stand pat (0 cards)'}</option>
-                  {[1, 2, 3, 4].map(count => <option key={count} value={count}>{ja ? `${count}枚交換` : `Draw ${count}`}</option>)}
-                  <option value={5}>{ja ? '切るカードを指定' : 'Choose exact discards'}</option>
-                </select>
-              </label>
-              {opponentChoice === 5 && <DiscardPicker hand={hands[1]} discards={opponentDiscards} ja={ja} onChange={cards => update('opponentDiscards', cards)} />}
-              {opponentChoice > 0 && opponentChoice < 5 && columns[opponentChoice] && (
-                <p className="text-xs text-slate-300">
-                  {ja ? '相手が切ると仮定' : 'Assumed discards'} · {columns[opponentChoice].cards.map(cardText).join(' ')}
-                </p>
-              )}
-            </div>
-          )}
-        </CardPicker>
+        <div className="min-w-0 space-y-3">
+          <label className="grid gap-1 text-sm font-semibold">
+            {ja ? '相手の手札の入力方法' : 'Opponent hand input'}
+            <select className={selectClass} value={mode} onChange={event => {
+              const nextMode = event.target.value;
+              setScenario(previous => ({ ...previous, mode: nextMode, opponentChoice: nextMode === 'range' && previous.opponentChoice === 5 ? -1 : previous.opponentChoice }));
+            }}>
+              <option value="fixed">{ja ? '固定手札' : 'Exact hand'}</option>
+              <option value="range">{ja ? 'レンジ（複数の候補）' : 'Range (weighted candidates)'}</option>
+            </select>
+          </label>
+          {ranged ? <div className="space-y-2">
+            <label className="grid gap-1 text-sm font-medium">{ja ? '相手のレンジ' : 'Opponent range'}
+              <textarea className="min-h-28 w-full rounded-lg border border-white/20 bg-slate-800 p-3 font-mono text-base" spellCheck={false}
+                value={rangeText} maxLength={4000} placeholder={rangeExample} aria-describedby="equity-range-help"
+                onChange={event => update('rangeText', event.target.value)} />
+            </label>
+            <p id="equity-range-help" className="text-xs text-slate-300">{ja
+              ? '1行に4枚と重みを入力します（例 9S 7C 5D 4H 3）。重み省略は1。最大24行です。観測した交換枚数などを考慮した重みを入力してください。'
+              : 'Use one line per candidate with four cards and a weight, e.g. 9S 7C 5D 4H 3. Weight defaults to 1. Up to 24 lines. Enter weights that account for observed actions.'}</p>
+            {range && <p className="text-xs text-emerald-200">{ja
+              ? `有効な候補 ${range.hands}組 · 既知カードと重なる行 ${range.excluded}件を除外。残りの重みで再計算しています。`
+              : `${range.hands} valid hands · ${range.excluded} blocked rows removed. Remaining weights are normalized.`}</p>}
+          </div> : <CardPicker bySuit cards={hands[1]} count={4} blocked={[...hands[0], ...deadCards]} label={players[1]} ja={ja} onChange={cards => setHand(1, cards)} />}
+          {remainingDraws > 0 && <div className="space-y-2">
+            <label className="grid grid-cols-[auto,minmax(0,1fr)] items-center gap-3 text-sm font-medium">
+              {ja ? '相手の交換' : 'Opponent’s draw'}
+              <select className={selectClass} value={opponentChoice} onChange={event => update('opponentChoice', Number(event.target.value))}>
+                <option value={-1}>{ja ? '未指定（枚数別に比較）' : 'Unspecified (compare counts)'}</option>
+                <option value={0}>{ja ? 'パット（0枚）' : 'Stand pat (0 cards)'}</option>
+                {[1, 2, 3, 4].map(count => <option key={count} value={count}>{ja ? `${count}枚交換` : `Draw ${count}`}</option>)}
+                {!ranged && <option value={5}>{ja ? '切るカードを指定' : 'Choose exact discards'}</option>}
+              </select>
+            </label>
+            {opponentChoice === 5 && <DiscardPicker hand={hands[1]} discards={opponentDiscards} ja={ja} onChange={cards => update('opponentDiscards', cards)} />}
+            {opponentChoice > 0 && opponentChoice < 5 && columns[opponentChoice]?.cards && (
+              <p className="text-xs text-slate-300">{ja ? '相手が切ると仮定' : 'Assumed discards'} · {columns[opponentChoice].cards.map(cardText).join(' ')}</p>
+            )}
+          </div>}
+        </div>
       </div>
       <details className="rounded-xl border border-white/20 px-3">
         <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium text-emerald-200">
@@ -148,7 +175,7 @@ export default function BadugiEquityCalculator({ ja }) {
         </summary>
         <div className="space-y-2 pb-3">
           <p className="text-sm text-slate-300">{ja ? 'すでに卓外にあると分かっているカードを指定します。' : 'Select known cards that are out of play.'}</p>
-          <CardPicker bySuit cards={deadCards} blocked={hands.flat()} label={ja ? '除外カード' : 'Dead cards'} ja={ja} onChange={cards => update('deadCards', cards)} />
+          <CardPicker bySuit cards={deadCards} blocked={ranged ? hands[0] : hands.flat()} label={ja ? '除外カード' : 'Dead cards'} ja={ja} onChange={cards => update('deadCards', cards)} />
         </div>
       </details>
       {remainingDraws > 0 && (
@@ -169,11 +196,12 @@ export default function BadugiEquityCalculator({ ja }) {
       {current?.failed && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300/40 p-4 text-sm text-amber-100">
           <p role="status">{ja ? '計算を完了できませんでした。' : 'The calculation could not finish.'}</p>
-          <button type="button" className="min-h-11 rounded-lg border border-white/20 px-3" onClick={() => setRetry(value => value + 1)}>{ja ? '再計算' : 'Retry'}</button>
+          <button type="button" className="min-h-11 rounded-lg border border-white/20 px-3" onClick={retry}>{ja ? '再計算' : 'Retry'}</button>
         </div>
       )}
-      {error && <p role="status" className={`rounded-xl border p-4 text-sm ${error === 'handSize' ? 'border-white/20 text-slate-300' : 'border-amber-300/40 text-amber-100'}`}>{errors[error][ja ? 0 : 1]}</p>}
-      {result && <BadugiEquityResults result={result} columns={columns} choices={choices} hero={hero} opponent={opponentChoice} onHero={id => update('heroDiscards', choices[id])} onOpponent={id => update('opponentChoice', id)} players={players} ja={ja} />}
+      {error && <p role="status" className={`rounded-xl border p-4 text-sm ${error === 'handSize' ? 'border-white/20 text-slate-300' : 'border-amber-300/40 text-amber-100'}`}>{current?.data?.line && (ja ? `${current.data.line}行目 · ` : `Line ${current.data.line} · `)}{errors[error][ja ? 0 : 1]}</p>}
+      {(result || columns.length > 0) && <BadugiEquityResults result={result} columns={columns} choices={choices} hero={hero} opponent={opponentChoice} onHero={id => update('heroDiscards', choices[id])} onOpponent={id => update('opponentChoice', id)} players={players} ja={ja} />}
+      {remainingDraws < 2 && <BadugiFinalBet base={request} opponentCount={opponentChoice} spot={reviewSpot} ja={ja} />}
     </section>
   );
 }

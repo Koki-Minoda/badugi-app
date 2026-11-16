@@ -32,6 +32,7 @@ def plan():
         "lookSessionsPerCell": [20, 50, 100],
         "handsPerSession": 20,
         "maxHandsPerArm": 4000,
+        "maxWallSecondsPerArm": 3600,
         "seedWindows": {"candidate": [10_000, 19_999],
                         "reference": [20_000, 29_999]},
         "excludedSeedWindows": [[1, 9_999]],
@@ -63,6 +64,8 @@ def rows(config, n, candidate_score, reference_score):
                     "modelSha256": config[f"{arm}ModelSha256"],
                     "controllerContractSha256": config["controllerContractSha256"],
                     "source": "real-controller", "chipBalanced": True,
+                    "frozenManifestAttested": True,
+                    "decisionLedgerAudited": True,
                     "illegalActions": 0, "fallbacks": 0,
                     "inferenceRequests": 4, "inferenceUsed": 4,
                     "maxInferenceMs": 15,
@@ -117,6 +120,8 @@ class SequentialGateTest(unittest.TestCase):
             ("wrong model", lambda d: d["candidate"][0].update(modelSha256="d" * 64)),
             ("fallback", lambda d: d["candidate"][0].update(fallbacks=1)),
             ("lost chips", lambda d: d["candidate"][0].update(chipBalanced=False)),
+            ("unfrozen manifest", lambda d: d["candidate"][0].update(frozenManifestAttested=False)),
+            ("unverified decision ledger", lambda d: d["candidate"][0].update(decisionLedgerAudited=False)),
             ("no ONNX use", lambda d: d["candidate"][0].update(inferenceUsed=3)),
             ("out of bounds", lambda d: d["candidate"][0].update(netBigBets=100)),
             ("variable session length", lambda d: d["candidate"][0].update(hands=19)),
@@ -136,6 +141,14 @@ class SequentialGateTest(unittest.TestCase):
         config["excludedSeedWindows"].append([10_010, 10_020])
         with self.assertRaisesRegex(ValueError, "overlaps excluded"):
             gate.validate_manifest(config)
+        config = plan()
+        config["excludedSeedWindows"].append([10_010 + 2 ** 32, 10_020 + 2 ** 32])
+        with self.assertRaisesRegex(ValueError, "modulo 2\\^32"):
+            gate.validate_manifest(config)
+        config = plan()
+        config["seedWindows"]["reference"] = [10_000 + 2 ** 32, 19_999 + 2 ** 32]
+        with self.assertRaisesRegex(ValueError, "arm seed windows overlap"):
+            gate.validate_manifest(config)
 
     def test_rejects_unfrozen_weights_or_budget(self):
         config = plan()
@@ -145,6 +158,10 @@ class SequentialGateTest(unittest.TestCase):
         config = plan()
         config["maxHandsPerArm"] = 3999
         with self.assertRaisesRegex(ValueError, "budget"):
+            gate.validate_manifest(config)
+        config = plan()
+        config["maxWallSecondsPerArm"] = float('inf')
+        with self.assertRaisesRegex(ValueError, "wall time"):
             gate.validate_manifest(config)
         config = plan()
         config["scoreBounds"] = [-1, 1]

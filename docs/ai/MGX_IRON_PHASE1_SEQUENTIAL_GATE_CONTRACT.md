@@ -16,11 +16,14 @@
 | `familywiseAlpha`, `minimumImprovement` | 許容誤判定率と実用改善幅。学習・選択・holdout観測前に固定 |
 | `lookSessionsPerCell` | 各cell・各armで同数の独立sessionを揃える評価時点。最後の値が最大look |
 | `handsPerSession`, `maxHandsPerArm` | 全session共通のhand数と1 armの計算上限。等長に固定することでsession平均を100 hand当たりの収益と一致させる |
+| `maxWallSecondsPerArm` | 1 armの収集に許す壁時計期限。超過時は失敗原本を保持して停止 |
 | `cells` | 席数×cash/MTT×相手タイプ等と重み。cash/MTTを必ず含め、重み合計1。各cellに`tableSeats`、`occupiedSeats`、`startingStackChips`、`bigBetChips`、`noRebuy=true`、`constantBigBet=true`を収集前に固定 |
 | `seedWindows`, `excludedSeedWindows` | 候補/Proの不交差評価seed範囲と学習・選択・H33b等の既使用範囲 |
 | `maxInferenceMs` | 通常推論の事前固定期限 |
 
 session JSONLには `sessionId`、cell内の連番 `sessionIndex`、一意の `seed`、`cell`、planどおり固定の `hands`、`netBigBets`、model/controller SHA、`source=real-controller`、`chipBalanced=true`、`illegalActions=0`、`fallbacks=0`、`inferenceRequests=inferenceUsed>0`、`maxInferenceMs` を要求する。さらに`heroSeat`、`initialStacks`、`finalStacks`、`initialChipPool`、`activeBigBlindMin/Max`をplanの固定値と突き合わせる。初期チップ総量・最終総量・英雄純増減からscoreを再計算し、任意に狭い `scoreBounds` を拒否する。`netBigBets` は元の**各handのchip差分÷そのhandの固定リミットbig bet額**から別の監査済みadapter（Draft PR #335）が算出する必要がある。既存H33bの `chipBbPerHand` を名前だけ変えて入力することは禁止する。等長sessionを作れない条件はこの評価器に無理に通さず、可変長の収益率と依存性を扱う別契約を先に作る。評価器は偽の原本を見抜けないため、元のhand trace・モデル使用ログ・seed台帳の独立監査が先行条件となる。
+
+後続の連結収集器を使う場合は、各判断の全席stack＋commitと終局stackを別の監査器が照合した `decisionLedgerAudited=true`、収集前に固定したmanifestを表す `frozenManifestAttested=true` を追加で必須とする。D03の乱数seedは32-bitへ変換されるため、seed窓は生の整数だけでなく `2^32` を法とした重複も拒否する。既存H33b原本にはこの判断ごとのledgerがないため、新ゲートの入力へ再分類しない。
 
 `O=occupiedSeats`、`S=startingStackChips`、`U=bigBetChips`、`H=handsPerSession` とし、全handで補充なし・ベット単位一定・全席チップ保存・負stackなしが成立すれば、英雄の純増減は `−S` 以上 `(O−1)S` 以下。よってscore範囲は `[−100S/(HU), 100(O−1)S/(HU)]`。判定器は全cellの和集合をplanの範囲が包含するか検査する。これはcontrollerがplanどおり動き、trace adapterのhand間連続性監査が正しいことを条件とする。planの凍結時刻とモデルbodyの真正性は独立監査が必要。
 

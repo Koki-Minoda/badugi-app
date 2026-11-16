@@ -39,8 +39,34 @@ def _file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _ledger(value, *, terminal, hand_index, decision_index, seat_count, chip_pool):
+    if (not isinstance(value, dict) or value.get("terminal") is not terminal or
+            value.get("handIndex") != hand_index or
+            value.get("decisionIndex") != decision_index or
+            value.get("chipPool") != chip_pool):
+        raise ValueError("missing or mismatched decision chip ledger")
+    stacks = value.get("stacks")
+    committed = value.get("committedBySeat")
+    if (not isinstance(stacks, list) or len(stacks) != seat_count or
+            any(type(chips) is not int or chips < 0 for chips in stacks)):
+        raise ValueError("invalid decision ledger stacks")
+    if terminal:
+        if committed is not None:
+            raise ValueError("terminal ledger has unsettled committed chips")
+        accounted = sum(stacks)
+    else:
+        if (not isinstance(committed, list) or len(committed) != seat_count or
+                any(type(chips) is not int or chips < 0 for chips in committed)):
+            raise ValueError("invalid decision ledger committed chips")
+        accounted = sum(stacks) + sum(committed)
+    if value.get("accounted") != accounted or accounted != chip_pool:
+        raise ValueError("decision chip ledger does not balance")
+    return value
+
+
 def audit_session(session, hand_stream, hand_digest, *, model_sha, contract_sha,
-                  deadline_ms, index):
+                  deadline_ms, index, require_decision_ledger=False,
+                  frozen_manifest=False):
     seed = session.get("seed")
     group = session.get("group")
     profile = session.get("profile")
@@ -93,6 +119,7 @@ def audit_session(session, hand_stream, hand_digest, *, model_sha, contract_sha,
         if first_start is None:
             first_start = starting
         previous_ending = ending
+        chip_pool = sum(first_start)
         blind_values.add(bb)
         hero_delta = deltas[hero]
         net_chips += hero_delta
@@ -103,8 +130,19 @@ def audit_session(session, hand_stream, hand_digest, *, model_sha, contract_sha,
         if (not isinstance(decisions, list) or not isinstance(public, list) or
                 len(decisions) != len(public)):
             raise ValueError("decision/action trace length mismatch")
+        if require_decision_ledger:
+            ledgers = [_ledger(decision.get("ledger"), terminal=False,
+                               hand_index=hand_index, decision_index=ordinal,
+                               seat_count=seat_count, chip_pool=chip_pool)
+                       for ordinal, decision in enumerate(decisions)]
+            terminal_ledger = _ledger(hand.get("terminalLedger"), terminal=True,
+                                      hand_index=hand_index,
+                                      decision_index=len(decisions),
+                                      seat_count=seat_count, chip_pool=chip_pool)
+            if terminal_ledger["stacks"] != ending:
+                raise ValueError("terminal decision ledger differs from hand settlement")
         hero_decisions = 0
-        for decision, event in zip(decisions, public):
+        for ordinal, (decision, event) in enumerate(zip(decisions, public)):
             seat = decision.get("seat")
             phase = decision.get("phase")
             action = decision.get("actionIndex")
@@ -118,18 +156,33 @@ def audit_session(session, hand_stream, hand_digest, *, model_sha, contract_sha,
                 raise ValueError("illegal controller action or malformed decision")
             if event.get("seat") != seat or event.get("type") != f"{phase}_ACTION":
                 raise ValueError("decision/public event mismatch")
+            if require_decision_ledger and event.get("stackBefore") != ledgers[ordinal]["stacks"][seat]:
+                raise ValueError("action stack differs from pre-decision ledger")
             if phase == "BET":
                 amount = _number(event.get("amount"), "bet amount")
                 before = _number(event.get("stackBefore"), "stack before")
                 after = _number(event.get("stackAfter"), "stack after")
+                # The final public event observes the settled snapshot: its
+                # stackAfter can include the awarded pot. Earlier events must
+                # show the immediate contribution exactly.
+                expected_after = (ending[seat] if require_decision_ledger and
+                                  ordinal == len(decisions) - 1 else before - amount)
                 if (amount < 0 or amount > before or
-                        not math.isclose(before - amount, after, abs_tol=1e-9)):
+                        not math.isclose(expected_after, after, abs_tol=1e-9)):
                     raise ValueError("illegal bet amount or stack transition")
             else:
                 draw_count = event.get("drawCount")
                 if (type(draw_count) is not int or not 0 <= draw_count <= 4 or
                         event.get("amount") != 0):
                     raise ValueError("illegal draw count")
+            if require_decision_ledger and ordinal + 1 < len(ledgers):
+                next_stacks = ledgers[ordinal + 1]["stacks"]
+                amount = event.get("amount")
+                if (type(amount) is not int or
+                        next_stacks[seat] != ledgers[ordinal]["stacks"][seat] - amount or
+                        any(next_stacks[other] != ledgers[ordinal]["stacks"][other]
+                            for other in range(seat_count) if other != seat)):
+                    raise ValueError("intermediate decision stack transition mismatch")
             if seat == hero:
                 hero_decisions += 1
                 requests += 1
@@ -173,6 +226,8 @@ def audit_session(session, hand_stream, hand_digest, *, model_sha, contract_sha,
         "activeBigBlindMin": min(blind_values),
         "activeBigBlindMax": max(blind_values),
         "modelIdentityAttestedByManifest": True,
+        "frozenManifestAttested": frozen_manifest,
+        "decisionLedgerAudited": require_decision_ledger,
     }
 
 
@@ -199,9 +254,12 @@ def audit_files(*, manifest_path: Path, session_path: Path, hand_path: Path,
     manifest = json.loads(manifest_bytes)
     model_sha = manifest.get("modelSha256")
     contract_sha = manifest.get("contractSha256")
+    frozen_manifest = manifest.get("status") == "FROZEN"
+    require_decision_ledger = manifest.get("requireDecisionLedger", False)
     if (not all(isinstance(x, str) and len(x) == 64 and
                 all(c in "0123456789abcdef" for c in x)
                 for x in (model_sha, contract_sha)) or
+            type(require_decision_ledger) is not bool or
             not 0 < deadline_ms <= 60_000):
         raise ValueError("invalid frozen manifest or deadline")
     session_digest = hashlib.sha256()
@@ -232,7 +290,9 @@ def audit_files(*, manifest_path: Path, session_path: Path, hand_path: Path,
                 cells[cell] += 1
                 row = audit_session(session, hands, hand_digest,
                                     model_sha=model_sha, contract_sha=contract_sha,
-                                    deadline_ms=deadline_ms, index=cells[cell])
+                                    deadline_ms=deadline_ms, index=cells[cell],
+                                    require_decision_ledger=require_decision_ledger,
+                                    frozen_manifest=frozen_manifest)
                 score = 100 * row["netBigBets"] / row["hands"]
                 score_min = min(score_min, score)
                 score_max = max(score_max, score)
@@ -252,7 +312,9 @@ def audit_files(*, manifest_path: Path, session_path: Path, hand_path: Path,
         "schema": "mgx-d03-big-bet-trace-audit/v1",
         "adapterSha256": _file_sha256(Path(__file__)),
         "status": "DIAGNOSTIC_PREFIX_ONLY_NOT_GATE_INPUT" if diagnostic_sessions is not None
-                  else "FULL_TRACE_UNIT_AUDIT_INPUT_ONLY",
+                  else "FULL_TRACE_UNIT_AUDIT_INPUT_ONLY" if frozen_manifest
+                  else "DIAGNOSTIC_UNFROZEN_NOT_GATE_INPUT",
+        "frozenManifestAttested": frozen_manifest,
         "manifestSha256": hashlib.sha256(manifest_bytes).hexdigest(),
         "modelSha256AttestedByManifest": model_sha,
         "controllerContractSha256AttestedByManifest": contract_sha,
@@ -260,6 +322,7 @@ def audit_files(*, manifest_path: Path, session_path: Path, hand_path: Path,
         "sessionsRead": count, "handsRead": total_hands,
         "cellsRead": dict(cells),
         "scoreUnit": "big_bet_per_100_hands",
+        "decisionLedgerRequired": require_decision_ledger,
         "observedScoreMin": score_min, "observedScoreMax": score_max,
         "maxHeroInferenceMs": max_latency,
         "sessionInputSha256" if diagnostic_sessions is None else

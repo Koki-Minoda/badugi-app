@@ -38,7 +38,8 @@ def originals():
                                "action": "check", "amount": 0,
                                "stackBefore": 500, "stackAfter": 500}],
     }
-    manifest = {"modelSha256": "a" * 64, "contractSha256": "b" * 64}
+    manifest = {"status": "FROZEN", "modelSha256": "a" * 64,
+                "contractSha256": "b" * 64}
     return manifest, session, hand
 
 
@@ -82,6 +83,13 @@ class BadugiTraceUnitAuditTest(unittest.TestCase):
         self.assertIn("sessionConsumedPrefixSha256", result)
         self.assertNotIn("sessionInputSha256", result)
 
+    def test_unfrozen_manifest_remains_a_diagnostic(self):
+        manifest, session, hand = originals()
+        manifest["status"] = "DIAGNOSTIC_NOT_FROZEN"
+        result, row = run_files(manifest, session, hand)
+        self.assertEqual(result["status"], "DIAGNOSTIC_UNFROZEN_NOT_GATE_INPUT")
+        self.assertFalse(row["frozenManifestAttested"])
+
     def test_rejects_unmatched_extra_hand(self):
         manifest, session, hand = originals()
         with self.assertRaisesRegex(ValueError, "extra hand"):
@@ -99,6 +107,35 @@ class BadugiTraceUnitAuditTest(unittest.TestCase):
                                 model_sha=manifest["modelSha256"],
                                 contract_sha=manifest["contractSha256"],
                                 deadline_ms=8000, index=1)
+
+    def test_requires_and_checks_every_decision_chip_ledger(self):
+        manifest, session, hand = originals()
+        manifest["requireDecisionLedger"] = True
+        hand["decisions"][0]["ledger"] = {
+            "handIndex": 0, "decisionIndex": 0, "terminal": False,
+            "stacks": [500, 500], "committedBySeat": [0, 0],
+            "accounted": 1000, "chipPool": 1000,
+        }
+        hand["terminalLedger"] = {
+            "handIndex": 0, "decisionIndex": 1, "terminal": True,
+            "stacks": [520, 480], "committedBySeat": None,
+            "accounted": 1000, "chipPool": 1000,
+        }
+        hand["publicActionTrace"][0]["stackAfter"] = 520
+        result, row = run_files(manifest, session, hand)
+        self.assertTrue(result["decisionLedgerRequired"])
+        self.assertTrue(row["decisionLedgerAudited"])
+        mutations = [
+            lambda h: h["decisions"][0].pop("ledger"),
+            lambda h: h["decisions"][0]["ledger"].update(stacks=[501, 500]),
+            lambda h: h["decisions"][0]["ledger"].update(committedBySeat=[-1, 1]),
+            lambda h: h["terminalLedger"].update(stacks=[521, 480]),
+        ]
+        for mutate in mutations:
+            with self.subTest(mutate=mutate), self.assertRaises(ValueError):
+                altered = copy.deepcopy(hand)
+                mutate(altered)
+                run_files(manifest, session, altered)
 
     def test_rejects_malformed_trace_and_summary(self):
         cases = [

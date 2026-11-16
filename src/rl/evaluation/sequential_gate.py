@@ -18,6 +18,7 @@ from pathlib import Path
 SCHEMA = "mgx-sequential-gate/v2"
 METRICS = ("overall", "cash", "mtt")
 SHA_LENGTH = 64
+SEED_PERIOD = 2 ** 32  # The D03 controller's seededRandom coerces seeds with >>> 0.
 
 
 def _sha(value: object) -> bool:
@@ -31,6 +32,22 @@ def _window(value: object) -> tuple[int, int]:
             any(type(item) is not int for item in value) or value[0] > value[1]):
         raise ValueError("seed window must be [integer start, integer end]")
     return value[0], value[1]
+
+
+def _seed_residues(window: tuple[int, int]) -> list[tuple[int, int]]:
+    low, high = window
+    if high - low + 1 >= SEED_PERIOD:
+        return [(0, SEED_PERIOD - 1)]
+    start = low % SEED_PERIOD
+    end = high % SEED_PERIOD
+    return [(start, end)] if start <= end else [
+        (start, SEED_PERIOD - 1), (0, end)]
+
+
+def _seed_windows_collide(first: tuple[int, int], second: tuple[int, int]) -> bool:
+    return any(low_a <= high_b and low_b <= high_a
+               for low_a, high_a in _seed_residues(first)
+               for low_b, high_b in _seed_residues(second))
 
 
 def _finite_positive(value: object) -> bool:
@@ -96,6 +113,10 @@ def validate_manifest(plan: dict) -> None:
     if (type(max_hands) is not int or max_hands < 1 or type(budget) is not int or
             budget < looks[-1] * len(cells) * max_hands):
         raise ValueError("hand budget does not cover the last planned look")
+    wall_limit = plan.get("maxWallSecondsPerArm")
+    if (type(wall_limit) not in (int, float) or not math.isfinite(wall_limit) or
+            not 60 <= wall_limit <= 7 * 24 * 3600):
+        raise ValueError("finite per-arm wall time limit required")
     proved = [_conservation_bounds(cell, max_hands) for cell in cells]
     required_low = min(pair[0] for pair in proved)
     required_high = max(pair[1] for pair in proved)
@@ -107,12 +128,12 @@ def validate_manifest(plan: dict) -> None:
     candidate = _window(windows["candidate"])
     reference = _window(windows["reference"])
     excluded = [_window(item) for item in plan.get("excludedSeedWindows", [])]
-    if candidate[0] <= reference[1] and reference[0] <= candidate[1]:
-        raise ValueError("arm seed windows overlap")
+    if _seed_windows_collide(candidate, reference):
+        raise ValueError("arm seed windows overlap directly or modulo 2^32")
     for first in (candidate, reference):
         for second in excluded:
-            if first[0] <= second[1] and second[0] <= first[1]:
-                raise ValueError("evaluation seed window overlaps excluded data")
+            if _seed_windows_collide(first, second):
+                raise ValueError("evaluation seed window overlaps excluded data directly or modulo 2^32")
     deadline = plan.get("maxInferenceMs")
     if not isinstance(deadline, (int, float)) or not 0 < deadline <= 60_000:
         raise ValueError("positive maximum inference time required")
@@ -180,7 +201,10 @@ def _validate_rows(plan: dict, rows: dict[str, list[dict]]) -> tuple[int, dict]:
             latency = row.get("maxInferenceMs")
             if not isinstance(latency, (int, float)) or not math.isfinite(latency) or latency < 0:
                 raise ValueError("invalid latency")
-            if (row.get("chipBalanced") is not True or row["illegalActions"] or
+            if (row.get("chipBalanced") is not True or
+                    row.get("frozenManifestAttested") is not True or
+                    row.get("decisionLedgerAudited") is not True or
+                    row["illegalActions"] or
                     row["fallbacks"] or row["inferenceRequests"] == 0 or
                     row["inferenceUsed"] != row["inferenceRequests"] or
                     latency > plan["maxInferenceMs"]):

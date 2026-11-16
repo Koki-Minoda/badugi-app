@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   public-cash-qm:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v6
@@ -52,7 +52,7 @@ jobs:
           retention-days: 30
 
   public-cash-webkit-qm:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v6
@@ -93,7 +93,7 @@ jobs:
           retention-days: 30
 
   chinese-cash-qm:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
@@ -125,7 +125,7 @@ jobs:
           retention-days: 30
 
   live-product:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v6
@@ -165,7 +165,7 @@ jobs:
           retention-days: 14
 
   live-ai-telemetry:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -196,7 +196,7 @@ jobs:
           retention-days: 14
 
   live-tournament-qm:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6

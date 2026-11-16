@@ -131,6 +131,8 @@ def main():
                         help='Exploratory phase pair only: keep published Standard BET FOLD')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--sessions-per-profile', type=int, default=6)
+    parser.add_argument('--session-start-index', type=int, default=0,
+                        help='Zero-based first session index for a frozen incremental look')
     parser.add_argument('--hands-per-session', type=int, default=20)
     parser.add_argument('--seed-base', type=int, default=410040001)
     parser.add_argument('--evaluation-manifest', type=Path)
@@ -143,8 +145,13 @@ def main():
     parser.add_argument('--capture-opening', action='store_true',
                         help='Exploratory replay only: save hero first pre-draw BET cards/context')
     args = parser.parse_args()
-    if args.output.exists() or not 1 <= args.sessions_per_profile <= 5000 or not 1 <= args.hands_per_session <= 100:
+    if (args.output.exists() or not 1 <= args.sessions_per_profile <= 5000 or
+            not 0 <= args.session_start_index or
+            args.session_start_index + args.sessions_per_profile > 5000 or
+            not 1 <= args.hands_per_session <= 100):
         raise ValueError('new output directory and bounded session counts required')
+    if args.session_start_index and not args.evaluation_manifest:
+        raise ValueError('incremental collection requires a frozen manifest')
     if args.sessions_per_profile > 100 and not args.evaluation_manifest:
         raise ValueError('large controller evaluations require a frozen manifest')
     if args.evaluation_manifest and (args.only_group or args.only_profile):
@@ -182,7 +189,9 @@ def main():
                 (manifest.get('referencePolicyId') if args.reference else
                  manifest.get('modelSha256')) != model_sha or
                 manifest.get('seedBase') != args.seed_base or
-                manifest.get('sessionsPerProfileGroup') != args.sessions_per_profile or
+                type(manifest.get('sessionsPerProfileGroup')) is not int or
+                not (args.session_start_index + args.sessions_per_profile <=
+                     manifest['sessionsPerProfileGroup'] <= 5000) or
                 manifest.get('handsPerSessionMax') != args.hands_per_session or
                 manifest.get('groupMatrix') != GROUP_NAMES or
                 manifest.get('opponentProfiles') != list(PROFILES)):
@@ -210,7 +219,8 @@ def main():
             for profile_index, profile in enumerate(PROFILES):
                 if args.only_profile and profile != args.only_profile:
                     continue
-                for session_index in range(args.sessions_per_profile):
+                for session_index in range(args.session_start_index,
+                                           args.session_start_index + args.sessions_per_profile):
                     seed = args.seed_base + group_index * 1_000_000 + profile_index * 10_000 + session_index
                     rng = random.Random(seed + 997)
                     response = bridge.send({'command': 'reset', 'seatCount': seats,
@@ -328,7 +338,8 @@ def main():
                'foldGuardian': args.fold_guardian,
                'decisionLedgerIncluded': args.decision_ledger,
                'captureOpening': args.capture_opening,
-               'seedBase': args.seed_base, 'sessions': session_count,
+               'seedBase': args.seed_base, 'sessionStartIndex': args.session_start_index,
+               'sessions': session_count,
                'hands': total_hands,
                'zeroSumSessions': zero_sum_sessions,
                'sessionTraceSha256': file_sha256(session_path),

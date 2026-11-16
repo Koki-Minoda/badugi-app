@@ -233,7 +233,10 @@ def audit_session(session, hand_stream, hand_digest, *, model_sha, contract_sha,
 
 def audit_files(*, manifest_path: Path, session_path: Path, hand_path: Path,
                 output_path: Path | None, report_path: Path, deadline_ms: float,
-                diagnostic_sessions: int | None = None) -> dict:
+                diagnostic_sessions: int | None = None,
+                session_start_index: int = 0) -> dict:
+    if type(session_start_index) is not int or session_start_index < 0:
+        raise ValueError("session start index must be nonnegative")
     partial_path = (output_path.with_name(output_path.name + ".partial")
                     if output_path is not None else None)
     if (report_path.exists() or
@@ -290,7 +293,8 @@ def audit_files(*, manifest_path: Path, session_path: Path, hand_path: Path,
                 cells[cell] += 1
                 row = audit_session(session, hands, hand_digest,
                                     model_sha=model_sha, contract_sha=contract_sha,
-                                    deadline_ms=deadline_ms, index=cells[cell],
+                                    deadline_ms=deadline_ms,
+                                    index=session_start_index + cells[cell],
                                     require_decision_ledger=require_decision_ledger,
                                     frozen_manifest=frozen_manifest)
                 score = 100 * row["netBigBets"] / row["hands"]
@@ -351,11 +355,13 @@ def main() -> None:
     parser.add_argument("--output", type=Path)
     parser.add_argument("--deadline-ms", type=float, default=8000)
     parser.add_argument("--diagnostic-sessions", type=int)
+    parser.add_argument("--session-start-index", type=int, default=0)
     args = parser.parse_args()
     result = audit_files(
         manifest_path=args.manifest, session_path=args.sessions,
         hand_path=args.hands, output_path=args.output, report_path=args.report,
-        deadline_ms=args.deadline_ms, diagnostic_sessions=args.diagnostic_sessions)
+        deadline_ms=args.deadline_ms, diagnostic_sessions=args.diagnostic_sessions,
+        session_start_index=args.session_start_index)
     print(json.dumps({key: result[key] for key in
                       ("status", "sessionsRead", "handsRead", "observedScoreMin",
                        "observedScoreMax")}))

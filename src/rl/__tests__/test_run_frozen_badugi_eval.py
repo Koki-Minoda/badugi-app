@@ -44,7 +44,7 @@ def inputs():
               "planSha256": plan_sha, "contractSha256": "c" * 64,
               "modelSha256": model_shas[arm],
               "seedBase": 1_500_000_001 if arm == "candidate" else 1_600_000_001,
-              "sessionsPerProfileGroup": 2, "handsPerSessionMax": 20,
+              "sessionsPerProfileGroup": 4, "handsPerSessionMax": 20,
               "groupMatrix": list(runner.GROUPS),
               "opponentProfiles": list(runner.PROFILES),
               "requireDecisionLedger": True}
@@ -91,6 +91,7 @@ class FrozenBadugiRunnerTest(unittest.TestCase):
                 "contractSha256": "c" * 64,
                 "codeGitSha": "d" * 40,
                 "modelKind": "onnx", "decisionLedgerIncluded": True,
+                "sessionStartIndex": 0, "sessionsPerProfileGroup": 2,
                 "sessions": 80, "zeroSumSessions": 80, "hands": 1600,
                 "groups": list(runner.GROUPS),
                 "opponentProfiles": list(runner.PROFILES),
@@ -99,7 +100,8 @@ class FrozenBadugiRunnerTest(unittest.TestCase):
             }
             kwargs = {"arm": "candidate", "manifest_sha": "a" * 64,
                       "model_sha": "b" * 64, "contract_sha": "c" * 64,
-                      "code_sha": "d" * 40, "look": 2, "hands": 20,
+                      "code_sha": "d" * 40, "session_start": 0,
+                      "session_count": 2, "hands": 20,
                       "session_path": sessions, "hand_path": hands}
             runner.validate_collection(summary, **kwargs)
             for change in ({"hands": 1599}, {"decisionLedgerIncluded": False},

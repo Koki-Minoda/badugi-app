@@ -85,7 +85,7 @@ def validate_preflight(plan: dict, manifests: dict[str, dict],
                 manifest.get("contractSha256") != plan["controllerContractSha256"] or
                 manifest.get("modelSha256") != model_sha or
                 model_sha != plan[f"{arm}ModelSha256"] or
-                manifest.get("sessionsPerProfileGroup") != look or
+                manifest.get("sessionsPerProfileGroup") != plan["lookSessionsPerCell"][-1] or
                 manifest.get("handsPerSessionMax") != plan["handsPerSession"] or
                 manifest.get("groupMatrix") != list(GROUPS) or
                 manifest.get("opponentProfiles") != list(PROFILES) or
@@ -166,6 +166,8 @@ def audit_seed_history(root: Path, scheduled: dict[str, list[int]],
     actual_collisions = []
     for pattern in ("d03*/**/sessions.jsonl", "mgx-phase1*/**/sessions.jsonl"):
         for path in root.glob(pattern):
+            if path.resolve() in excluded_paths:
+                continue
             session_files += 1
             with path.open() as source:
                 for line in source:
@@ -192,9 +194,10 @@ def audit_seed_history(root: Path, scheduled: dict[str, list[int]],
 
 def validate_collection(summary: dict, *, arm: str, manifest_sha: str,
                         model_sha: str, contract_sha: str, code_sha: str,
-                        look: int, hands: int, session_path: Path,
+                        session_start: int, session_count: int,
+                        hands: int, session_path: Path,
                         hand_path: Path) -> None:
-    expected_sessions = len(GROUPS) * len(PROFILES) * look
+    expected_sessions = len(GROUPS) * len(PROFILES) * session_count
     if (summary.get("status") != "FROZEN_EVALUATION" or
             summary.get("evaluationManifestSha256") != manifest_sha or
             summary.get("modelSha256") != model_sha or
@@ -202,6 +205,8 @@ def validate_collection(summary: dict, *, arm: str, manifest_sha: str,
             summary.get("codeGitSha") != code_sha or
             summary.get("modelKind") != "onnx" or
             summary.get("decisionLedgerIncluded") is not True or
+            summary.get("sessionStartIndex") != session_start or
+            summary.get("sessionsPerProfileGroup") != session_count or
             summary.get("sessions") != expected_sessions or
             summary.get("zeroSumSessions") != expected_sessions or
             summary.get("hands") != expected_sessions * hands or
@@ -223,9 +228,74 @@ def _git_clean() -> bool:
     return all(line == "?? node_modules" for line in output.splitlines())
 
 
+def verify_previous_look(path: Path, *, plan: dict, plan_sha: str,
+                         manifest_shas: dict[str, str],
+                         model_shas: dict[str, str], code_sha: str,
+                         prior_root: Path) -> tuple[dict, set[Path]]:
+    """Attest the prior look chain before excluding its own seeds from history."""
+    path = path.resolve()
+    if prior_root not in path.parents:
+        raise ValueError("previous look must be under the scanned artifact root")
+    result_path = path / "gate-result.json"
+    result = json.loads(result_path.read_text())
+    hashes = result.get("inputSha256", {})
+    if (result.get("codeGitSha") != code_sha or hashes.get("plan") != plan_sha or
+            result.get("evaluationPurpose") != plan["evaluationPurpose"] or
+            result.get("decision") not in ("CONTINUE", "PROMOTE", "REJECT") or
+            result.get("independentFinalEvaluationComplete") is not False or
+            any(hashes.get(f"{arm}Manifest") != manifest_shas[arm] or
+                hashes.get(f"{arm}ModelBody") != model_shas[arm]
+                for arm in ("candidate", "reference"))):
+        raise ValueError("previous look identity differs from this frozen evaluation")
+    cumulative_rows = {}
+    for arm in ("candidate", "reference"):
+        for key, name in ((f"{arm}Audit", f"{arm}-audit.json"),
+                          (f"{arm}AuditedSessions", f"{arm}-audited.jsonl"),
+                          (f"{arm}CumulativeSessions", f"{arm}-cumulative.jsonl"),
+                          (f"{arm}StageSummary", f"{arm}/summary.json"),
+                          (f"{arm}StageSessions", f"{arm}/sessions.jsonl"),
+                          (f"{arm}StageHands", f"{arm}/hand-trace.jsonl")):
+            if hashes.get(key) != sha256(path / name):
+                raise ValueError(f"previous look {key} original changed")
+        rows = [json.loads(line) for line in
+                (path / f"{arm}-cumulative.jsonl").open()]
+        cumulative_rows[arm] = rows
+        if len(rows) != len(GROUPS) * len(PROFILES) * result["lookSessionsPerCell"]:
+            raise ValueError("previous look cumulative session count differs")
+    recomputed = gate.evaluate(plan, cumulative_rows)
+    if any(result.get(key) != recomputed[key]
+           for key in ("decision", "reason", "lookSessionsPerCell", "metrics",
+                       "totalHandsByArm")):
+        raise ValueError("previous look gate output differs from its audited rows")
+    excluded = {item.resolve() for item in path.rglob("*") if item.is_file()}
+    prior = result.get("previousLook")
+    if prior is not None:
+        prior_path = Path(prior["path"]).resolve()
+        if prior["gateResultSha256"] != sha256(prior_path / "gate-result.json"):
+            raise ValueError("previous look chain hash differs")
+        previous_result, previous_excluded = verify_previous_look(
+            prior_path, plan=plan, plan_sha=plan_sha, manifest_shas=manifest_shas,
+            model_shas=model_shas, code_sha=code_sha, prior_root=prior_root)
+        if previous_result["lookSessionsPerCell"] >= result["lookSessionsPerCell"]:
+            raise ValueError("previous look chain is out of order")
+        for arm in ("candidate", "reference"):
+            actual = (path / f"{arm}-cumulative.jsonl").read_bytes()
+            expected = ((prior_path / f"{arm}-cumulative.jsonl").read_bytes() +
+                        (path / f"{arm}-audited.jsonl").read_bytes())
+            if actual != expected:
+                raise ValueError("previous cumulative rows differ from chained stages")
+        excluded.update(previous_excluded)
+    else:
+        for arm in ("candidate", "reference"):
+            if ((path / f"{arm}-cumulative.jsonl").read_bytes() !=
+                    (path / f"{arm}-audited.jsonl").read_bytes()):
+                raise ValueError("first look cumulative rows differ from stage")
+    return result, excluded
+
+
 def run(*, plan_path: Path, manifests: dict[str, Path], models: dict[str, Path],
         output_dir: Path, look: int, python_bin: Path,
-        prior_artifacts_root: Path) -> dict:
+        prior_artifacts_root: Path, previous_look_dir: Path | None = None) -> dict:
     plan_path = plan_path.resolve()
     manifests = {arm: path.resolve() for arm, path in manifests.items()}
     models = {arm: path.resolve() for arm, path in models.items()}
@@ -244,12 +314,38 @@ def run(*, plan_path: Path, manifests: dict[str, Path], models: dict[str, Path],
     code_sha = _git_head()
     scheduled = validate_preflight(plan, manifest_data, model_shas,
                                    sha256(plan_path), code_sha, look)
+    previous = None
+    excluded = {plan_path, *manifests.values()}
+    if previous_look_dir is not None:
+        previous, previous_excluded = verify_previous_look(
+            previous_look_dir, plan=plan, plan_sha=sha256(plan_path),
+            manifest_shas={arm: sha256(path) for arm, path in manifests.items()},
+            model_shas=model_shas, code_sha=code_sha,
+            prior_root=prior_artifacts_root.resolve())
+        excluded.update(previous_excluded)
+    looks = plan["lookSessionsPerCell"]
+    start = previous["lookSessionsPerCell"] if previous else 0
+    if previous is None:
+        if look != looks[0]:
+            raise ValueError("first collection must use the first frozen look")
+    elif (previous["decision"] != "CONTINUE" or
+          start not in looks or looks.index(look) != looks.index(start) + 1):
+        raise ValueError("additional collection requires the next frozen look")
+    stage_count = look - start
+    stage_scheduled = {
+        arm: [manifest_data[arm]["seedBase"] + group * 1_000_000 +
+              profile * 10_000 + index
+              for group in range(len(GROUPS))
+              for profile in range(len(PROFILES))
+              for index in range(start, look)]
+        for arm in ("candidate", "reference")
+    }
     output_dir.mkdir(parents=True)
     audit_reports = {}
     audited_paths = {}
     try:
-        seed_audit = audit_seed_history(prior_artifacts_root.resolve(), scheduled,
-                                        {plan_path, *manifests.values()})
+        seed_audit = audit_seed_history(prior_artifacts_root.resolve(), stage_scheduled,
+                                        excluded)
         with (output_dir / "seed-history-preflight.json").open("x") as stream:
             json.dump(seed_audit, stream, indent=2, sort_keys=True)
             stream.write("\n")
@@ -259,7 +355,8 @@ def run(*, plan_path: Path, manifests: dict[str, Path], models: dict[str, Path],
             arm_dir = output_dir / arm
             log_path = output_dir / f"{arm}-collector.log"
             command = [str(python_bin), str(COLLECTOR), "--onnx-model", str(models[arm]),
-                       "--output", str(arm_dir), "--sessions-per-profile", str(look),
+                       "--output", str(arm_dir), "--sessions-per-profile", str(stage_count),
+                       "--session-start-index", str(start),
                        "--hands-per-session", str(plan["handsPerSession"]),
                        "--seed-base", str(manifest_data[arm]["seedBase"]),
                        "--evaluation-manifest", str(manifests[arm]), "--decision-ledger"]
@@ -275,7 +372,8 @@ def run(*, plan_path: Path, manifests: dict[str, Path], models: dict[str, Path],
                                 manifest_sha=sha256(manifests[arm]),
                                 model_sha=model_shas[arm],
                                 contract_sha=plan["controllerContractSha256"],
-                                code_sha=code_sha, look=look,
+                                code_sha=code_sha, session_start=start,
+                                session_count=stage_count,
                                 hands=plan["handsPerSession"],
                                 session_path=session_path, hand_path=hand_path)
             audited_path = output_dir / f"{arm}-audited.jsonl"
@@ -283,15 +381,25 @@ def run(*, plan_path: Path, manifests: dict[str, Path], models: dict[str, Path],
             audit_reports[arm] = trace_audit.audit_files(
                 manifest_path=manifests[arm], session_path=session_path,
                 hand_path=hand_path, output_path=audited_path,
-                report_path=report_path, deadline_ms=plan["maxInferenceMs"])
+                report_path=report_path, deadline_ms=plan["maxInferenceMs"],
+                session_start_index=start)
             if (audit_reports[arm]["status"] != "FULL_TRACE_UNIT_AUDIT_INPUT_ONLY" or
-                    audit_reports[arm]["sessionsRead"] != len(scheduled[arm]) or
+                    audit_reports[arm]["sessionsRead"] != len(stage_scheduled[arm]) or
                     audit_reports[arm]["handsRead"] !=
-                    len(scheduled[arm]) * plan["handsPerSession"] or
+                    len(stage_scheduled[arm]) * plan["handsPerSession"] or
                     audit_reports[arm]["decisionLedgerRequired"] is not True):
                 raise ValueError(f"{arm} independent trace audit is incomplete")
             audited_paths[arm] = audited_path
-        rows = {arm: [json.loads(line) for line in audited_paths[arm].open()]
+        cumulative_paths = {}
+        for arm in ("candidate", "reference"):
+            cumulative = output_dir / f"{arm}-cumulative.jsonl"
+            with cumulative.open("xb") as target:
+                if previous_look_dir is not None:
+                    target.write((previous_look_dir.resolve() /
+                                  f"{arm}-cumulative.jsonl").read_bytes())
+                target.write(audited_paths[arm].read_bytes())
+            cumulative_paths[arm] = cumulative
+        rows = {arm: [json.loads(line) for line in cumulative_paths[arm].open()]
                 for arm in ("candidate", "reference")}
         result = gate.evaluate(plan, rows)
         result["evaluationPurpose"] = plan["evaluationPurpose"]
@@ -307,9 +415,25 @@ def run(*, plan_path: Path, manifests: dict[str, Path], models: dict[str, Path],
                for arm in audit_reports},
             **{f"{arm}AuditedSessions": sha256(audited_paths[arm])
                for arm in audited_paths},
+            **{f"{arm}CumulativeSessions": sha256(cumulative_paths[arm])
+               for arm in cumulative_paths},
+            **{f"{arm}StageSummary": sha256(output_dir / arm / "summary.json")
+               for arm in ("candidate", "reference")},
+            **{f"{arm}StageSessions": sha256(output_dir / arm / "sessions.jsonl")
+               for arm in ("candidate", "reference")},
+            **{f"{arm}StageHands": sha256(output_dir / arm / "hand-trace.jsonl")
+               for arm in ("candidate", "reference")},
         }
         result["codeGitSha"] = code_sha
         result["independentFinalEvaluationComplete"] = False
+        result["stageSessionStartIndex"] = start
+        result["stageSessionsPerCell"] = stage_count
+        if previous_look_dir is not None:
+            prior_path = previous_look_dir.resolve()
+            result["previousLook"] = {
+                "path": str(prior_path),
+                "gateResultSha256": sha256(prior_path / "gate-result.json"),
+            }
         with (output_dir / "gate-result.json").open("x") as stream:
             json.dump(result, stream, indent=2, sort_keys=True)
             stream.write("\n")
@@ -333,6 +457,7 @@ def main() -> None:
     parser.add_argument("--look", type=int, required=True)
     parser.add_argument("--python-bin", type=Path, default=Path(sys.executable))
     parser.add_argument("--prior-artifacts-root", type=Path, required=True)
+    parser.add_argument("--previous-look", type=Path)
     args = parser.parse_args()
     result = run(plan_path=args.plan,
                  manifests={"candidate": args.candidate_manifest,
@@ -340,7 +465,8 @@ def main() -> None:
                  models={"candidate": args.candidate_model,
                          "reference": args.reference_model},
                  output_dir=args.output, look=args.look, python_bin=args.python_bin,
-                 prior_artifacts_root=args.prior_artifacts_root)
+                 prior_artifacts_root=args.prior_artifacts_root,
+                 previous_look_dir=args.previous_look)
     print(json.dumps({key: result[key] for key in
                       ("decision", "reason", "lookSessionsPerCell",
                        "productAdoptionApproved")}))

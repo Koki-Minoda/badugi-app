@@ -77,6 +77,7 @@ export default function RootApp() {
         <Route path="/meetups" element={<MeetupsScreen />} />
         <Route path="/try" element={<TrialScreen />} />
         <Route path="/tools" element={<ToolsScreen />} />
+        <Route path="/dev/tools" element={<ToolsScreen />} />
         <Route path="/learn" element={<LearningHubScreen />} />
         <Route path="/dev/learn" element={<LearningHubScreen />} />
         <Route path="/mixed" element={<MixedGameScreen />} />

@@ -34,7 +34,7 @@ PRO_FOLD_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_fol
 PRO_ACTION_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_action_anchor_plan.json"
 PRO_FRESH_STACK_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_fresh_stack_plan.json"
 PRO_BET_ONLY_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_bet_only_plan.json"
-IRON_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_iron_phase2_plan.json"
+IRON_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_iron_phase2_continuation_plan.json"
 SCHEMA = "badugi-controller-observation-v2-draft"
 PROFILES = ("passive", "pressure", "draw_heavy", "random_legal")
 CONTRACT_FILES = (
@@ -82,6 +82,16 @@ def validate_iron_seed_schedule(plan):
     if (windows[-1][1] >= 2 ** 32 or
             any(previous[1] >= current[0] for previous, current in zip(windows, windows[1:]))):
         raise ValueError("Iron training seeds collide across segments or modulo 2^32")
+    handoff = plan.get("handoffRunIndex")
+    if handoff is not None and (type(handoff) is not int or not 2 <= handoff <= segments or
+            plan.get("minimumRunIndex") != handoff or
+            not isinstance(plan.get("handoffSourceCodeSha"), str) or
+            len(plan["handoffSourceCodeSha"]) != 40 or
+            not all(c in "0123456789abcdef" for c in plan["handoffSourceCodeSha"]) or
+            not isinstance(plan.get("handoffCheckpointSha256"), str) or
+            len(plan["handoffCheckpointSha256"]) != 64 or
+            not all(c in "0123456789abcdef" for c in plan["handoffCheckpointSha256"])):
+        raise ValueError("Iron continuation requires an exact frozen handoff")
     return windows
 
 
@@ -360,7 +370,8 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
                 manifest.get("imitationSteps") != tier_plan["imitationSteps"] or
                 manifest.get("referenceAnchorEvery") != tier_plan["referenceAnchorEvery"] or
                 manifest.get("maxHands") != tier_plan["segmentMaxHands"] or
-                not isinstance(manifest.get("runIndex"), int) or manifest["runIndex"] < 1 or
+                not isinstance(manifest.get("runIndex"), int) or
+                manifest["runIndex"] < tier_plan.get("minimumRunIndex", 1) or
                 manifest["runIndex"] > tier_plan["maximumSegments"] or
                 not isinstance(manifest.get("priorCumulativeHands"), int) or
                 manifest["priorCumulativeHands"] < 0 or
@@ -376,7 +387,11 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
         elif (prior.get("tier") != "iron" or
               prior.get("runIndex") != manifest["runIndex"] - 1 or
               prior.get("cumulativeHands") != manifest["priorCumulativeHands"] or
-              prior.get("codeGitSha") != code_sha):
+              (manifest["runIndex"] == tier_plan.get("handoffRunIndex") and
+               (manifest["initialModelSha256"] != tier_plan["handoffCheckpointSha256"] or
+                prior.get("codeGitSha") != tier_plan["handoffSourceCodeSha"])) or
+              (manifest["runIndex"] != tier_plan.get("handoffRunIndex") and
+               prior.get("codeGitSha") != code_sha)):
             raise ValueError("Iron continuation chain or source SHA differs")
     elif init_model is not None:
         raise ValueError("initial model is only approved for this Standard diagnostic run")

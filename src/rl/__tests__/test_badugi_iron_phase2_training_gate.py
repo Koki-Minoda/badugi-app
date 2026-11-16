@@ -106,6 +106,44 @@ class IronPhase2TrainingGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "modulo"):
             trainer.validate_iron_seed_schedule(plan)
 
+    def test_exact_cross_commit_handoff_only_at_frozen_segment(self):
+        old_code = "a" * 40
+        prior_path = self.root / "iron-20.pt"
+        DQNAgent(96, 6).save(str(prior_path), training_state={
+            "schemaVersion": trainer.SCHEMA, "tier": "iron",
+            "runIndex": 20, "cumulativeHands": 100000,
+            "codeGitSha": old_code})
+        plan = json.loads(self.plan.read_text())
+        plan.update(maximumSegments=40, minimumRunIndex=21, handoffRunIndex=21,
+                    handoffSourceCodeSha=old_code,
+                    handoffCheckpointSha256=sha(prior_path))
+        self.plan.write_text(json.dumps(plan))
+        valid = dict(self.base, runIndex=21, priorCumulativeHands=100000,
+                     initialModelSha256=sha(prior_path),
+                     seedBase=2100116001, tierPlanSha256=sha(self.plan))
+        self.assertEqual(self.check(valid, prior_path)["runIndex"], 21)
+        with self.assertRaisesRegex(ValueError, "bounded segment"):
+            self.check(dict(valid, runIndex=20, seedBase=2080116001), prior_path)
+        wrong = dict(plan, handoffCheckpointSha256="b" * 64)
+        self.plan.write_text(json.dumps(wrong))
+        with self.assertRaisesRegex(ValueError, "continuation chain"):
+            self.check(dict(valid, tierPlanSha256=sha(self.plan)), prior_path)
+        self.plan.write_text(json.dumps(plan))
+        after_path = self.root / "iron-21.pt"
+        DQNAgent(96, 6).save(str(after_path), training_state={
+            "schemaVersion": trainer.SCHEMA, "tier": "iron",
+            "runIndex": 21, "cumulativeHands": 105000,
+            "codeGitSha": "test-code-sha"})
+        after = dict(valid, runIndex=22, priorCumulativeHands=105000,
+                     initialModelSha256=sha(after_path), seedBase=2120116001)
+        self.assertEqual(self.check(after, after_path)["runIndex"], 22)
+        DQNAgent(96, 6).save(str(after_path), training_state={
+            "schemaVersion": trainer.SCHEMA, "tier": "iron",
+            "runIndex": 21, "cumulativeHands": 105000,
+            "codeGitSha": old_code})
+        with self.assertRaisesRegex(ValueError, "continuation chain"):
+            self.check(dict(after, initialModelSha256=sha(after_path)), after_path)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -130,6 +130,30 @@ class FrozenBadugiRunnerTest(unittest.TestCase):
             self.assertEqual(runner.audit_seed_history(root, scheduled, set())["status"],
                              "FAIL_RECORDED_SEED_COLLISION")
 
+    def test_audited_rows_must_follow_frozen_seed_and_rotating_seat(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "audited.jsonl"
+            base = 1_900_000_001
+            rows = []
+            for group_index, group in enumerate(runner.GROUPS):
+                occupied = int(group.split("/", 1)[1].split("-", 1)[0])
+                for profile_index, profile in enumerate(runner.PROFILES):
+                    for index in (3, 4):
+                        rows.append({
+                            "cell": f"{group}|{profile}", "sessionIndex": index,
+                            "seed": base + group_index * 1_000_000 +
+                            profile_index * 10_000 + index - 1,
+                            "heroSeat": (index - 1) % occupied,
+                        })
+            path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+            runner.validate_audited_seeds(path, seed_base=base,
+                                          session_start=2, session_count=2)
+            rows[0]["seed"] += 1
+            path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+            with self.assertRaisesRegex(ValueError, "frozen schedule"):
+                runner.validate_audited_seeds(path, seed_base=base,
+                                              session_start=2, session_count=2)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -217,6 +217,34 @@ def validate_collection(summary: dict, *, arm: str, manifest_sha: str,
         raise ValueError(f"{arm} collection is incomplete or differs from its frozen inputs")
 
 
+def validate_audited_seeds(path: Path, *, seed_base: int,
+                           session_start: int, session_count: int) -> None:
+    """Verify the actual audited session matrix against the frozen seed formula."""
+    seen = set()
+    with path.open() as source:
+        for line in source:
+            row = json.loads(line)
+            cell = row.get("cell")
+            if not isinstance(cell, str) or "|" not in cell:
+                raise ValueError("audited session lacks a known matrix cell")
+            group, profile = cell.split("|", 1)
+            if group not in GROUPS or profile not in PROFILES:
+                raise ValueError("audited session is outside the frozen matrix")
+            index = row.get("sessionIndex")
+            if type(index) is not int or not session_start < index <= session_start + session_count:
+                raise ValueError("audited session index is outside this frozen stage")
+            expected_seed = (seed_base + GROUPS.index(group) * 1_000_000 +
+                             PROFILES.index(profile) * 10_000 + index - 1)
+            occupied = int(group.split("/", 1)[1].split("-", 1)[0])
+            if (row.get("seed") != expected_seed or
+                    row.get("heroSeat") != (index - 1) % occupied or
+                    (cell, index) in seen):
+                raise ValueError("audited seed or rotating hero seat differs from frozen schedule")
+            seen.add((cell, index))
+    if len(seen) != len(GROUPS) * len(PROFILES) * session_count:
+        raise ValueError("audited seed schedule is incomplete")
+
+
 def _git_head() -> str:
     return subprocess.check_output(["git", "rev-parse", "HEAD"],
                                    cwd=ROOT, text=True).strip()
@@ -230,7 +258,8 @@ def _git_clean() -> bool:
 
 def verify_previous_look(path: Path, *, plan: dict, plan_sha: str,
                          manifest_shas: dict[str, str],
-                         model_shas: dict[str, str], code_sha: str,
+                         model_shas: dict[str, str], seed_bases: dict[str, int],
+                         code_sha: str,
                          prior_root: Path) -> tuple[dict, set[Path]]:
     """Attest the prior look chain before excluding its own seeds from history."""
     path = path.resolve()
@@ -259,6 +288,10 @@ def verify_previous_look(path: Path, *, plan: dict, plan_sha: str,
                 raise ValueError(f"previous look {key} original changed")
         rows = [json.loads(line) for line in
                 (path / f"{arm}-cumulative.jsonl").open()]
+        validate_audited_seeds(path / f"{arm}-audited.jsonl",
+                               seed_base=seed_bases[arm],
+                               session_start=result["stageSessionStartIndex"],
+                               session_count=result["stageSessionsPerCell"])
         cumulative_rows[arm] = rows
         if len(rows) != len(GROUPS) * len(PROFILES) * result["lookSessionsPerCell"]:
             raise ValueError("previous look cumulative session count differs")
@@ -275,7 +308,8 @@ def verify_previous_look(path: Path, *, plan: dict, plan_sha: str,
             raise ValueError("previous look chain hash differs")
         previous_result, previous_excluded = verify_previous_look(
             prior_path, plan=plan, plan_sha=plan_sha, manifest_shas=manifest_shas,
-            model_shas=model_shas, code_sha=code_sha, prior_root=prior_root)
+            model_shas=model_shas, seed_bases=seed_bases,
+            code_sha=code_sha, prior_root=prior_root)
         if previous_result["lookSessionsPerCell"] >= result["lookSessionsPerCell"]:
             raise ValueError("previous look chain is out of order")
         for arm in ("candidate", "reference"):
@@ -320,7 +354,9 @@ def run(*, plan_path: Path, manifests: dict[str, Path], models: dict[str, Path],
         previous, previous_excluded = verify_previous_look(
             previous_look_dir, plan=plan, plan_sha=sha256(plan_path),
             manifest_shas={arm: sha256(path) for arm, path in manifests.items()},
-            model_shas=model_shas, code_sha=code_sha,
+            model_shas=model_shas,
+            seed_bases={arm: manifest_data[arm]["seedBase"] for arm in manifests},
+            code_sha=code_sha,
             prior_root=prior_artifacts_root.resolve())
         excluded.update(previous_excluded)
     looks = plan["lookSessionsPerCell"]
@@ -389,6 +425,9 @@ def run(*, plan_path: Path, manifests: dict[str, Path], models: dict[str, Path],
                     len(stage_scheduled[arm]) * plan["handsPerSession"] or
                     audit_reports[arm]["decisionLedgerRequired"] is not True):
                 raise ValueError(f"{arm} independent trace audit is incomplete")
+            validate_audited_seeds(audited_path,
+                                   seed_base=manifest_data[arm]["seedBase"],
+                                   session_start=start, session_count=stage_count)
             audited_paths[arm] = audited_path
         cumulative_paths = {}
         for arm in ("candidate", "reference"):

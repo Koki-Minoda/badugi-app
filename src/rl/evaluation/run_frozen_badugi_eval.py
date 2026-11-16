@@ -60,6 +60,7 @@ def validate_preflight(plan: dict, manifests: dict[str, dict],
                        code_sha: str, look: int) -> dict[str, list[int]]:
     gate.validate_manifest(plan)
     if plan.get("evaluationPurpose") not in ("PHASE1_WIRING_DIAGNOSTIC_ONLY",
+                                             "PHASE2_SAFETY_DIAGNOSTIC_ONLY",
                                              "PROMOTION_CANDIDATE"):
         raise ValueError("evaluation purpose must be frozen before collection")
     if plan["handsPerSession"] != 20:

@@ -42,7 +42,7 @@ async function playNaturalHandToResult(page: Page) {
   throw new Error("Natural hand did not reach a result");
 }
 
-test("a real Badugi hand replays the same actions, chips, pot, and draw cards", async ({ page }) => {
+test("a real Badugi hand replays the same actions, chips, pot, and draw cards", async ({ page }, info) => {
   test.setTimeout(120_000);
   await page.addInitScript(() => window.localStorage.setItem("mgx.previewVariants", "true"));
   await openAuthenticatedGame(page);
@@ -146,4 +146,19 @@ test("a real Badugi hand replays the same actions, chips, pot, and draw cards", 
   await expect(page.getByTestId("hand-replay-screen")).toBeVisible();
   await page.getByTestId("replay-last-frame").click();
   await expect(page.getByText(/Awarded pot:/)).toBeVisible();
+
+  if (process.env.VITE_MGX_BADUGI_REPLAY_PREVIEW === "1") {
+    const preview = page.getByTestId("badugi-replay-decision-preview");
+    await preview.getByRole("button", { name: "最初の判断へ" }).click();
+    const cards = record.seats.find((seat: any) => seat.isHero).initialHand;
+    await expect(preview.getByTestId("badugi-replay-before-cards").locator(":scope > div"))
+      .toHaveCount(cards.length);
+    await expect(preview.getByText("EV差 — 採点保留")).toBeVisible();
+    await preview.screenshot({ path: info.outputPath("badugi-replay-decision-preview.png") });
+    const practice = preview.getByRole("link", { name: "この開始手札で練習" });
+    const href = await practice.getAttribute("href");
+    expect(new URL(href!, page.url()).searchParams.get("cards")).toBe(cards.join(","));
+    await practice.click();
+    await expect(page).toHaveURL(/\/learn\/practice\?/);
+  }
 });

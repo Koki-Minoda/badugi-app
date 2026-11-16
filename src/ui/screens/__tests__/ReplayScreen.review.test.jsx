@@ -1,6 +1,7 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 
 import ReplayScreen from "../ReplayScreen.jsx";
 import { setHandHistoryAccessors } from "../../state/handHistoryStore.js";
@@ -39,6 +40,7 @@ function makeReviewHand() {
 describe("ReplayScreen review integration", () => {
   afterEach(() => {
     cleanup();
+    vi.unstubAllEnvs();
     setHandHistoryAccessors({
       readCurrent: () => null,
       readBuffer: () => [],
@@ -97,6 +99,46 @@ describe("ReplayScreen review integration", () => {
     expect(screen.getByTestId("replay-frame-counter").textContent).toContain("Frame 2 / 3");
   });
 
+  it("reviews the hero's pre-draw cards, shows only public past actions, and links to practice", async () => {
+    vi.stubEnv("VITE_MGX_BADUGI_REPLAY_PREVIEW", "1");
+    const hand = makeReviewHand();
+    hand.seats[0].actions = [{ seq: 3, legalActions: ["check", "raise"] }];
+    hand.events.splice(1, 0, {
+      type: "DRAW_ACTION", seat: 1, drawCount: 1, discarded: ["5S"], after: ["KD", "6D", "7C", "8H"],
+    }, {
+      type: "DRAW_ACTION", seat: 0, drawCount: 1, discarded: ["4H"], after: ["AS", "2D", "3C", "QH"],
+    });
+    hand.events[3].actionSeq = 3;
+    hand.events[3].action = "raise";
+    hand.events.splice(4, 0, { type: "BET_ACTION", seat: 1, action: "raise", amount: 999 });
+
+    render(<MemoryRouter><ReplayScreen initialHandSnapshot={hand} /></MemoryRouter>);
+
+    const preview = await screen.findByTestId("badugi-replay-decision-preview");
+    fireEvent.click(screen.getByRole("button", { name: "最初の判断へ" }));
+    expect(screen.getByTestId("badugi-replay-before-cards").textContent).toContain("4♥");
+    expect(preview.textContent).toContain("席2 · 1枚交換");
+    expect(preview.textContent).not.toMatch(/KD|5S|Q♥|999/);
+    expect(preview.textContent).toContain("EV差 — 採点保留");
+    const link = screen.getByRole("link", { name: "この開始手札で練習" });
+    expect(new URL(link.href).searchParams.get("cards")).toBe("AS,2D,3C,4H");
+
+    fireEvent.click(screen.getByTestId("replay-event-row-3"));
+    expect(screen.getByTestId("badugi-replay-before-cards").textContent).toContain("Q♥");
+    expect(preview.textContent).toContain("チェック · レイズ");
+    expect(preview.textContent).not.toContain("999");
+  });
+
+  it("requires an explicit hero before exposing cards or a practice link", async () => {
+    vi.stubEnv("VITE_MGX_BADUGI_REPLAY_PREVIEW", "1");
+    const hand = makeReviewHand();
+    delete hand.seats[0].isHero;
+    render(<MemoryRouter><ReplayScreen initialHandSnapshot={hand} /></MemoryRouter>);
+
+    expect(await screen.findByTestId("hand-replay-screen")).toBeTruthy();
+    expect(screen.queryByTestId("badugi-replay-decision-preview")).toBeNull();
+  });
+
   it("keeps replay usable when no review context is present", async () => {
     const hand = makeReviewHand();
     setHandHistoryAccessors({
@@ -109,6 +151,7 @@ describe("ReplayScreen review integration", () => {
 
     expect(await screen.findByTestId("hand-replay-screen")).toBeTruthy();
     expect(screen.queryByTestId("replay-review-panel")).toBeNull();
+    expect(screen.queryByTestId("badugi-replay-decision-preview")).toBeNull();
     expect(screen.queryByTestId("replay-review-timeline-marker")).toBeNull();
   });
 

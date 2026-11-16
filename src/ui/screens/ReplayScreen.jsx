@@ -13,6 +13,7 @@ import {
 import { findReplayFrameIndex } from "./replayFrameUtils.js";
 import { buildReplayTimeline } from "./replayTimelineViewModel.js";
 import ReplayCoachingOverlay from "../components/ReplayCoachingOverlay.jsx";
+import BadugiReplayDecisionPreview from "../coaching/BadugiReplayDecisionPreview.jsx";
 import {
   buildReplayReviewContract,
   isReplayReviewContract,
@@ -754,6 +755,15 @@ export default function ReplayScreen({
 
         <div className="flex flex-col gap-3">
           <ReplayHighlightLegend />
+          {import.meta.env.DEV && import.meta.env.VITE_MGX_BADUGI_REPLAY_PREVIEW === "1" && (
+            <BadugiReplayDecisionPreview
+              hand={handSnapshot}
+              frames={frames}
+              frameIndex={clampedIndex}
+              onJump={goToIndex}
+              language={language}
+            />
+          )}
           {coachingAnnotation ? (
             <ReplayCoachingOverlay
               annotation={coachingAnnotation}

@@ -22,9 +22,10 @@ jobs:
       - name: Repeat the original real-controller failure case
         if: always()
         run: |
-          (while true; do
+          (set +e; while true; do
             date -u +%FT%TZ
-            cat /sys/fs/cgroup/memory.current /sys/fs/cgroup/memory.events
+            awk '/^(MemAvailable|MemFree|SwapFree):/ {print}' /proc/meminfo
+            ps -eo pid,ppid,rss,comm | sort -k3nr | head -n 8
             sleep 2
           done) > webkit-ort-pro-memory.log &
           monitor_pid=$!

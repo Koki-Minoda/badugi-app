@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PRACTICE_CARDS } from '../../practice/practiceSetup.js';
-import { calculateBadugiEquity } from '../badugiEquity.js';
+import { calculateBadugiEquity, compareBadugiDrawChoices } from '../badugiEquity.js';
 
 const example = {
   hands: [['AC', '2D', '3H', 'KH'], ['9S', '7C', '5D', '4H']],
@@ -52,6 +52,39 @@ describe('Badugi showdown equity', () => {
     expect(calculateBadugiEquity({ ...example, hands: [[], []] })).toEqual({ error: 'handSize' });
     expect(calculateBadugiEquity({ ...example, discards: ['9S', null] })).toEqual({ error: 'discard' });
     expect(calculateBadugiEquity({ ...example, remainingDraws: 0 })).toEqual({ error: 'discard' });
-    expect(calculateBadugiEquity({ ...example, remainingDraws: 2 })).toEqual({ error: 'drawRounds' });
+    expect(calculateBadugiEquity({ ...example, remainingDraws: 4 })).toEqual({ error: 'drawRounds' });
+    expect(calculateBadugiEquity({ ...example, discards: [['KH', 'kh'], []] })).toEqual({ error: 'discard' });
+  });
+
+  it.each([[2, 195 / 946], [3, 145 / 516]])('estimates showdown equity with %i draws remaining', (remainingDraws, exactEquity) => {
+    const input = { ...example, remainingDraws };
+    const result = calculateBadugiEquity(input);
+    expect(result.method).toBe('simulation');
+    expect(result.outcomes).toBe(10_000);
+    // Exact recursive enumeration under the same later-draw policy.
+    expect(Math.abs(result.players[0].equity - exactEquity)).toBeLessThan(0.01);
+    expect(result.players[0].equity + result.players[1].equity).toBe(1);
+    expect(calculateBadugiEquity(input)).toEqual(result);
+  });
+
+  it('compares all discards and opponent counts, including explicit card choices', () => {
+    const available = ['4S', '6S', 'JS', 'AS', 'QC', 'KC', '8D', 'JD', '6H'];
+    const deadCards = PRACTICE_CARDS.filter(card => !example.hands.flat().includes(card) && !available.includes(card));
+    const { columns } = compareBadugiDrawChoices({ ...example, remainingDraws: 3, deadCards, opponentDiscards: ['4H'] });
+    expect(columns.map(column => column.cards.length)).toEqual([0, 1, 2, 3, 4, 1]);
+    expect(columns.map(column => column.results.length)).toEqual(Array(6).fill(16));
+    expect(columns[1].cards).toEqual(['9S']);
+    expect(columns[5].cards).toEqual(['4H']);
+    expect(Math.abs(columns[1].results[8].players[0].equity - 157 / 252)).toBeLessThan(0.01);
+    expect(Math.abs(columns[1].results[1].players[0].equity - 587 / 2520)).toBeLessThan(0.01);
+    expect(columns[1].results[15]).toEqual({ error: 'deckTooSmall' });
+    expect(columns[5].results[8]).not.toEqual(columns[1].results[8]);
+  });
+
+  it('draws four new cards from a shared stock when explicitly requested', () => {
+    const available = ['4S', '6S', 'JS', 'AS', 'QC', 'KC', '8D', 'JD', '6H'];
+    const deadCards = PRACTICE_CARDS.filter(card => !example.hands.flat().includes(card) && !available.includes(card));
+    const result = calculateBadugiEquity({ ...example, remainingDraws: 2, deadCards, discards: [example.hands[0], ['9S']] });
+    expect(Math.abs(result.players[0].equity - 23 / 252)).toBeLessThan(0.01);
   });
 });

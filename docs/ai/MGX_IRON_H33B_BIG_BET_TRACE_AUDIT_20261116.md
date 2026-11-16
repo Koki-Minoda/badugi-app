@@ -22,7 +22,7 @@ python3 src/rl/evaluation/audit_badugi_trace_units.py \
 python3 -m unittest src/rl/__tests__/test_audit_badugi_trace_units.py
 ```
 
-元H33bはcandidate/reference各100,000独立20hand session、各2,000,000 hand。最初の各100 sessionは別のprefix診断JSONへ保全した。全量の入力/出力SHA、40 cellの件数、観測したsession収益範囲、最大推論時間は `/Users/koki/Documents/Codex/MGX-RL-Artifacts/mgx-phase1-trace-unit-diagnostic-20261116/` の `candidate-continuity.json` と `reference-continuity.json` を正本とする。両armのmanifest、session、hand入力SHAは既存H33b `strength-audit/audit.json` と完全一致した。adapter本体SHA256は `d71d5e73214e75f9d93309d1e023501671f95ecb423312279ce17d368d9db766`。旧`*-final.json`はhand間連続性検査前の診断原本として残し、採用しない。
+元H33bはcandidate/reference各100,000独立20hand session、各2,000,000 hand。最初の各100 sessionは別のprefix診断JSONへ保全した。全量の入力/出力SHA、40 cellの件数、観測したsession収益範囲、最大推論時間は `/Users/koki/Documents/Codex/MGX-RL-Artifacts/mgx-phase1-trace-unit-diagnostic-20261116/` の `candidate-gate-v2.json` と `reference-gate-v2.json` を正本とする。両armのmanifest、session、hand入力SHAは既存H33b `strength-audit/audit.json` と完全一致した。adapter本体SHA256は `a705de02e469668b60ce525cc09b555b92afe9dbcfc106eb2bc110e3116301a3`。旧`*-final.json`はhand間連続性検査前、旧`*-continuity.json`はhero席を明示する前の診断原本として残し、現行ゲートへ入力しない。
 
 ## 全量診断結果（既存データのみ）
 
@@ -34,8 +34,8 @@ python3 -m unittest src/rl/__tests__/test_audit_badugi_trace_units.py
 | MTT平均 big bet / 100 hand | 131.52346200 | 117.68026600 |
 | 観測session score範囲 | −100 ～ +500 | −100 ～ +500 |
 | 最大hero推論時間 | 11.414 ms | 15.560 ms |
-| 変換JSONL SHA256 | `efa84d3cd5a721407dfa015442837f251934e1252c3e80495284d341f2401813` | `fd6b4f259e8cd07223048809bcf841fb82088e1e16cf08f44a0d6737c4af69bd` |
-| 監査JSON SHA256 | `f4b68569a5df10fd8c0172bd592b4e2448a5d1fcfa942f918ffc617f2f40943b` | `9f35ffb40060938c265c3dd4f3f6e01a0fa2a023fc3ba068da3835443806674a` |
+| 変換JSONL SHA256 | `d0adab487d1b0780c4761bf6638ce353b8dbfac45c11b589a70153376f938cc9` | `48b21436148f0f8063763bda344b3f9e50b57bc06db7099c8313cd62153901f4` |
+| 監査JSON SHA256 | `483dcc1dd1f5e935c79cdbceb5e01f1439abf3a781f8c3af29c54c2c5cd74b22` | `eae89ecaa55f30311fb1e0b6e0e3aa4eee07050b3c41e431001db0d19c2f75cd` |
 
 candidate − Proの記述的な平均差は全体 +8.84856675、cash +3.85393750、MTT +13.84319600 big bet / 100 hand。これは元G4のBB/hand数値を50倍した結果と一致する。元G4の負のpoint cellは12のまま保持する。
 

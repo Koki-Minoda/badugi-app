@@ -69,7 +69,7 @@ class SelfPlayConfig:
     fold_margin: float = 0.10
     fold_margin_weight: float = 0.25
     fold_margin_interval: int = 5
-    # opp_epsilon: 0.0 = pure GTO self-play, 0.05-0.10 = diversity.
+    # opp_epsilon: 0.0 = greedy frozen opponent, 0.05-0.10 = diversity; neither guarantees GTO.
     opp_epsilon: float = 0.05
     # How often to copy hero → opp (in episodes).
     opponent_update_interval: int = 500

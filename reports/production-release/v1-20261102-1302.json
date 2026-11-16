@@ -1,0 +1,270 @@
+{
+  "verifiedAt": "2026-11-02T04:02:11.723Z",
+  "status": "PASS",
+  "sourceCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+  "publishedCommit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+  "assets": [
+    "/assets/game-runtime-DG80kEmj.js",
+    "/assets/index-BuPxWeX0.js",
+    "/assets/index-CO1PvUZg.css",
+    "/assets/onnx-runtime-DWGanFCW.js",
+    "/assets/react-router-DPR8suw2.js",
+    "/assets/react-vendor-D81J4E_1.js",
+    "/assets/tournament-engine-ncNgIfL1.js",
+    "/assets/ui-support-B9yix8tF.js",
+    "/assets/ui-support-CGhC6wAc.css",
+    "/assets/vendor-DwnCEJ9X.js"
+  ],
+  "portraits": [
+    "akira.png",
+    "aoi.png",
+    "dealer.png",
+    "emi.png",
+    "hana.png",
+    "hero.png",
+    "jun.png",
+    "kai.png",
+    "kei.png",
+    "mina.png",
+    "mio.png",
+    "nagi.png",
+    "rei.png",
+    "ren.png",
+    "rio.png",
+    "ryo.png",
+    "sora.png",
+    "toma.png",
+    "yuki.png",
+    "zen.png"
+  ],
+  "requests": [
+    {
+      "path": "/release.json",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "path": "/",
+      "status": 200,
+      "contentType": "text/html"
+    },
+    {
+      "path": "/assets/game-runtime-DG80kEmj.js",
+      "status": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "path": "/assets/index-BuPxWeX0.js",
+      "status": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "path": "/assets/index-CO1PvUZg.css",
+      "status": 200,
+      "contentType": "text/css"
+    },
+    {
+      "path": "/assets/onnx-runtime-DWGanFCW.js",
+      "status": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "path": "/assets/react-router-DPR8suw2.js",
+      "status": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "path": "/assets/react-vendor-D81J4E_1.js",
+      "status": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "path": "/assets/tournament-engine-ncNgIfL1.js",
+      "status": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "path": "/assets/ui-support-B9yix8tF.js",
+      "status": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "path": "/assets/ui-support-CGhC6wAc.css",
+      "status": 200,
+      "contentType": "text/css"
+    },
+    {
+      "path": "/assets/vendor-DwnCEJ9X.js",
+      "status": 200,
+      "contentType": "application/javascript"
+    },
+    {
+      "path": "/learn",
+      "status": 200,
+      "contentType": "text/html"
+    },
+    {
+      "path": "/practice",
+      "status": 200,
+      "contentType": "text/html"
+    },
+    {
+      "path": "/review",
+      "status": 200,
+      "contentType": "text/html"
+    },
+    {
+      "path": "/friend-match",
+      "status": 200,
+      "contentType": "text/html"
+    },
+    {
+      "path": "/tournament",
+      "status": 200,
+      "contentType": "text/html"
+    },
+    {
+      "path": "/settings",
+      "status": 200,
+      "contentType": "text/html"
+    },
+    {
+      "path": "/tools",
+      "status": 200,
+      "contentType": "text/html"
+    },
+    {
+      "path": "/try",
+      "status": 200,
+      "contentType": "text/html"
+    },
+    {
+      "path": "/meetups",
+      "status": 200,
+      "contentType": "text/html"
+    },
+    {
+      "path": "/characters/akira.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/aoi.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/dealer.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/emi.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/hana.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/hero.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/jun.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/kai.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/kei.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/mina.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/mio.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/nagi.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/rei.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/ren.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/rio.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/ryo.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/sora.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/toma.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/yuki.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/characters/zen.png",
+      "status": 200,
+      "contentType": "image/png"
+    },
+    {
+      "path": "/api/health",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "path": "/release.json",
+      "status": 200,
+      "contentType": "application/json"
+    }
+  ],
+  "issues": [],
+  "origin": "https://mgx-poker.com",
+  "release": {
+    "commit": "9ee9609bad95f4b555e2697fff3996cf889956ab",
+    "buildTime": "2026-11-02T03:31:29.817Z",
+    "appVersion": "0.0.0"
+  },
+  "unpublishedRuntimePaths": [],
+  "health": {
+    "status": "ok",
+    "env": "prod",
+    "db": "ok"
+  }
+}

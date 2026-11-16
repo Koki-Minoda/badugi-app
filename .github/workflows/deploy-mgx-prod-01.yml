@@ -31,6 +31,8 @@ jobs:
       - run: npm run build
       - run: npm run test:build:onnx
       - run: npm run test:tier1
+      - run: npx vitest run --project=tier2 src/ui/coaching/__tests__/coachQualityGate.test.js
+      - run: node --test scripts/quality/*.test.mjs
       - run: npm run test:game:progress
       - run: npm run test:game:ev
       - run: npm run test:qm:public-games

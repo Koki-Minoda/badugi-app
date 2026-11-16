@@ -38,7 +38,6 @@ import { createDeterministicRng } from "../deterministicRng.js";
 import { validateStrictVariantSettlement } from "../ev/strictVariantSettlementGate.js";
 import { ChinesePokerController } from "../../chinese/ChinesePokerController.js";
 
-const DEFAULT_SEATS = ["HUMAN", "CPU", "CPU", "CPU", "CPU", "CPU"];
 const DEFAULT_BLINDS = { sb: 10, bb: 20, ante: 0 };
 
 export const PROGRESS_SCENARIOS = Object.freeze([
@@ -156,6 +155,7 @@ export function createProgressHarness(variantId, options = {}) {
   const normalizedVariantId = normalizeProgressVariantId(variantId);
   const rng = createDeterministicRng(options.seed ?? `mgx-progress-${variantId}`);
   const seats = createProgressSeats({ count: options.seatCount ?? 6, stack: options.startingStack ?? 500 });
+  const seatConfig = seats.map((seat) => seat.seatType);
   if (BOARD_CONTROLLERS[normalizedVariantId]) {
     const Controller = BOARD_CONTROLLERS[normalizedVariantId];
     const controller = new Controller({
@@ -191,7 +191,7 @@ export function createProgressHarness(variantId, options = {}) {
     const drawCardsForSeat = badugiDeck ? () => badugiDeck.draw(4) : null;
     const controller = isBadugi
       ? new Controller({
-          seatConfig: DEFAULT_SEATS,
+          seatConfig,
           startingStack: options.startingStack ?? 500,
           blindStructure: [
             {
@@ -203,7 +203,7 @@ export function createProgressHarness(variantId, options = {}) {
         })
       : new Controller({
           tableConfig: {
-            seatConfig: DEFAULT_SEATS,
+            seatConfig,
             startingStack: options.startingStack ?? 500,
             structure: { ...DEFAULT_BLINDS, ...(options.blinds ?? {}) },
           },
@@ -214,7 +214,7 @@ export function createProgressHarness(variantId, options = {}) {
     let state = controller.createInitialState();
     state = controller.createNewHandState(state, {
       handId: `${normalizedVariantId}-progress-1`,
-      seatConfig: DEFAULT_SEATS,
+      seatConfig,
       startingStack: options.startingStack ?? 500,
       blindStructure: [
         {
@@ -375,13 +375,14 @@ export function runProgressScenario({
   maxSteps = 160,
   handCount = null,
   invariantContext = {},
+  harnessOptions = {},
 } = {}) {
   const status = getProgressHarnessStatus(variantId);
   if (!status.supported) {
     return { variantId, scenarioId, seed, status: "skipped", reason: status.reason };
   }
   const targetHandCount = handCount ?? resolveScenarioHandCount(scenarioId);
-  const harness = createProgressHarness(variantId, { seed });
+  const harness = createProgressHarness(variantId, { ...harnessOptions, seed });
   let repeated = 0;
   let previousSignature = null;
   const visited = [];

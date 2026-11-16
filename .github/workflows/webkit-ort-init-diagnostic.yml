@@ -1,0 +1,48 @@
+name: WebKit ONNX initialization diagnostic
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  cold-initialization:
+    if: startsWith(github.head_ref, 'codex/webkit-ort-init-diagnostic-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npx playwright install --with-deps webkit
+      - name: Exercise cold WebKit ONNX initialization and record memory
+        run: node scripts/ci/diagnose-webkit-ort-init.mjs
+      - name: Repeat the original real-controller failure case
+        if: always()
+        run: |
+          (while true; do
+            date -u +%FT%TZ
+            cat /sys/fs/cgroup/memory.current /sys/fs/cgroup/memory.events
+            sleep 2
+          done) > webkit-ort-pro-memory.log &
+          monitor_pid=$!
+          set +e
+          npx playwright test tests/e2e/d03-v2-pro-production-runtime.spec.ts \
+            --project=d03-v2-iphone-webkit --grep 'tournament 2-seat controller' \
+            --repeat-each=30 --workers=2
+          result=$?
+          kill "$monitor_pid"
+          exit "$result"
+      - name: Preserve diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webkit-ort-init-diagnostic
+          path: |
+            webkit-ort-init-diagnostic.json
+            webkit-ort-pro-memory.log
+            test-results/d03-v2-pro-production-*/
+          if-no-files-found: error
+          retention-days: 30

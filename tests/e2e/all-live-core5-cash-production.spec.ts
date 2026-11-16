@@ -489,6 +489,11 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
       expect(servedCommit, "browser must use the expected built release").toBe(EXPECTED_SERVED_COMMIT);
     }
     mark("opening-game");
+    // This gate explicitly exercises manual Next, history and cash-out. The
+    // default timed transition is covered by hand-result-auto-next.spec.ts.
+    await page.addInitScript(() => {
+      window.localStorage.setItem("mgx.handResult.autoNext", "off");
+    });
     if (variant.requiresPreview) {
       await page.addInitScript(() => {
         window.localStorage.setItem("mgx.previewVariants", "true");

@@ -1,5 +1,6 @@
 import ReviewBookmarkButton from "../review/ReviewBookmarkButton.jsx";
 import React from "react";
+import { useHandResultAutoNext } from "./useHandResultAutoNext.js";
 import { getHandResultCopy, localizeResultHandLabel } from "./handResultCopy.js";
 
 function formatAmount(value) {
@@ -268,24 +269,29 @@ function PotSection({ pot, index, singlePot, language, copy, players, heroSeat }
   );
 }
 
-export default function HandResultOverlay({
+export default function HandResultOverlay(props) {
+  if (!props.visible || !props.summary) return null;
+  return <VisibleHandResult key={props.reviewHandId ?? props.summary.handId} {...props} />;
+}
+
+function VisibleHandResult({
   guestTrial = false,
   reviewHandId,
   players = [],
   heroSeat = null,
   language = "en",
-  visible,
   summary,
   mixedInfo,
   onNext,
   onNextHand,
+  onAutoNext,
+  autoNextBlocked,
   buttonLabel,
   nextHandLabel,
   onReplayTarget,
   onHistory,
   onCashOut,
 }) {
-  if (!visible || !summary) return null;
   const copy = getHandResultCopy(language);
   const resolveWinner = winner => ({ ...winner, name: Number.isInteger(heroSeat) && winner.seatIndex === heroSeat ? (language === 'ja' ? 'あなた' : 'You') : winner.name ?? players[winner.seatIndex]?.name });
   const winners = (summary.winners ?? []).map(resolveWinner);
@@ -294,6 +300,15 @@ export default function HandResultOverlay({
   const topIssue = followUpSummary?.topIssue ?? null;
   const replayTarget = followUpSummary?.replayTarget ?? null;
   const handleNext = typeof onNext === "function" ? onNext : onNextHand;
+  const autoNext = useHandResultAutoNext({
+    onNext: handleNext,
+    onAutoNext: !guestTrial && (reviewHandId ?? summary.handId) != null ? onAutoNext : undefined,
+    blocked: autoNextBlocked,
+  });
+  const openWithoutAdvancing = (callback) => (...args) => {
+    autoNext.pause();
+    callback(...args);
+  };
   const resolvedButtonLabel = buttonLabel ?? nextHandLabel ?? copy.next;
   // Board and Stud controllers expose totalPot; draw controllers expose pot.
   const totalPot = summary.pot ?? summary.totalPot ?? potDetails.reduce(
@@ -387,7 +402,7 @@ export default function HandResultOverlay({
                 <button
                   type="button"
                   className="rounded-xl border border-amber-200/50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-amber-100 transition hover:bg-amber-200/10"
-                  onClick={() => onReplayTarget(replayTarget)}
+                  onClick={() => openWithoutAdvancing(onReplayTarget)(replayTarget)}
                   data-testid="hand-result-follow-up-replay"
                 >
                   {copy.review}
@@ -398,13 +413,22 @@ export default function HandResultOverlay({
         )}
         {!guestTrial && (reviewHandId || summary.handId) && <ReviewBookmarkButton language={language} key={reviewHandId ?? summary.handId} handId={reviewHandId ?? summary.handId} />}
         </div>
+        {autoNext.available && (
+          <button type="button" onClick={autoNext.toggle} disabled={autoNextBlocked}
+            data-testid="hand-result-auto-next"
+            className="min-h-11 shrink-0 rounded-xl border border-white/20 px-3 text-sm text-slate-200">
+            {autoNext.running
+              ? (language === "ja" ? "約2秒で次へ · 一時停止" : "Next in about 2s · Pause")
+              : (language === "ja" ? "自動進行を再開" : "Resume auto-next")}
+          </button>
+        )}
         <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-white/10 pt-3 sm:grid-cols-3" data-testid="hand-result-actions">
         {!guestTrial && (typeof onHistory === "function" || typeof onCashOut === "function") && (
           <>
             {typeof onHistory === "function" && (
               <button
                 type="button"
-                onClick={onHistory}
+                onClick={openWithoutAdvancing(onHistory)}
                 data-testid="hand-result-history"
                 className="rounded-2xl border border-white/20 py-3 font-semibold text-white transition hover:bg-white/10"
               >
@@ -414,7 +438,7 @@ export default function HandResultOverlay({
             {typeof onCashOut === "function" && (
               <button
                 type="button"
-                onClick={onCashOut}
+                onClick={openWithoutAdvancing(onCashOut)}
                 data-testid="hand-result-cash-out"
                 className="rounded-2xl border border-yellow-300/40 bg-yellow-400/10 py-3 font-semibold text-yellow-100 transition hover:bg-yellow-400 hover:text-slate-950"
               >
@@ -425,7 +449,7 @@ export default function HandResultOverlay({
         )}
         <button
           type="button"
-          onClick={handleNext}
+          onClick={autoNext.next}
           data-testid="hand-result-next-hand"
           className="col-span-2 min-h-11 rounded-2xl bg-emerald-500 px-3 py-3 text-slate-900 font-semibold hover:bg-emerald-400 transition sm:col-span-1"
         >

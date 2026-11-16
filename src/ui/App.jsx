@@ -8655,20 +8655,6 @@ export default function App() {
   drawSelectedRef.current = drawSelected;
 
   useEffect(() => {
-    if (!handResultVisible) return undefined;
-    // Cash results remain visible until the player explicitly chooses Next
-    // Hand. Auto-advancing made the result, history and replay controls vanish
-    // while mobile players were still reading them.
-    if (mode !== "tournament-mtt" || tournamentStateRef.current?.isFinished) {
-      return undefined;
-    }
-    const timer = setTimeout(() => {
-      startNextHand();
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [handResultVisible, mode, startNextHand]);
-
-  useEffect(() => {
     const forceHeroDraw = () => drawSelectedRef.current();
     const forceSeatDrawForTest = (seat = turn, payload = {}) => {
       const canonicalPhase =
@@ -14750,6 +14736,14 @@ export default function App() {
     layoutProfile,
   };
 
+  const resultHandId = handIdRef.current;
+  const canAutoAdvanceResult = !guestTrial && Boolean(resultHandId) &&
+    (sessionSnapshot?.overlays?.showNextButton ?? showNextButton) &&
+    (mode === "cash" || mode === "tournament-mtt") &&
+    !cashRebuyRequired &&
+    (mode !== "tournament-mtt" || (!tournamentBreakState && !tournamentStateRef.current?.isFinished)) &&
+    Number(playersSrc?.[heroSeatIndex]?.stack) > 0 && canContinueGame(playersSrc);
+
   const overlaysProps = {
     guestTrial,
     reviewHandId: guestTrial ? null : handIdRef.current,
@@ -14759,6 +14753,9 @@ export default function App() {
     handResultSummary:
       sessionSnapshot?.overlays?.handResult?.summary ?? handResultSummary,
     onNextHand: guestTrial ? () => navigate('/try') : startNextHand,
+    onAutoNextHand: canAutoAdvanceResult ? () =>
+      handIdRef.current === resultHandId && !dealingRef.current && startNextHand() : undefined,
+    autoNextBlocked: Boolean(gameUtilityModal || cashOutSummary),
     nextHandLabel: guestTrial ? (language === 'ja' ? '体験を終了・種目を選ぶ' : 'Finish trial / choose a game') : nextHandLabel,
     onReplayTarget: handleOpenReplayTarget,
     mode,

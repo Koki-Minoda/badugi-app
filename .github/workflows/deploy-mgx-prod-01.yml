@@ -31,6 +31,10 @@ jobs:
       - run: npm run build
       - run: npm run test:build:onnx
       - run: npm run test:tier1
+      - name: Audit isolated D03 Phase 1 evaluation contracts
+        run: |
+          python3 -m unittest src/rl/__tests__/test_sequential_gate.py src/rl/__tests__/test_audit_badugi_trace_units.py src/rl/__tests__/test_badugi_controller_step_ledger.py src/rl/__tests__/test_run_frozen_badugi_eval.py -q
+          npx vitest run src/rl/__tests__/badugiControllerInteractiveV2Draft.test.js
       - run: npm run test:game:progress
       - run: npm run test:game:ev
       - run: npm run test:qm:public-games

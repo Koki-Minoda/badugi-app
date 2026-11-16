@@ -34,7 +34,8 @@ class IronPhase2TrainingGateTests(unittest.TestCase):
             "bootstrapHands": 1000, "imitationSteps": 1000,
             "referenceAnchorEvery": 1, "explorationEpsilon": 0.1,
             "segmentMaxHands": 5000, "maximumSegments": 20,
-            "trainingSeedBase": 1500116001, "segmentSeedStride": 100000000,
+            "trainingSeedBase": 1700116001, "segmentSeedStride": 20000000,
+            "stageSeedStride": 1000000000,
         }))
         self.manifest = self.root / "go.json"
         self.base = {
@@ -51,7 +52,7 @@ class IronPhase2TrainingGateTests(unittest.TestCase):
             "bootstrapHands": 1000, "imitationSteps": 1000,
             "referenceAnchorEvery": 1, "explorationEpsilon": 0.1,
             "runIndex": 1, "priorCumulativeHands": 0,
-            "seedBase": 1500116001,
+            "seedBase": 1700116001,
             "independentSlotAuditPassed": True,
             "uiEventAuditPassed": True,
             "controllerActionAuditPassed": True,
@@ -87,12 +88,23 @@ class IronPhase2TrainingGateTests(unittest.TestCase):
             "runIndex": 1, "cumulativeHands": 5000,
             "codeGitSha": "test-code-sha"})
         valid = dict(self.base, runIndex=2, priorCumulativeHands=5000,
-                     initialModelSha256=sha(prior_path), seedBase=1600116001)
+                     initialModelSha256=sha(prior_path), seedBase=1720116001)
         self.assertEqual(self.check(valid, prior_path)["runIndex"], 2)
         with self.assertRaisesRegex(ValueError, "continuation chain"):
             self.check(dict(valid, priorCumulativeHands=4999), prior_path)
         with self.assertRaisesRegex(ValueError, "GO manifest"):
             self.check(dict(valid, codeGitSha="other-code"), prior_path)
+
+    def test_seed_schedule_rejects_stage_and_segment_collisions(self):
+        plan = json.loads(self.plan.read_text())
+        self.assertEqual(len(trainer.validate_iron_seed_schedule(plan)), 400)
+        plan["segmentSeedStride"] = plan["stageSeedStride"]
+        with self.assertRaisesRegex(ValueError, "collide"):
+            trainer.validate_iron_seed_schedule(plan)
+        plan["segmentSeedStride"] = 20_000_000
+        plan["trainingSeedBase"] = 4_290_000_000
+        with self.assertRaisesRegex(ValueError, "modulo"):
+            trainer.validate_iron_seed_schedule(plan)
 
 
 if __name__ == "__main__":

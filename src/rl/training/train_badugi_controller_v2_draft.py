@@ -69,6 +69,22 @@ def checkout_identity():
     return code_sha, dirty
 
 
+def validate_iron_seed_schedule(plan):
+    """Reject repeated controller seeds across all bounded Iron segments and stages."""
+    values = (plan.get("trainingSeedBase"), plan.get("segmentSeedStride"),
+              plan.get("stageSeedStride"), plan.get("maximumSegments"))
+    if any(type(value) is not int or value <= 0 for value in values):
+        raise ValueError("Iron seed schedule requires positive frozen integers")
+    base, segment_stride, stage_stride, segments = values
+    windows = sorted((base + run * segment_stride + stage * stage_stride + group * 1_000_000,
+                      base + run * segment_stride + stage * stage_stride + group * 1_000_000 + 2499)
+                     for run in range(segments) for stage in range(2) for group in range(10))
+    if (windows[-1][1] >= 2 ** 32 or
+            any(previous[1] >= current[0] for previous, current in zip(windows, windows[1:]))):
+        raise ValueError("Iron training seeds collide across segments or modulo 2^32")
+    return windows
+
+
 class ControllerBridge:
     def __init__(self):
         self.process = subprocess.Popen(["node", str(BRIDGE)], stdin=subprocess.PIPE,
@@ -329,6 +345,7 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
             raise ValueError("Pro requires frozen v2 Standard initial checkpoint and published reference ONNX")
     elif tier == "iron":
         tier_plan = json.loads(IRON_PLAN.read_text())
+        validate_iron_seed_schedule(tier_plan)
         if (tier_plan.get("status") != "FROZEN_FOR_ISOLATED_IRON_PHASE2_TRAINING" or
                 tier_plan.get("schemaVersion") != SCHEMA or
                 init_model is None or not init_model.is_file() or
@@ -430,6 +447,8 @@ def main():
             raise ValueError("training method differs from GO manifest")
     seed_base = (manifest["seedBase"] if args.train else
                  args.seed_base or (320040001 if args.bootstrap_hands else 310040001))
+    stage_seed_stride = (json.loads(IRON_PLAN.read_text())["stageSeedStride"]
+                         if args.train and args.tier == "iron" else 100_000_000)
     random.seed(seed_base)
     np.random.seed(seed_base)
     torch.manual_seed(seed_base)
@@ -487,7 +506,7 @@ def main():
             completed = 0
             session_index = 0
             while completed < allocated:
-                session_seed = seed_base + stage_index * 100_000_000 + group_index * 1_000_000 + session_index
+                session_seed = seed_base + stage_index * stage_seed_stride + group_index * 1_000_000 + session_index
                 rng = random.Random(session_seed + 997)
                 response = bridge.send({"command": "reset", "seatCount": seat_count,
                                         "occupiedSeatCount": occupied_count,
@@ -607,7 +626,7 @@ def main():
               "groups": sorted(set((row["seatCount"], row["occupiedSeatCount"],
                                     row["isTournament"]) for row in results)),
               "opponentProfiles": sorted(set(row["profile"] for row in results)),
-              "seedSplit": f"{seed_base}+stage*100000000+group*1000000+session; distinct from evaluation seeds",
+              "seedSplit": f"{seed_base}+stage*{stage_seed_stride}+group*1000000+session; distinct from evaluation seeds",
               "stopRule": "run stops at requested hands (max 5000); no automatic continuation or promotion"}
     if args.train:
         args.output.mkdir(parents=True, exist_ok=True)

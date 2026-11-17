@@ -36,6 +36,10 @@ class IronPhase2TrainingGateTests(unittest.TestCase):
             "segmentMaxHands": 5000, "maximumSegments": 20,
             "trainingSeedBase": 1700116001, "segmentSeedStride": 20000000,
             "stageSeedStride": 1000000000,
+            "trainingSessionHands": 20,
+            "trainingGroups": [f'{seats}/{occupied}-{mode}' for mode in ('cash', 'mtt')
+                               for seats, occupied in ((2, 2), (3, 3), (6, 6), (6, 2), (6, 3))],
+            "opponentProfiles": list(trainer.PROFILES),
         }))
         self.manifest = self.root / "go.json"
         self.base = {
@@ -105,6 +109,20 @@ class IronPhase2TrainingGateTests(unittest.TestCase):
         plan["trainingSeedBase"] = 4_290_000_000
         with self.assertRaisesRegex(ValueError, "modulo"):
             trainer.validate_iron_seed_schedule(plan)
+
+    def test_iron_go_rejects_unbalanced_stage_allocation(self):
+        plan = json.loads(self.plan.read_text())
+        plan['bootstrapHands'] = 250
+        self.plan.write_text(json.dumps(plan))
+        candidate = dict(self.base, bootstrapHands=250,
+                         tierPlanSha256=sha(self.plan))
+        with self.assertRaisesRegex(ValueError, 'equally across all 40 cells'):
+            self.check(candidate)
+        plan['bootstrapHands'] = 200
+        self.plan.write_text(json.dumps(plan))
+        candidate['bootstrapHands'] = 200
+        candidate['tierPlanSha256'] = sha(self.plan)
+        self.assertEqual(self.check(candidate)['runIndex'], 1)
 
     def test_exact_cross_commit_handoff_only_at_frozen_segment(self):
         old_code = "a" * 40

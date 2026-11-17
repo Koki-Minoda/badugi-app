@@ -42,7 +42,48 @@ describe('candidate-only Badugi belief evidence', () => {
     const next = session.nextHand();
     expect(next.type).toBe('decision');
     expect(next.beliefEvidence.opponentPublicHistory[1 - next.seat].handsObserved).toBe(1);
+    const history = next.beliefEvidence.opponentPublicHistory[1 - next.seat];
+    expect(history.facedBetOpportunities).toBe(
+      history.foldedFacingBet + history.calledFacingBet + history.raisedFacingBet);
+    expect(history.freeBetOpportunities).toBeGreaterThanOrEqual(history.betWhenFree);
     expect(next.beliefEvidence.actorHandProgress.madeCardGain).toBe(0);
     expect(next.beliefEvidence.actorSeenCards).toHaveLength(4);
   });
+
+  it.each([
+    [2, 2, false], [3, 3, false], [6, 6, false], [6, 2, false], [6, 3, false],
+    [2, 2, true], [3, 3, true], [6, 6, true], [6, 2, true], [6, 3, true],
+  ])('keeps prior-hand public opportunities for %i/%i tournament=%s',
+    (seatCount, occupiedSeatCount, isTournament) => {
+      const session = new BadugiControllerBeliefInteractiveV3Draft({
+        seatCount, occupiedSeatCount, isTournament, seed: 78001 + seatCount * 100 + occupiedSeatCount,
+        includeLedger: true,
+      });
+      for (let hand = 0; hand < 2; hand += 1) {
+        let state = session.nextHand();
+        let decisions = 0;
+        while (state.type === 'decision') {
+          const evidence = state.beliefEvidence;
+          expect(evidence.actorSeenCards.length).toBeGreaterThanOrEqual(4);
+          expect(evidence.opponentPublicHistory[state.seat]).toBeNull();
+          if (hand === 0) {
+            for (const history of evidence.opponentPublicHistory) {
+              if (history) expect(history.handsObserved).toBe(0);
+            }
+          }
+          const order = state.phase === 'DRAW' ? [1, 0, 2, 3, 4] : [2, 1, 4, 3, 0];
+          state = session.step(order.find((index) => state.legalMask[index] === 1));
+          decisions += 1;
+          expect(decisions).toBeLessThan(201);
+        }
+        expect(state.ledger.accounted).toBe(state.ledger.chipPool);
+      }
+      const history = session.publicHistory.filter((row) => row.handsObserved > 0);
+      expect(history).toHaveLength(occupiedSeatCount);
+      for (const row of history) {
+        expect(row.handsObserved).toBe(1);
+        expect(row.facedBetOpportunities).toBe(
+          row.foldedFacingBet + row.calledFacingBet + row.raisedFacingBet);
+      }
+    });
 });

@@ -20,7 +20,9 @@ function quality(cards) {
 
 function emptyHistory() {
   return { handsObserved: 0, fold: 0, check: 0, call: 0, bet: 0, raise: 0,
-    raiseAmountBbSum: 0, drawCounts: [0, 0, 0, 0, 0] };
+    raiseAmountBbSum: 0, drawCounts: [0, 0, 0, 0, 0],
+    facedBetOpportunities: 0, foldedFacingBet: 0, calledFacingBet: 0,
+    raisedFacingBet: 0, freeBetOpportunities: 0, betWhenFree: 0 };
 }
 
 export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerInteractiveV2Draft {
@@ -43,9 +45,31 @@ export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerIn
         }
       }
       for (const seat of acted) this.publicHistory[seat].handsObserved += 1;
+      for (const record of this.currentHandDecisionRecords) {
+        if (record.phase !== 'BET') continue;
+        const history = this.publicHistory[record.seat];
+        if (record.legalMask[0] && record.legalMask[2]) {
+          history.facedBetOpportunities += 1;
+          if (record.actionIndex === 0) history.foldedFacingBet += 1;
+          if (record.actionIndex === 2) history.calledFacingBet += 1;
+          if (record.actionIndex === 4) history.raisedFacingBet += 1;
+        } else if (record.legalMask[1]) {
+          history.freeBetOpportunities += 1;
+          if (record.actionIndex === 3) history.betWhenFree += 1;
+        }
+      }
     }
     this.initialActorHands = new Map();
+    this.currentHandDecisionRecords = [];
     return super.nextHand();
+  }
+
+  step(actionIndex) {
+    const before = this.currentDecision();
+    const result = super.step(actionIndex);
+    this.currentHandDecisionRecords.push({ seat: before.seat, phase: before.phase,
+      legalMask: before.legalMask, actionIndex });
+    return result;
   }
 
   currentDecision() {

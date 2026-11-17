@@ -126,7 +126,7 @@ import {
   normalizeAppVariantId,
 } from "./game/appVariantRouting.js";
 import { buildBetSizingModel } from "./game/betSizing.js";
-import { getVariantLayoutProfile, LAYOUT_GROUPS } from "./game/layoutGroups.js";
+import { DRAW_CASH_SEAT_LAYOUTS, getVariantLayoutProfile, LAYOUT_GROUPS } from "./game/layoutGroups.js";
 import { resolveEffectiveControllerSnapshot, syncTournamentBadugiSession } from "./game/controllerSnapshotResolver.js";
 import { createAppGameController } from "./game/createAppGameController.js";
 import {
@@ -13961,14 +13961,6 @@ export default function App() {
       )
     : 0;
   const seatLayouts = useMemo(() => {
-    const drawCashLayouts = [
-      "absolute bottom-[-2%] left-1/2 -translate-x-1/2 w-[min(31%,240px)]", // Hero (BTN)
-      "absolute bottom-[27%] left-0 w-[min(30%,220px)]", // SB
-      "absolute top-[7%] left-0 w-[min(30%,220px)]", // BB
-      "absolute top-0 left-1/2 -translate-x-1/2 w-[min(31%,240px)]", // UTG
-      "absolute top-[7%] right-0 w-[min(30%,220px)]", // MP
-      "absolute bottom-[27%] right-0 w-[min(30%,220px)]", // CO
-    ];
     const cashLayouts = [
       "absolute bottom-0 left-1/2 -translate-x-1/2 w-[min(30%,240px)]", // Hero (BTN)
       "absolute bottom-0 left-[1%] w-[min(28%,220px)]", // SB
@@ -13992,7 +13984,7 @@ export default function App() {
     return mode === "tournament-mtt"
       ? tournamentLayouts
       : isDrawCashLayout
-        ? drawCashLayouts
+        ? DRAW_CASH_SEAT_LAYOUTS
         : cashLayouts;
   }, [layoutProfile, mode]);
 

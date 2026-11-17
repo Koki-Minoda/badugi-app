@@ -757,43 +757,45 @@ export default function GameLayoutBase({
           >
             {gameTitle}
           </h1>
-          <div
-            className={`flex ${
-              isMobileLayout
-                ? "flex-col items-end text-[10px] text-slate-300 gap-1"
-                : "items-center gap-4 text-xs text-slate-200"
-            }`}
-          >
-            <div className="text-right">
-              <p className="text-[10px] uppercase tracking-widest text-slate-400">
-                {labels.globalRating ?? "Global Rating"}
-              </p>
-              <strong className="text-lg text-white">
-                {Math.round(ratingState.globalRating ?? 1500)}
-              </strong>
-            </div>
-            <div className="px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-semibold uppercase tracking-wider">
-              {rankInfo.label}
-            </div>
-            {!isMobileLayout && (
-              <div className="text-[11px] text-slate-300">
-                {labels.skill ?? "Skill"}{" "}
-                {Math.round(ratingState.skillRating ?? 1500)} |{" "}
-                {labels.mixed ?? "Mixed"}{" "}
-                {Math.round(ratingState.mixedRating ?? 1500)}
-              </div>
-            )}
-            <button
-              onClick={onNavigateLeaderboard}
-              className={`rounded-full border border-white/30 font-semibold uppercase tracking-wide transition ${
+          {ratingState && (
+            <div
+              className={`flex ${
                 isMobileLayout
-                  ? "px-2 py-1 text-[10px]"
-                  : "px-3 py-1 text-[11px]"
+                  ? "flex-col items-end text-[10px] text-slate-300 gap-1"
+                  : "items-center gap-4 text-xs text-slate-200"
               }`}
             >
-              {labels.leaderboard ?? "Leaderboard"}
-            </button>
-          </div>
+              <div className="text-right">
+                <p className="text-[10px] uppercase tracking-widest text-slate-400">
+                  {labels.globalRating ?? "Global Rating"}
+                </p>
+                <strong className="text-lg text-white">
+                  {Math.round(ratingState.globalRating ?? 1500)}
+                </strong>
+              </div>
+              <div className="px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-semibold uppercase tracking-wider">
+                {rankInfo.label}
+              </div>
+              {!isMobileLayout && (
+                <div className="text-[11px] text-slate-300">
+                  {labels.skill ?? "Skill"}{" "}
+                  {Math.round(ratingState.skillRating ?? 1500)} |{" "}
+                  {labels.mixed ?? "Mixed"}{" "}
+                  {Math.round(ratingState.mixedRating ?? 1500)}
+                </div>
+              )}
+              <button
+                onClick={onNavigateLeaderboard}
+                className={`rounded-full border border-white/30 font-semibold uppercase tracking-wide transition ${
+                  isMobileLayout
+                    ? "px-2 py-1 text-[10px]"
+                    : "px-3 py-1 text-[11px]"
+                }`}
+              >
+                {labels.leaderboard ?? "Leaderboard"}
+              </button>
+            </div>
+          )}
         </div>
         <nav
           className={`flex ${
@@ -807,24 +809,30 @@ export default function GameLayoutBase({
           >
             {labels.mainMenu ?? "Title"}
           </button>
-          <button
-            onClick={onNavigateSettings}
-            className="hover:text-yellow-400 transition"
-          >
-            {labels.settings ?? "Settings"}
-          </button>
-          <button
-            onClick={onNavigateProfile}
-            className="hover:text-yellow-400 transition"
-          >
-            {labels.profile ?? "Profile"}
-          </button>
-          <button
-            onClick={onNavigateHistory}
-            className="hover:text-yellow-400 transition"
-          >
-            {labels.history ?? "History"}
-          </button>
+          {onNavigateSettings && (
+            <button
+              onClick={onNavigateSettings}
+              className="hover:text-yellow-400 transition"
+            >
+              {labels.settings ?? "Settings"}
+            </button>
+          )}
+          {onNavigateProfile && (
+            <button
+              onClick={onNavigateProfile}
+              className="hover:text-yellow-400 transition"
+            >
+              {labels.profile ?? "Profile"}
+            </button>
+          )}
+          {onNavigateHistory && (
+            <button
+              onClick={onNavigateHistory}
+              className="hover:text-yellow-400 transition"
+            >
+              {labels.history ?? "History"}
+            </button>
+          )}
           {isCashGame && (
             <button
               type="button"
@@ -1248,11 +1256,11 @@ export default function GameLayoutBase({
                     {language === "ja" ? "自分の操作" : "Hero Controls"}
                   </h2>
                   <p role="status" aria-live="polite" data-testid="player-action-hint" className={`rounded-lg px-2 py-1 text-xs font-semibold leading-snug ${heroCanAct ? 'bg-emerald-400/15 text-emerald-100' : 'text-slate-300'}`}>
-                    {heroCanAct
+                    {actionPanelInfo?.statusMessage ?? (heroCanAct
                       ? (language === 'ja'
                         ? (controlsPhase === 'DRAW' ? 'あなたの番：交換するカードを選んで確定' : `あなたの番：${actionPanelInfo?.toCall > 0 ? `コール ${Math.min(actionPanelInfo.toCall, heroPlayerForControls?.stack ?? 0)}` : 'チェックできます'}`)
                         : (controlsPhase === 'DRAW' ? 'Your turn: select cards, then confirm' : `Your turn · ${actionPanelInfo?.toCall > 0 ? `Call ${Math.min(actionPanelInfo.toCall, heroPlayerForControls?.stack ?? 0)}` : 'Check available'}`))
-                      : (language === 'ja' ? `${actionPanelInfo?.currentActorName ?? '他のプレイヤー'}の操作を待っています` : `Waiting for ${actionPanelInfo?.currentActorName ?? 'other players'}`)}
+                      : (language === 'ja' ? `${actionPanelInfo?.currentActorName ?? '他のプレイヤー'}の操作を待っています` : `Waiting for ${actionPanelInfo?.currentActorName ?? 'other players'}`))}
                   </p>
                   {!isMobileLayout && getWinningHandCue(gameVariant, language) && (
                     <p data-testid="winning-hand-cue" className="rounded-lg border border-emerald-300/20 bg-emerald-300/5 px-2 py-1 text-xs font-semibold text-emerald-100">

@@ -761,6 +761,7 @@ export default function ReplayScreen({
               frames={frames}
               frameIndex={clampedIndex}
               onJump={goToIndex}
+              onPause={() => setIsPlaying(false)}
               language={language}
             />
           )}

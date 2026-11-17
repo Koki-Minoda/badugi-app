@@ -1,45 +1,89 @@
-import React from 'react';
+import React, { useState } from 'react';
+import GameScreen from '../screens/GameScreen.jsx';
+import { useDeviceProfile } from '../hooks/useDeviceProfile.js';
+import { DRAW_CASH_SEAT_LAYOUTS } from '../game/layoutGroups.js';
 import { getTablePhaseColors } from '../game/tablePhaseColors.js';
-import MobileTableSeat from '../screens/layouts/MobileTableSeat.jsx';
-import OvalTableScene from '../screens/layouts/OvalTableScene.jsx';
-import '../../styles/mobile-table.css';
-import '../../styles/oval-table.css';
+import { getPositionNameForSeat } from '../utils/positionLabels.js';
 
 export default function BadugiTrainingTable({
-  players, heroSeat, actor, dealer, phase, phaseLabel, pot, potLabel, language,
-  heroTestId, selection = [], onDrawSelect, children,
+  players, heroSeat, actor, dealer, phase, pot, smallBlind, bigBlind,
+  drawRound, betRound, currentBet, raiseCount, raiseCap, raiseUnit,
+  startingStack, language, selection = [], legal = [], onAction, onDrawSelect,
+  exitLabel, onExit, onUndo, onPracticeResult, onRestart, handResult, error,
 }) {
-  const seats = players.map((seat, index) => ({ seat, index: seat.seat ?? index }));
-  const heroIndex = seats.findIndex(({ index }) => index === heroSeat);
-  const hero = seats[heroIndex];
-  const others = hero ? [...seats.slice(heroIndex + 1), ...seats.slice(0, heroIndex)] : seats;
+  const { isMobile } = useDeviceProfile();
+  const [statusBoardOpen, setStatusBoardOpen] = useState(false);
   const ja = language === 'ja';
-  const renderSeat = ({ seat, index }, isHero = false) => (
-    <MobileTableSeat
-      seat={isHero || seat.showHand ? seat : { ...seat, hand: seat.hand?.map(() => null), holeCards: [] }} index={index} hero={isHero} active={index === actor} dealer={index === dealer}
-      position={seat.position} variant="badugi" language={language}
-      selection={isHero ? selection : []} canDraw={isHero && Boolean(onDrawSelect)} onCardClick={onDrawSelect}
-      seatTestId={isHero ? heroTestId : undefined}
-    />
-  );
+  const replay = !onAction;
+  const heroCanAct = Boolean(onAction && actor === heroSeat && legal.length && !error);
+  const heroCanDraw = heroCanAct && phase === 'DRAW';
+  const gameTitle = ja ? (replay ? 'Badugi · リプレイ' : 'Badugi · 練習') : (replay ? 'Badugi · Replay' : 'Badugi · Practice');
+  const statusMessage = error || (replay ? (ja ? 'あなたの操作前' : 'Before your action') : undefined);
+  const seatViews = players.map((player, index) => player && ({
+    ...player,
+    seatIndex: index,
+    hand: index === heroSeat || player.showHand ? player.hand : player.hand?.map(() => null),
+    holeCards: [],
+  }));
+  const positionName = index => players[index]?.position ??
+    (dealer == null ? '' : getPositionNameForSeat(index, dealer, players));
+  const hero = seatViews[heroSeat];
+  const actorPosition = positionName(actor);
+  const actorName = seatViews[actor]?.name;
+  const waitingLabel = statusMessage ?? (heroCanAct
+    ? (ja ? `あなたの番 / ${positionName(heroSeat)}` : `Your action / ${positionName(heroSeat)}`)
+    : (actorName ? (ja ? `操作待ち: ${actorName}` : `Waiting for ${actorName}`) : undefined));
+  const raiseType = legal.some(action => action.type === 'BET') ? 'BET' : 'RAISE';
+  const nextHandLabel = ja ? '同じ開始手札でもう一度' : 'Repeat this starting hand';
 
   return (
-    <div className="mgx-play--oval rounded-2xl border border-white/15 p-2 md:p-3"
-      data-phase-tone={getTablePhaseColors(phase).phaseTone}>
-      <div className={`grid gap-3 ${children ? "md:grid-cols-[minmax(0,1fr)_240px]" : ""} [&_.mgx-table-scene]:min-h-[375px] portrait:[&_.mgx-seat-slot:not(.slot-hero)]:h-[100px] portrait:[&_.mgx-table-seat:not(.is-hero)_.mgx-seat-cards]:h-8 portrait:[&_.mgx-table-seat:not(.is-hero)_.mgx-seat-cards]:min-h-8`}>
-        <OvalTableScene others={others} hero={hero} renderSeat={renderSeat}>
-          <div className="mgx-community">
-            <div data-testid="table-total-pot">
-              <span aria-hidden={Boolean(potLabel)}>POT</span>
-              {potLabel && <span className="sr-only">{potLabel} </span>}
-              <strong>{pot == null ? (ja ? '記録なし' : 'Unavailable') : pot.toLocaleString()}</strong>
-            </div>
-            <div className="mgx-board-cards" />
-            <span className="mgx-community-phase" data-testid="table-phase-badge">{phaseLabel}</span>
-          </div>
-        </OvalTableScene>
-        {children}
-      </div>
-    </div>
+    <GameScreen
+      layoutMode={isMobile ? 'mobile' : 'desktop'}
+      headerProps={{
+        gameTitle, language, exitLabel, onNavigateTitle: onExit,
+        labels: { mainMenu: exitLabel, settings: ja ? '一手戻す' : 'Undo' },
+        onNavigateSettings: onUndo,
+        onNavigateHistory: handResult ? onPracticeResult : undefined,
+      }}
+      sidePanelProps={{
+        show: true, statusBoardOpen, onToggleStatusBoard: () => setStatusBoardOpen(previous => !previous),
+        seatViews, dealerIdx: dealer, heroIndex: heroSeat, turn: actor,
+        seatConfig: [], seatTypeOptions: [],
+        totalPot: pot ?? (ja ? '記録なし' : 'Unavailable'), seatLabels: players.map((_, index) => positionName(index)),
+      }}
+      tableProps={{
+        ...getTablePhaseColors(phase), seatViews, seatLayouts: DRAW_CASH_SEAT_LAYOUTS,
+        heroSeatIndex: heroSeat, controllerTurn: actor, controllerDealerIdx: dealer,
+        positionNameFn: positionName, tablePhase: phase, phase, gameVariant: 'badugi',
+        tableSummaryProps: {
+          sbValue: smallBlind, bbValue: bigBlind, maxDraws: 3, phaseTag: phase,
+          startingStack, drawRound, betRoundIndex: betRound, raiseCount, showRaiseCount: phase === 'BET',
+          dealerName: players[dealer]?.name,
+        },
+        betRoundValue: betRound, drawRoundValue: drawRound, boardCards: [],
+        heroDrawSelection: selection, heroCanDraw, handleCardClick: onDrawSelect,
+      }}
+      controlsProps={{
+        controlsPhase: phase, controlsCurrentBet: currentBet, readOnly: replay,
+        legalActions: legal.map(action => action.type === 'BET' ? 'RAISE' : action.type),
+        heroPlayerForControls: hero, heroCanAct, heroCanDraw,
+        actionPanelInfo: {
+          toCall: currentBet == null ? null : Math.max(0, currentBet - (hero?.betThisRound ?? 0)),
+          currentBet, raiseUnit, raiseCount, raiseCap, heroPosition: positionName(heroSeat),
+          currentActorName: actorName, currentActorPosition: actorPosition,
+          statusMessage, waitingLabel,
+        },
+        playerFold: () => onAction?.({ type: 'FOLD' }),
+        playerCall: () => onAction?.({ type: 'CALL' }),
+        playerCheck: () => onAction?.({ type: 'CHECK' }),
+        playerRaise: () => onAction?.({ type: raiseType }),
+        drawSelected: () => onAction?.({ type: 'DRAW', discardIndexes: selection }),
+      }}
+      overlaysProps={{
+        mode: replay ? 'replay' : 'practice', handResultVisible: Boolean(handResult), handResultSummary: handResult,
+        onNextHand: onRestart, nextHandLabel,
+      }}
+      debugProps={{}}
+    />
   );
 }

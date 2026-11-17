@@ -7,6 +7,15 @@ export const LAYOUT_GROUPS = {
   DEFAULT: "default",
 };
 
+export const DRAW_CASH_SEAT_LAYOUTS = Object.freeze([
+  "absolute bottom-[-2%] left-1/2 -translate-x-1/2 w-[min(31%,240px)]", // Hero (BTN)
+  "absolute bottom-[27%] left-0 w-[min(30%,220px)]", // SB
+  "absolute top-[7%] left-0 w-[min(30%,220px)]", // BB
+  "absolute top-0 left-1/2 -translate-x-1/2 w-[min(31%,240px)]", // UTG
+  "absolute top-[7%] right-0 w-[min(30%,220px)]", // MP
+  "absolute bottom-[27%] right-0 w-[min(30%,220px)]", // CO
+]);
+
 const DRAW_LOWBALL_5CARD_VARIANTS = new Set([
   APP_VARIANT_IDS.D01,
   APP_VARIANT_IDS.D02,

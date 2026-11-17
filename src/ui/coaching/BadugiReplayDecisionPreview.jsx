@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { formatCardLabel } from "../utils/cardLabel.js";
 import BadugiTrainingTable from "./BadugiTrainingTable.jsx";
 import ReviewPracticeLink from "../practice/ReviewPracticeLink.jsx";
 import { validatePracticeSetup } from "../practice/practiceSetup.js";
@@ -75,7 +77,26 @@ function recordedPotBefore(before, previousFrames) {
   return Number.isFinite(before?.pot) ? before.pot : null;
 }
 
-export default function BadugiReplayDecisionPreview({ hand, frames, frameIndex, onJump, language }) {
+function ReplayGameDialog({ onClose, title, children }) {
+  const dialog = useRef(null);
+  const content = useRef(null);
+  useLayoutEffect(() => {
+    const element = dialog.current;
+    element.showModal();
+    content.current.focus();
+    return () => element.close();
+  }, []);
+  return createPortal(
+    <dialog ref={dialog} aria-label={title} onCancel={event => { event.preventDefault(); onClose(); }}
+      className="fixed inset-0 m-0 h-full max-h-none w-full max-w-none bg-gray-900">
+      <div ref={content} tabIndex={-1} className="outline-none">{children}</div>
+    </dialog>,
+    document.body,
+  );
+}
+
+export default function BadugiReplayDecisionPreview({ hand, frames, frameIndex, onJump, onPause, language }) {
+  const [openFrame, setOpenFrame] = useState(null);
   if (reviewVariant(hand) !== "badugi") return null;
   const hero = getHero(hand);
   const selected = frames[frameIndex]?.event;
@@ -93,13 +114,31 @@ export default function BadugiReplayDecisionPreview({ hand, frames, frameIndex, 
   const pot = atDecision ? recordedPotBefore(before, previousFrames) : null;
   const blinds = previousFrames.find(({ event }) => event?.type === "BLINDS_POSTED")?.event;
   const dealer = hand.buttonSeat ?? hand.dealerSeat ?? blinds?.buttonSeat;
-  const tablePlayers = before?.players.map(({ seat, name, stack, folded, allIn, betThisRound }) => ({
-    seat, name, stack, folded, allIn, betThisRound,
-    hand: seat === hero.seat ? (cards ?? []) : Array(4).fill(null),
-    position: seat === dealer ? "BTN" : seat === blinds?.sbSeat ? "SB" : seat === blinds?.bbSeat ? "BB" : undefined,
-  }));
+  const previousDraws = new Map();
+  for (const { event } of previousFrames) {
+    if (event?.type === "DRAW_ACTION") previousDraws.set(event.seat, drawCount(event));
+  }
+  const tablePlayers = Array(6);
+  for (const { seat, name, stack, folded, allIn, betThisRound } of before?.players ?? []) {
+    if (!Number.isInteger(seat) || seat < 0 || seat >= tablePlayers.length) continue;
+    tablePlayers[seat] = {
+      name, stack, folded, allIn, betThisRound, lastDrawCount: previousDraws.get(seat),
+      hand: seat === hero.seat ? (cards ?? []) : Array(4).fill(null),
+      position: seat === blinds?.sbSeat ? 'SB' : seat === blinds?.bbSeat ? 'BB' : undefined,
+    };
+  }
   const drawing = selected?.type === "DRAW_ACTION";
-  const phaseLabel = drawing ? (ja ? "交換" : "Draw") : (ja ? "ベット" : "Betting");
+  const streetStart = previousFrames.findLastIndex(({ event }) => event?.type === "PHASE_TRANSITION" && event.to === "BET");
+  const streetBets = previousFrames.slice(streetStart + 1).filter(({ event }) => event?.type === "BET_ACTION");
+  const hasBetAmounts = Boolean(blinds || streetStart >= 0) && streetBets.every(({ event }) =>
+    Number.isFinite(event.amount) || Number.isFinite(event.betAfter),
+  );
+  const currentBet = hasBetAmounts ? Math.max(0, ...(before?.players ?? []).map(player => player.betThisRound ?? 0)) : null;
+  const raiseCount = streetBets.filter(({ event }) => event.action === "raise").length;
+  const round = selected?.drawRound ?? previousFrames.filter(({ event }) =>
+    event?.type === "PHASE_TRANSITION" && event.to === "DRAW").length;
+  const viewTitle = ja ? "操作前の対局画面" : "Table before your action";
+  const closeTable = () => setOpenFrame(null);
   const otherActions = previousFrames
     .filter(({ event }) => isDecision(event) && Number.isInteger(event.seat) && event.seat !== hero.seat)
     .slice(-4);
@@ -116,13 +155,28 @@ export default function BadugiReplayDecisionPreview({ hand, frames, frameIndex, 
       <h2 className="text-lg font-semibold">{title}</h2>
       {atDecision ? (
         <>
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-sky-100">{ja ? "操作前の卓" : "Table before your action"}</h3>
-            <BadugiTrainingTable players={tablePlayers ?? []} heroSeat={hero.seat} actor={hero.seat}
-              dealer={dealer} phase={drawing ? "DRAW" : "BET"} phaseLabel={phaseLabel} pot={pot}
-              potLabel={ja ? "操作前のポット" : "Pot before acting"}
-              heroTestId="badugi-replay-before-cards" language={language} />
-            {!cards && <p className="text-sm text-slate-300">{ja ? "手札の記録なし" : "Cards unavailable"}</p>}
+          {tablePlayers[hero.seat] && (
+            <button type="button" onClick={() => { onPause(); setOpenFrame(frameIndex); }}
+              className="min-h-11 rounded-xl border border-sky-300/40 px-4 text-sm font-semibold text-sky-100">
+              {ja ? "対局画面で見る" : "View at the table"}
+            </button>
+          )}
+          {tablePlayers[hero.seat] && openFrame === frameIndex && (
+            <ReplayGameDialog title={viewTitle} onClose={closeTable}>
+              <BadugiTrainingTable players={tablePlayers} heroSeat={hero.seat} actor={hero.seat}
+                dealer={dealer} phase={drawing ? "DRAW" : "BET"} pot={pot} language={language}
+                smallBlind={blinds?.sbAmount ?? "–"} bigBlind={blinds?.bbAmount ?? "–"}
+                drawRound={round} betRound={drawing ? Math.max(0, round - 1) : round} currentBet={currentBet} raiseCount={raiseCount}
+                raiseUnit={Number.isFinite(blinds?.bbAmount) ? blinds.bbAmount * (round >= 2 ? 2 : 1) : "–"}
+                exitLabel={ja ? "判断の振り返りに戻る" : "Back to decision review"} onExit={closeTable} />
+            </ReplayGameDialog>
+          )}
+          <div className="space-y-1 rounded-xl bg-slate-800/75 p-3 text-sm">
+            <p>{ja ? "操作前の自分の手札" : "Your cards before acting"} {cards ? (
+              <strong data-testid="badugi-replay-before-cards">{cards.map(formatCardLabel).join(" ")}</strong>
+            ) : (ja ? "記録なし" : "Unavailable")}</p>
+            <p>{ja ? "操作前のポット" : "Pot before acting"} {pot == null
+              ? (ja ? "記録なし" : "Unavailable") : number.format(pot)}</p>
           </div>
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-sky-100">{ja ? "それまでの相手の操作" : "Recent opponent actions"}</h3>
@@ -143,7 +197,7 @@ export default function BadugiReplayDecisionPreview({ hand, frames, frameIndex, 
           <ReviewPracticeLink hand={{ variantId: "badugi", seats: [hero] }} language={language} replayPreview />
         </>
       ) : (
-        <button type="button" onClick={() => onJump(firstDecision)}
+        <button type="button" onClick={() => { onPause(); onJump(firstDecision); }}
           className="min-h-11 rounded-xl border border-sky-300/40 px-4 text-sm font-semibold text-sky-100">
           {ja ? "最初の判断へ" : "Go to your first decision"}
         </button>

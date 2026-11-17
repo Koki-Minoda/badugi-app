@@ -28,6 +28,17 @@ class PublicStyleEstimate:
     enough_history_for_diagnosis: bool
     calibrated_for_action: bool = False
 
+    @property
+    def diagnostic_readiness_reason(self) -> str:
+        """Explain the existing diagnostic gate without relaxing its thresholds."""
+        if self.hands_observed < 10:
+            return "insufficient_hands"
+        if self.faced_bets < 30:
+            return "insufficient_facing_opportunities"
+        if self.raise_when_facing_half_width_99 > 0.2:
+            return "uncertain_raise_rate"
+        return "ready"
+
 
 def _mean_and_half_width(successes, failures):
     alpha = successes + 1

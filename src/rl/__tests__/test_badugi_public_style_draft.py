@@ -25,11 +25,28 @@ class PublicStyleTests(unittest.TestCase):
                                value.raise_when_facing_mean, 1)
         self.assertAlmostEqual(value.average_raise_amount_bb, 1.5)
         self.assertTrue(value.enough_history_for_diagnosis)
+        self.assertEqual(value.diagnostic_readiness_reason, 'ready')
         self.assertFalse(value.calibrated_for_action)
 
     def test_sparse_history_is_not_diagnostic(self):
         value = estimate_public_style(history(handsObserved=1, drawCounts=[0, 1, 0, 0, 0]))
         self.assertFalse(value.enough_history_for_diagnosis)
+        self.assertEqual(value.diagnostic_readiness_reason, 'insufficient_hands')
+
+    def test_readiness_reason_keeps_facing_and_uncertainty_gates(self):
+        sparse = estimate_public_style(history(
+            facedBetOpportunities=20, foldedFacingBet=8,
+            calledFacingBet=9, raisedFacingBet=3))
+        self.assertEqual(sparse.diagnostic_readiness_reason,
+                         'insufficient_facing_opportunities')
+        self.assertFalse(sparse.enough_history_for_diagnosis)
+        uncertain = estimate_public_style(history(
+            facedBetOpportunities=30, foldedFacingBet=10,
+            calledFacingBet=10, raisedFacingBet=10,
+            raiseAmountBbSum=15.0, **{'raise': 10}))
+        self.assertEqual(uncertain.diagnostic_readiness_reason,
+                         'uncertain_raise_rate')
+        self.assertFalse(uncertain.enough_history_for_diagnosis)
 
     def test_private_fields_and_inconsistent_counts_rejected(self):
         with self.assertRaisesRegex(ValueError, 'exact public-history'):

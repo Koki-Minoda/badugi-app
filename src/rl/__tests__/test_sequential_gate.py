@@ -104,6 +104,19 @@ class SequentialGateTest(unittest.TestCase):
                                later["metrics"][name]["radius"])
             self.assertTrue(math.isclose(later["metrics"][name]["difference"], 0))
 
+    def test_exact_chip_boundary_survives_float_net_roundoff(self):
+        config = plan()
+        data = rows(config, 20, 0, 0)
+        boundary = next(row for row in data["reference"]
+                        if row["cell"] == "mtt|unknown")
+        boundary.update(finalStacks=[1000, 0],
+                        netBigBets=12.500000000000002)
+        self.assertGreater(100.0 * boundary["netBigBets"] / 20, 62.5)
+        self.assertEqual(gate.evaluate(config, data)["lookSessionsPerCell"], 20)
+        boundary["netBigBets"] = 12.6
+        with self.assertRaisesRegex(ValueError, "conserved-chip"):
+            gate.evaluate(config, data)
+
     def test_nonzero_hero_seat_uses_its_own_terminal_stack(self):
         config = plan()
         data = rows(config, 20, 1, 0)

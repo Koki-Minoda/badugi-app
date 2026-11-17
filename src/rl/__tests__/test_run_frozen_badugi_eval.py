@@ -71,6 +71,28 @@ class FrozenBadugiRunnerTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "evaluation purpose"):
             runner.validate_preflight(plan, manifests, shas, plan_sha, code_sha, look=2)
 
+    def test_unknown_suite_requires_exact_frozen_matrix_and_manifest(self):
+        plan, manifests, shas, plan_sha, code_sha = inputs()
+        plan["opponentSuite"] = "unknown-v1"
+        plan["cells"] = [{"name": name, "weight": 1 / 40, **contract}
+                         for name, contract in runner.expected_cells(
+                             runner.UNKNOWN_PROFILES).items()]
+        for manifest in manifests.values():
+            manifest["opponentSuite"] = "unknown-v1"
+            manifest["opponentProfiles"] = list(runner.UNKNOWN_PROFILES)
+        scheduled = runner.validate_preflight(plan, manifests, shas,
+                                              plan_sha, code_sha, look=2)
+        self.assertEqual(len(scheduled["candidate"]), 80)
+        manifests["reference"]["opponentProfiles"] = list(runner.PROFILES)
+        with self.assertRaises(ValueError):
+            runner.validate_preflight(plan, manifests, shas,
+                                      plan_sha, code_sha, look=2)
+        manifests["reference"]["opponentProfiles"] = list(runner.UNKNOWN_PROFILES)
+        plan["opponentSuite"] = "unknown-v2"
+        with self.assertRaisesRegex(ValueError, "unknown opponent suite"):
+            runner.validate_preflight(plan, manifests, shas,
+                                      plan_sha, code_sha, look=2)
+
     def test_preflight_rejects_unsealed_or_changed_inputs(self):
         for label, mutate in (
             ("model", lambda p, m, s: s.update(candidate="f" * 64)),

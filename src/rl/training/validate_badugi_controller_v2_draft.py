@@ -28,6 +28,7 @@ else:
         opponent_action, observable_reference_action,
     )
 from rl.env.badugi_env import evaluate_badugi
+from rl.training.unknown_badugi_opponents import UNKNOWN_PROFILES, unknown_opponent_action
 
 GROUPS = tuple((seats, occupied, tournament) for tournament in (False, True)
                for seats, occupied in ((2, 2), (3, 3), (6, 6), (6, 2), (6, 3)))
@@ -136,15 +137,20 @@ def main():
     parser.add_argument('--hands-per-session', type=int, default=20)
     parser.add_argument('--seed-base', type=int, default=410040001)
     parser.add_argument('--evaluation-manifest', type=Path)
+    parser.add_argument('--opponent-suite', choices=('known', 'unknown-v1'), default='known',
+                        help='Use evaluation-only opponents never present in the training profile set')
     parser.add_argument('--decision-ledger', action='store_true',
                         help='Record every controller decision and terminal all-seat chip ledger')
     parser.add_argument('--only-group', choices=GROUP_NAMES,
                         help='Exploratory diagnosis only; frozen product evaluations require all groups')
-    parser.add_argument('--only-profile', choices=PROFILES,
+    parser.add_argument('--only-profile', choices=PROFILES + UNKNOWN_PROFILES,
                         help='Exploratory diagnosis only; frozen product evaluations require all profiles')
     parser.add_argument('--capture-opening', action='store_true',
                         help='Exploratory replay only: save hero first pre-draw BET cards/context')
     args = parser.parse_args()
+    profiles = PROFILES if args.opponent_suite == 'known' else UNKNOWN_PROFILES
+    if args.only_profile and args.only_profile not in profiles:
+        raise ValueError('profile does not belong to selected opponent suite')
     if (args.output.exists() or not 1 <= args.sessions_per_profile <= 5000 or
             not 0 <= args.session_start_index or
             args.session_start_index + args.sessions_per_profile > 5000 or
@@ -194,7 +200,8 @@ def main():
                      manifest['sessionsPerProfileGroup'] <= 5000) or
                 manifest.get('handsPerSessionMax') != args.hands_per_session or
                 manifest.get('groupMatrix') != GROUP_NAMES or
-                manifest.get('opponentProfiles') != list(PROFILES)):
+                manifest.get('opponentProfiles') != list(profiles) or
+                manifest.get('opponentSuite', 'known') != args.opponent_suite):
             raise ValueError('evaluation arguments differ from frozen manifest')
         if manifest.get('requireDecisionLedger', False) != args.decision_ledger:
             raise ValueError('decision-ledger setting differs from frozen manifest')
@@ -216,7 +223,7 @@ def main():
         for group_index, (seats, occupied, tournament) in enumerate(GROUPS):
             if args.only_group and GROUP_NAMES[group_index] != args.only_group:
                 continue
-            for profile_index, profile in enumerate(PROFILES):
+            for profile_index, profile in enumerate(profiles):
                 if args.only_profile and profile != args.only_profile:
                     continue
                 for session_index in range(args.session_start_index,
@@ -260,7 +267,9 @@ def main():
                                     first_opening = opening_context(response['observation'], action)
                                     first_opening['decisionOrdinal'] = len(decision_trace)
                             else:
-                                action = opponent_action(response, profile, rng)
+                                action = (unknown_opponent_action(response, profile, rng)
+                                          if args.opponent_suite == 'unknown-v1' else
+                                          opponent_action(response, profile, rng))
                             decision_trace.append({'seat': response['seat'],
                                                    'phase': response['phase'],
                                                    'actionIndex': action,
@@ -346,7 +355,8 @@ def main():
                'handTraceSha256': file_sha256(hand_path),
                'sessionsPerProfileGroup': args.sessions_per_profile,
                'handsPerSessionMax': args.hands_per_session,
-               'opponentProfiles': [args.only_profile] if args.only_profile else PROFILES,
+               'opponentSuite': args.opponent_suite,
+               'opponentProfiles': [args.only_profile] if args.only_profile else profiles,
                'groups': [args.only_group] if args.only_group else GROUP_NAMES}
     (args.output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     print(json.dumps(summary, indent=2))

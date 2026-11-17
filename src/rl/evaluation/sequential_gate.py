@@ -170,10 +170,6 @@ def _validate_rows(plan: dict, rows: dict[str, list[dict]]) -> tuple[int, dict]:
             if (type(hands) is not int or hands != plan["handsPerSession"] or
                     not isinstance(net, (int, float)) or not math.isfinite(net)):
                 raise ValueError("invalid session hand count or net big bets")
-            score = 100.0 * net / hands
-            low, high = plan["scoreBounds"]
-            if score < low or score > high:
-                raise ValueError("session score outside predeclared bounds; no clipping")
             cell = cells[row["cell"]]
             seats = cell["tableSeats"]
             occupied = cell["occupiedSeats"]
@@ -195,6 +191,13 @@ def _validate_rows(plan: dict, rows: dict[str, list[dict]]) -> tuple[int, dict]:
                     row.get("activeBigBlindMin") != big_bet / 2 or
                     row.get("activeBigBlindMax") != big_bet / 2):
                 raise ValueError("row violates frozen conserved-chip score-bound proof")
+            # A sum of per-hand floating values can sit one ULP beyond an
+            # attainable boundary. Score from the independently audited final
+            # chip ledger, after verifying agreement with the reported net.
+            score = 100.0 * (final[hero] - stack) / (big_bet * hands)
+            low, high = plan["scoreBounds"]
+            if score < low or score > high:
+                raise ValueError("session score outside predeclared bounds; no clipping")
             for field in ("illegalActions", "fallbacks", "inferenceRequests", "inferenceUsed"):
                 if type(row.get(field)) is not int or row[field] < 0:
                     raise ValueError(f"invalid {field}")

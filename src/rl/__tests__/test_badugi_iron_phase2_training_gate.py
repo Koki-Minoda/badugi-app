@@ -110,6 +110,25 @@ class IronPhase2TrainingGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "modulo"):
             trainer.validate_iron_seed_schedule(plan)
 
+    def test_constrained_rate_requires_matching_frozen_plan_and_go(self):
+        plan = json.loads(self.plan.read_text())
+        plan["learningRate"] = 1e-5
+        self.plan.write_text(json.dumps(plan))
+        valid = dict(self.base, tierPlanSha256=sha(self.plan), learningRate=1e-5)
+        self.assertEqual(self.check(valid)["learningRate"], 1e-5)
+        with self.assertRaisesRegex(ValueError, "learning rate"):
+            self.check(dict(valid, learningRate=1e-4))
+        plan["learningRate"] = 0.001
+        self.plan.write_text(json.dumps(plan))
+        with self.assertRaisesRegex(ValueError, "learning rate"):
+            self.check(dict(valid, tierPlanSha256=sha(self.plan)))
+
+    def test_constrained_rate_updates_restored_optimizer_and_checkpoint_hyper(self):
+        agent = DQNAgent(96, 6)
+        trainer.apply_frozen_iron_learning_rate(agent, {"learningRate": 1e-5})
+        self.assertEqual(agent.hyper.lr, 1e-5)
+        self.assertTrue(all(group["lr"] == 1e-5 for group in agent.optimizer.param_groups))
+
     def test_iron_go_rejects_unbalanced_stage_allocation(self):
         plan = json.loads(self.plan.read_text())
         plan['bootstrapHands'] = 250

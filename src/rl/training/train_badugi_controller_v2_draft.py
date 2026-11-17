@@ -316,7 +316,7 @@ def training_opponent_profile(completed, session_index, fresh_session_per_hand=F
 def require_go_manifest(path, tier, hands, init_model=None, reference_model=None,
                         fold_anchor_per_batch=0, raise_anchor_per_batch=0,
                         draw_three_anchor_per_batch=0, fresh_session_per_hand=False,
-                        bet_only_standard_draw=False):
+                        bet_only_standard_draw=False, iron_plan_path=None):
     if path is None:
         raise ValueError("training requires --go-manifest with a frozen passing gate")
     manifest = json.loads(path.read_text())
@@ -375,9 +375,15 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
                 manifest.get("tierPlanSha256") != hashlib.sha256(tier_plan_path.read_bytes()).hexdigest()):
             raise ValueError("Pro requires frozen v2 Standard initial checkpoint and published reference ONNX")
     elif tier == "iron":
-        tier_plan = json.loads(IRON_PLAN.read_text())
+        tier_plan_path = iron_plan_path or IRON_PLAN
+        tier_plan = json.loads(tier_plan_path.read_text())
         validate_iron_seed_schedule(tier_plan)
         validate_iron_cell_balance(tier_plan)
+        learning_rate = tier_plan.get("learningRate")
+        if learning_rate is not None and (type(learning_rate) not in (int, float) or
+                                          not 0 < learning_rate <= 0.0001 or
+                                          manifest.get("learningRate") != learning_rate):
+            raise ValueError("Iron learning rate must be frozen in the plan and GO manifest")
         if (tier_plan.get("status") != "FROZEN_FOR_ISOLATED_IRON_PHASE2_TRAINING" or
                 tier_plan.get("schemaVersion") != SCHEMA or
                 init_model is None or not init_model.is_file() or
@@ -386,7 +392,7 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
                 manifest.get("referenceModelSha256") != hashlib.sha256(reference_model.read_bytes()).hexdigest() or
                 manifest.get("referenceModelSha256") != tier_plan["publishedProOnnxSha256"] or
                 manifest.get("anchorPolicyId") != "published-v2-pro" or
-                manifest.get("tierPlanSha256") != hashlib.sha256(IRON_PLAN.read_bytes()).hexdigest() or
+                manifest.get("tierPlanSha256") != hashlib.sha256(tier_plan_path.read_bytes()).hexdigest() or
                 manifest.get("explorationEpsilon") != tier_plan["explorationEpsilon"] or
                 manifest.get("bootstrapHands") != tier_plan["bootstrapHands"] or
                 manifest.get("imitationSteps") != tier_plan["imitationSteps"] or
@@ -423,6 +429,15 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
     return manifest
 
 
+def apply_frozen_iron_learning_rate(agent, manifest):
+    """Apply the reviewed rate after restoring checkpoint optimizer state."""
+    if "learningRate" not in manifest:
+        return
+    agent.hyper.lr = manifest["learningRate"]
+    for group in agent.optimizer.param_groups:
+        group["lr"] = manifest["learningRate"]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--tier", choices=("beginner", "standard", "pro", "iron", "worldmaster"),
@@ -437,6 +452,8 @@ def main():
     parser.add_argument("--seed-base", type=int)
     parser.add_argument("--init-model", type=Path)
     parser.add_argument("--reference-model", type=Path)
+    parser.add_argument("--iron-plan", type=Path,
+                        help="reviewed isolated Iron plan; bound by GO manifest SHA")
     parser.add_argument("--fold-anchor-per-batch", type=int, default=0)
     parser.add_argument("--raise-anchor-per-batch", type=int, default=0)
     parser.add_argument("--draw-three-anchor-per-batch", type=int, default=0)
@@ -469,6 +486,9 @@ def main():
         raise ValueError("BET-only Pro requires isolated training, 20-hand sessions and no DRAW anchor")
     if args.train and (args.output is None or args.output.exists()):
         raise ValueError("training requires a new isolated --output directory")
+    if args.iron_plan and (not args.train or args.tier != "iron" or
+                           not args.iron_plan.resolve().is_relative_to(ROOT)):
+        raise ValueError("alternate Iron plan must be a reviewed repository file")
     manifest = {}
     if args.train:
         manifest = require_go_manifest(args.go_manifest, args.tier, args.hands,
@@ -477,7 +497,7 @@ def main():
                                        args.raise_anchor_per_batch,
                                        args.draw_three_anchor_per_batch,
                                        args.fresh_session_per_hand,
-                                       args.bet_only_standard_draw)
+                                       args.bet_only_standard_draw, args.iron_plan)
         if (manifest.get("bootstrapHands", 0) != args.bootstrap_hands or
                 manifest.get("imitationSteps", 0) != args.imitation_steps or
                 manifest.get("referenceAnchorEvery", 0) != args.reference_anchor_every or
@@ -485,7 +505,7 @@ def main():
             raise ValueError("training method differs from GO manifest")
     seed_base = (manifest["seedBase"] if args.train else
                  args.seed_base or (320040001 if args.bootstrap_hands else 310040001))
-    stage_seed_stride = (json.loads(IRON_PLAN.read_text())["stageSeedStride"]
+    stage_seed_stride = (json.loads((args.iron_plan or IRON_PLAN).read_text())["stageSeedStride"]
                          if args.train and args.tier == "iron" else 100_000_000)
     random.seed(seed_base)
     np.random.seed(seed_base)
@@ -497,6 +517,8 @@ def main():
                       hyperparams=DQNHyperParams(lr=0.0001, batch_size=64)))
     if args.train and args.tier == "iron" and manifest["runIndex"] > 1 and not agent.checkpoint_has_optimizer:
         raise ValueError("Iron continuation requires an optimizer-bearing checkpoint")
+    if args.train and args.tier == "iron":
+        apply_frozen_iron_learning_rate(agent, manifest)
     expected_initial_tier = ("beginner" if args.tier == "standard" else
                              "pro" if args.tier == "iron" and manifest.get("runIndex") == 1 else
                              "iron" if args.tier == "iron" else "standard")
@@ -618,6 +640,7 @@ def main():
               "referenceModelSha256": (hashlib.sha256(args.reference_model.read_bytes()).hexdigest()
                                        if args.reference_model else None),
               "explorationEpsilon": manifest.get("explorationEpsilon") if args.train else None,
+              "learningRate": agent.hyper.lr if args.train else None,
               "anchorPolicyId": manifest.get("anchorPolicyId") if args.train else None,
               "bridgeSha256": hashlib.sha256(BRIDGE.read_bytes()).hexdigest(),
               "contractSha256": contract_hash(),

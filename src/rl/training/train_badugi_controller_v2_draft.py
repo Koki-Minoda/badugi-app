@@ -99,6 +99,23 @@ def validate_iron_seed_schedule(plan):
     return windows
 
 
+def validate_iron_cell_balance(plan):
+    """Keep every frozen 5k segment balanced across the 40 controller cells."""
+    groups = [f'{seats}/{occupied}-{mode}' for mode in ('cash', 'mtt')
+              for seats, occupied in ((2, 2), (3, 3), (6, 6), (6, 2), (6, 3))]
+    total = plan.get('segmentMaxHands')
+    bootstrap = plan.get('bootstrapHands')
+    if (plan.get('trainingGroups') != groups or
+            plan.get('opponentProfiles') != list(PROFILES) or
+            plan.get('trainingSessionHands') != 20 or
+            type(total) is not int or total != 5000 or
+            type(bootstrap) is not int or not 0 <= bootstrap < total or
+            bootstrap % (len(groups) * len(PROFILES)) != 0 or
+            (total - bootstrap) % (len(groups) * len(PROFILES)) != 0):
+        raise ValueError('Iron stages must allocate whole hands equally across all 40 cells')
+    return total // (len(groups) * len(PROFILES))
+
+
 class ControllerBridge:
     def __init__(self):
         self.process = subprocess.Popen(["node", str(BRIDGE)], stdin=subprocess.PIPE,
@@ -360,6 +377,7 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
     elif tier == "iron":
         tier_plan = json.loads(IRON_PLAN.read_text())
         validate_iron_seed_schedule(tier_plan)
+        validate_iron_cell_balance(tier_plan)
         if (tier_plan.get("status") != "FROZEN_FOR_ISOLATED_IRON_PHASE2_TRAINING" or
                 tier_plan.get("schemaVersion") != SCHEMA or
                 init_model is None or not init_model.is_file() or

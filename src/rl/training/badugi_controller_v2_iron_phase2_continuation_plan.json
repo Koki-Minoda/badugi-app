@@ -15,7 +15,7 @@
   "handoffRunIndex": 32,
   "handoffSourceCodeSha": "e2d4039bd104507f3c615add1565aca5cab5a75a",
   "handoffCheckpointSha256": "2eba482a72b121331bbf2839f310972f3f893a507058880f14e11e225e442cbb",
-  "trainingSeedBase": 1811811001,
+  "trainingSeedBase": 1432123001,
   "segmentSeedStride": 20000000,
   "stageSeedStride": 2000000000,
   "trainingSessionHands": 20,
@@ -38,7 +38,7 @@
     "random_legal"
   ],
   "reward": "terminal target-seat chip delta / active hand big blind; zero at intermediate target decisions",
-  "segmentRule": "Continue the exact optimizer-bearing checkpoint31 selected by the pre-frozen development-only paired 40-cell screen over checkpoints27-31. Train four isolated 5,000-hand safety segments, runs32-35, on fresh base1811811001. Keep 200 Pro bootstrap hands, 200 imitation steps, one Pro anchor per ten RL hands, and 125 hands per 40 seat/mode/opponent cells. Scan actual prior training hand traces, evaluation sessions, and the full future seed schedule of the ongoing frozen Pro comparison before collection. Audit each 5k segment before next GO and stop on chip, seed, action, resource, or provenance failure. Development selection is not final strength evidence. Keep models isolated and do not alter the ongoing frozen Pro gate.",
+  "segmentRule": "Continue the exact optimizer-bearing checkpoint31 selected by the pre-frozen development-only paired 40-cell screen over checkpoints27-31. Train four isolated 5,000-hand safety segments, runs32-35, on fresh base1432123001. Keep 200 Pro bootstrap hands, 200 imitation steps, one Pro anchor per ten RL hands, and 125 hands per 40 seat/mode/opponent cells. Scan actual prior training hand traces, evaluation sessions, and the full future seed schedule of the ongoing frozen Pro comparison before collection. Audit each 5k segment before next GO and stop on chip, seed, action, resource, or provenance failure. Development selection is not final strength evidence. Keep models isolated and do not alter the ongoing frozen Pro gate.",
   "selectionDiagnosticSha256": "33bc826b864f927499ffd08840fe7131c51b438a551880069fa769d9080f09f8",
   "invalidatedAttemptSha256": "fdb90dcda90eb7fedbb0b05d89d882cfed62d8b3f40fb306a21da481bc64b539",
   "invalidatedNextAttemptSha256": "08de33c284f27dd57edaacf3ff55360412aa4fd4deba6223fe81f697dfbded53",

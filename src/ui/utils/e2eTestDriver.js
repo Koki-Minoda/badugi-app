@@ -25,6 +25,8 @@ export function installE2eTestDriver(apiRef) {
       apiRef.current?.forceMarkSeatFoldedForTest?.(...args),
     setupCashRebuyTerminalFixtureForTest: (...args) =>
       apiRef.current?.setupCashRebuyTerminalFixtureForTest?.(...args),
+    forceStaleCashResultPhaseForTest: () =>
+      apiRef.current?.forceStaleCashResultPhaseForTest?.(),
     forceSequentialFolds: (...args) => apiRef.current?.forceSequentialFolds?.(...args),
     forceAllIn: (...args) => apiRef.current?.forceAllIn?.(...args),
     setupFixedLimitCapFixtureForTest: (...args) =>

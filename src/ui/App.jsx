@@ -8276,12 +8276,15 @@ export default function App() {
       // settlement for this exact hand is authoritative, and resets on deal.
       const tournamentHandSettled = modeRef.current === "tournament-mtt" &&
         handIdRef.current && tournamentCompletedHandIdRef.current === handIdRef.current;
-      // A late draw-controller callback can publish BET after a cash result is
-      // saved. The visible, saved result still belongs to the current hand, so
-      // its Next Hand button must remain usable. dealNewHand resets the saved
-      // marker before another click can start a second hand.
+      // A late draw callback can restore BET after the hand settles. The
+      // settlement is recorded here even when legacy history has yet to save.
+      // dealNewHand replaces the hand ID and clears the timestamp.
+      const cashHandMetadata = tableMetadataRef.current;
       const cashHandSettled = modeRef.current !== "tournament-mtt" &&
-        handResultVisible && handSavedRef.current && Boolean(handIdRef.current);
+        handResultVisible && Boolean(handIdRef.current) &&
+        (handSavedRef.current ||
+          (cashHandMetadata?.handId === handIdRef.current &&
+            cashHandMetadata.endTimestamp != null));
       if (!canStartNextHand({
         currentPhase,
         handCount: handCountRef.current,
@@ -9816,6 +9819,10 @@ export default function App() {
       },
       resolveHandNow: resolveHandImmediately,
       dealNewHandNow: startNextHand,
+      forceStaleCashResultPhaseForTest: () => {
+        phaseRef.current = "BET";
+        handSavedRef.current = false;
+      },
       forceStaleTournamentRosterForTest: () => {
         const authority = tournamentStateRef.current;
         if (modeRef.current !== "tournament-mtt" || !authority || !handResultVisible) {

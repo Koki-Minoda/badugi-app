@@ -332,7 +332,7 @@ test.describe("production cash playability", () => {
     }
   });
 
-  test("busted Hero can explicitly rebuy and complete the next hand", async ({ page }) => {
+  test("busted Hero can rebuy after a stale betting phase and complete the next hand", async ({ page }) => {
     const session = await openAuthenticatedGame(
       page,
       `${APP_URL}?variant=badugi&mode=cash&mgxQa=rebuy`,
@@ -355,6 +355,15 @@ test.describe("production cash playability", () => {
         name: /rebuy & next hand|再購入して次のハンドへ/i,
       });
       await expect(rebuy).toBeVisible({ timeout: 10_000 });
+      await rebuy.evaluate((button) => {
+        const driver = (window as typeof window & {
+          __BADUGI_E2E__?: { forceStaleCashResultPhaseForTest?: () => void };
+        }).__BADUGI_E2E__;
+        if (!driver?.forceStaleCashResultPhaseForTest) {
+          throw new Error("stale cash result fixture is unavailable");
+        }
+        button.addEventListener("click", driver.forceStaleCashResultPhaseForTest, { once: true });
+      });
       await rebuy.click();
       await expect(page.getByTestId("hand-result-overlay").first()).toBeHidden({ timeout: 15_000 });
       await expect(page.getByTestId("decision-panel")).toBeVisible({ timeout: 20_000 });

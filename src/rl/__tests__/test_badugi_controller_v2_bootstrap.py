@@ -19,7 +19,8 @@ from rl.training.export_badugi_controller_v2_candidate import (
 )
 from rl.training.export_badugi_controller_v2_phase_candidate import PhaseEnsemble
 from rl.training.validate_badugi_controller_v2_draft import (
-    FoldGuardedPhaseAgent, OnnxAgent, PhaseRoutedAgent, opening_context,
+    FirstStreetKPatRaiseAgent, FoldGuardedPhaseAgent, OnnxAgent,
+    PhaseRoutedAgent, opening_context,
 )
 from rl.env.badugi_env import evaluate_badugi
 
@@ -35,6 +36,23 @@ def decision(phase, made, high, round_index, to_call_bb, mask):
 
 
 class BootstrapPolicyTests(unittest.TestCase):
+    def test_first_street_k_pat_raise_is_legal_and_street_limited(self):
+        class Calls:
+            def act(self, obs, epsilon, action_mask):
+                return 2
+
+        agent = FirstStreetKPatRaiseAgent(Calls())
+        observation = np.zeros(96, dtype=np.float32)
+        observation[24] = observation[25] = 1.0
+        mask = np.asarray([1, 0, 1, 0, 1, 0], dtype=np.float32)
+        self.assertEqual(agent.act(observation, 0.0, mask), 4)
+        observation[9] = 1 / 3
+        self.assertEqual(agent.act(observation, 0.0, mask), 2)
+        observation[9] = 0
+        mask[4] = 0
+        self.assertEqual(agent.act(observation, 0.0, mask), 2)
+        self.assertEqual(agent.overrides, 1)
+
     def test_opening_context_records_hero_cards_and_rejects_shape_mismatch(self):
         cards = [(0, 0), (2, 1), (4, 2), (6, 3)]
         count, ranks = evaluate_badugi(cards)

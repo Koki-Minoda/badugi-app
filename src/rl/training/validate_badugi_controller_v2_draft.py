@@ -114,6 +114,23 @@ class FoldGuardedPhaseAgent(PhaseRoutedAgent):
         return self.bet_agent.act(obs, epsilon=epsilon, action_mask=action_mask)
 
 
+class FirstStreetKPatRaiseAgent:
+    """Development-only response for a K-high four-card Badugi before draw one."""
+
+    def __init__(self, base_agent):
+        self.base_agent = base_agent
+        self.overrides = 0
+
+    def act(self, obs, epsilon, action_mask):
+        action = self.base_agent.act(obs, epsilon=epsilon, action_mask=action_mask)
+        if (action == 2 and float(obs[8]) == 0.0 and float(obs[9]) == 0.0 and
+                float(obs[24]) == 1.0 and float(obs[25]) == 1.0 and
+                action_mask[4] == 1):
+            self.overrides += 1
+            return 4
+        return action
+
+
 def phase_model_sha(bet_path, draw_path, fold_guardian=False):
     bet_sha = hashlib.sha256(bet_path.read_bytes()).hexdigest()
     draw_sha = hashlib.sha256(draw_path.read_bytes()).hexdigest()
@@ -130,6 +147,8 @@ def main():
     parser.add_argument('--reference', action='store_true')
     parser.add_argument('--fold-guardian', action='store_true',
                         help='Exploratory phase pair only: keep published Standard BET FOLD')
+    parser.add_argument('--first-street-k-pat-raise', action='store_true',
+                        help='Exploratory only: change K-high four-card Badugi CALL to legal RAISE before draw one')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--sessions-per-profile', type=int, default=6)
     parser.add_argument('--session-start-index', type=int, default=0,
@@ -164,6 +183,10 @@ def main():
         raise ValueError('frozen product evaluations cannot filter groups or profiles')
     if args.evaluation_manifest and args.capture_opening:
         raise ValueError('opening capture is diagnostic only; do not change a frozen evaluation')
+    if args.evaluation_manifest and args.first_street_k_pat_raise:
+        raise ValueError('K-high first-street raise is exploratory and cannot be a frozen product evaluation')
+    if args.reference and args.first_street_k_pat_raise:
+        raise ValueError('K-high first-street raise requires an ONNX or checkpoint base agent')
     phase_pair = args.bet_onnx is not None and args.draw_onnx is not None
     if args.fold_guardian and not phase_pair:
         raise ValueError('fold guardian requires a BET candidate and published Standard DRAW ONNX')
@@ -179,6 +202,8 @@ def main():
     if args.model and (agent.obs_dim != 96 or agent.n_actions != 6 or
                   agent.checkpoint_training_state.get('schemaVersion') != SCHEMA):
         raise ValueError('candidate observation/action contract mismatch')
+    if args.first_street_k_pat_raise:
+        agent = FirstStreetKPatRaiseAgent(agent)
     candidate_path = args.model or args.onnx_model
     model_sha = (REFERENCE_POLICY_ID if args.reference else
                  phase_model_sha(args.bet_onnx, args.draw_onnx, args.fold_guardian) if phase_pair else
@@ -345,6 +370,10 @@ def main():
                'modelKind': ('phase-routed-onnx' if phase_pair else 'onnx' if args.onnx_model
                              else 'pytorch' if args.model else 'reference'),
                'foldGuardian': args.fold_guardian,
+               'firstStreetKPatRaise': args.first_street_k_pat_raise,
+               'firstStreetKPatRaiseCount': agent.overrides if args.first_street_k_pat_raise else 0,
+               'policySha256': (hashlib.sha256((model_sha + ':first-street-k-pat-raise-v1').encode()).hexdigest()
+                                if args.first_street_k_pat_raise else model_sha),
                'decisionLedgerIncluded': args.decision_ledger,
                'captureOpening': args.capture_opening,
                'seedBase': args.seed_base, 'sessionStartIndex': args.session_start_index,

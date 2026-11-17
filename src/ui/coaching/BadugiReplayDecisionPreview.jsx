@@ -4,7 +4,6 @@ import { formatCardLabel } from "../utils/cardLabel.js";
 import BadugiTrainingTable from "./BadugiTrainingTable.jsx";
 import ReviewPracticeLink from "../practice/ReviewPracticeLink.jsx";
 import { validatePracticeSetup } from "../practice/practiceSetup.js";
-import { reviewVariant } from "../review/reviewStore.js";
 
 const actionNames = {
   fold: ["フォールド", "Fold"],
@@ -50,21 +49,35 @@ function getHero(hand) {
   return seats.find((seat) => seat?.seat === hand.heroSeat && seat.isHero !== false) ?? null;
 }
 
-function cardsAtDecision(hero, before, previousFrames) {
-  if (!validatePracticeSetup("badugi", hero.initialHand)) return null;
-  const lastDraw = previousFrames.findLast(({ event }) =>
-    event?.seat === hero.seat && event.type === "DRAW_ACTION" && drawCount(event) !== 0,
-  )?.event;
-  if (lastDraw) {
-    const detail = hero.actions?.find(({ seq }) => seq === lastDraw.actionSeq);
-    const drawInfo = lastDraw.drawInfo ?? detail?.metadata?.drawInfo;
-    const after = lastDraw.after ?? drawInfo?.after ?? drawInfo?.handAfter
-      ?? lastDraw.playersAfter?.find(({ seat }) => seat === hero.seat)?.hand;
-    const replacements = lastDraw.replacedCards ?? drawInfo?.replacedCards;
-    if (!validatePracticeSetup("badugi", after) && !replacements?.length) return null;
+function cardsAtDecision(hero, previousFrames) {
+  let cards = validatePracticeSetup("badugi", hero.initialHand) ? hero.initialHand : null;
+  for (const { event } of previousFrames) {
+    if (event?.seat !== hero.seat || event.type !== "DRAW_ACTION") continue;
+    const count = drawCount(event);
+    if (count === 0) continue;
+
+    const detail = hero.actions?.find(({ seq }) => seq === event.actionSeq);
+    const drawInfo = event.drawInfo ?? detail?.metadata?.drawInfo;
+    const after = event.after ?? drawInfo?.after ?? drawInfo?.handAfter
+      ?? event.playersAfter?.find(({ seat }) => seat === hero.seat)?.hand;
+    if (validatePracticeSetup("badugi", after)) {
+      cards = after;
+      continue;
+    }
+
+    const replacements = event.replacedCards ?? drawInfo?.replacedCards;
+    const indexes = Array.isArray(replacements) ? replacements.map(entry => entry?.index) : [];
+    if (!cards || !indexes.length || (count !== null && indexes.length !== count)
+      || new Set(indexes).size !== indexes.length
+      || indexes.some(index => !Number.isInteger(index) || index < 0 || index >= cards.length)) {
+      cards = null;
+      continue;
+    }
+    const next = [...cards];
+    replacements.forEach(({ index, newCard }) => { next[index] = newCard; });
+    cards = validatePracticeSetup("badugi", next) ? next : null;
   }
-  const cards = before?.players.find(({ seat }) => seat === hero.seat)?.hand;
-  return validatePracticeSetup("badugi", cards) ? cards : null;
+  return cards;
 }
 
 function recordedPotBefore(before, previousFrames) {
@@ -97,7 +110,6 @@ function ReplayGameDialog({ onClose, title, children }) {
 
 export default function BadugiReplayDecisionPreview({ hand, frames, frameIndex, onJump, onPause, language }) {
   const [openFrame, setOpenFrame] = useState(null);
-  if (reviewVariant(hand) !== "badugi") return null;
   const hero = getHero(hand);
   const selected = frames[frameIndex]?.event;
   const isHeroDecision = (event) => isDecision(event) && event.seat === hero?.seat;
@@ -110,7 +122,7 @@ export default function BadugiReplayDecisionPreview({ hand, frames, frameIndex, 
   const atDecision = isHeroDecision(selected);
   const before = frames[frameIndex - 1];
   const previousFrames = atDecision ? frames.slice(0, frameIndex) : [];
-  const cards = atDecision ? cardsAtDecision(hero, before, previousFrames) : null;
+  const cards = atDecision ? cardsAtDecision(hero, previousFrames) : null;
   const pot = atDecision ? recordedPotBefore(before, previousFrames) : null;
   const blinds = previousFrames.find(({ event }) => event?.type === "BLINDS_POSTED")?.event;
   const dealer = hand.buttonSeat ?? hand.dealerSeat ?? blinds?.buttonSeat;
@@ -194,7 +206,7 @@ export default function BadugiReplayDecisionPreview({ hand, frames, frameIndex, 
             <p className="text-amber-100"><strong>{ja ? "EV差 — 採点保留" : "EV difference — unscored"}</strong></p>
             <p className="text-slate-300">{ja ? "この局面の行動別EVは品質確認を終えていません。" : "Action EV for this decision is awaiting validation."}</p>
           </div>
-          <ReviewPracticeLink hand={{ variantId: "badugi", seats: [hero] }} language={language} replayPreview />
+          <ReviewPracticeLink hand={{ variantId: "badugi", seats: [hero] }} language={language} source="replay" />
         </>
       ) : (
         <button type="button" onClick={() => { onPause(); onJump(firstDecision); }}

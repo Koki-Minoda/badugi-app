@@ -12,7 +12,9 @@ export function practiceFromReview(hand) {
   return { variant, cards: [...cards] };
 }
 export function practiceUrl(setup) {
-  return `/learn/practice?${new URLSearchParams({ variant: setup.variant, cards: setup.cards.join(',') })}`;
+  const params = new URLSearchParams({ variant: setup.variant, cards: setup.cards.join(',') });
+  if (setup.variant === 'badugi' && setup.source === 'replay') params.set('source', 'replay');
+  return `/learn/practice?${params}`;
 }
 export function parsePracticeUrl(search) {
   const params = new URLSearchParams(search);
@@ -20,5 +22,5 @@ export function parsePracticeUrl(search) {
   const variant = params.get('variant');
   const cards = (params.get('cards') ?? '').split(',');
   if (!validatePracticeSetup(variant, cards)) return { error: 'invalid' };
-  return { variant, cards };
+  return { variant, cards, ...(variant === 'badugi' && params.get('source') === 'replay' ? { source: 'replay' } : {}) };
 }

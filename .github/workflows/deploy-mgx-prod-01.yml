@@ -184,12 +184,14 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - run: python -m pip install -e './backend[test]'
       - run: npm run test:history:contract
-      - run: npx playwright install --with-deps chromium
-      - name: Exact cash and cross-variant history replay
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run build
+      - name: Badugi Replay and practice on the production build
+        run: bash scripts/ci/run-with-backend.sh npx playwright test --config playwright.badugi-replay.config.js
+      - name: Cross-variant history replay
         run: |
           bash scripts/ci/run-with-backend.sh npx playwright test \
             tests/e2e/hand-result-auto-next.spec.ts \
-            tests/e2e/hand-history-replay-fidelity.spec.ts \
             tests/e2e/cross-variant-history-replay-smoke.spec.ts \
             --project=badugi-flow
 

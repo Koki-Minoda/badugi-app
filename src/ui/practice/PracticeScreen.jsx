@@ -18,11 +18,9 @@ const buttonClass = 'min-h-11 rounded-xl border border-white/25 px-4 py-2 font-s
 export default function PracticeScreen() {
   const location = useLocation();
   const incoming = parsePracticeUrl(location.search);
-  const replayPreview = import.meta.env.DEV && import.meta.env.VITE_MGX_BADUGI_REPLAY_PREVIEW === '1'
-    && incoming?.variant === 'badugi' && new URLSearchParams(location.search).get('replayPreview') === '1';
-  return <PracticeContent key={location.key} incoming={incoming} replayPreview={replayPreview} />;
+  return <PracticeContent key={location.key} incoming={incoming} />;
 }
-function PracticeContent({ incoming, replayPreview }) {
+function PracticeContent({ incoming }) {
   const language = useLanguage();
   const ja = language === 'ja';
   const [variant, setVariant] = useState(incoming?.variant ?? PRACTICE_GAMES[0].id);
@@ -43,10 +41,7 @@ function PracticeContent({ incoming, replayPreview }) {
   const [progressSaveError, setProgressSaveError] = useState('');
   const [error, setError] = useState(incoming?.error ? (ja ? '練習条件を読み込めませんでした。種目と開始手札を選び直してください。' : 'Could not load this setup. Choose the game and starting cards again.') : '');
   const game = PRACTICE_GAMES.find(item => item.id === variant);
-  const showTablePreview = import.meta.env.DEV && replayPreview && variant === 'badugi';
-  useEffect(() => {
-    if (replayPreview) window.scrollTo(0, 0);
-  }, [replayPreview]);
+  const replayPractice = incoming?.source === 'replay' && variant === 'badugi';
   const snapshot = session?.snapshot;
   const finished = session?.finished ?? false;
   const actor = session?.actor;
@@ -67,7 +62,7 @@ function PracticeContent({ incoming, replayPreview }) {
     try {
       setSession(new PracticeSession(variant, cards, options));
       setShowPracticeResult(false);
-      if (showTablePreview) window.scrollTo(0, 0);
+      if (replayPractice) window.scrollTo(0, 0);
       setSelection([]);
       setError('');
       setProgressSaveError('');
@@ -120,7 +115,7 @@ function PracticeContent({ incoming, replayPreview }) {
     }
   }
 
-  if (import.meta.env.DEV && showTablePreview && session) {
+  if (replayPractice && session) {
     if (showPracticeResult && finished) {
       return <main className="learning-screen min-h-screen bg-slate-950 px-4 py-6 text-white sm:px-8">
         <div className="mx-auto max-w-2xl space-y-4">
@@ -146,7 +141,7 @@ function PracticeContent({ incoming, replayPreview }) {
       {error && <p role="alert" className="text-amber-200">{error}</p>}
       {!session ? <section className="space-y-5 rounded-2xl border border-white/15 bg-slate-900 p-4 sm:p-6">
         {incoming && !incoming.error && <p className="text-sm text-emerald-200">{ja ? '開始手札を読み込みました。条件を確認して練習を開始してください。' : 'Starting hand loaded. Check the setup before starting practice.'}</p>}
-        {showTablePreview && startButton}
+        {replayPractice && startButton}
         <label className="block">{ja ? '種目' : 'Game'}<select aria-label={ja ? '種目' : 'Game'} value={variant} onChange={event => { const next = PRACTICE_GAMES.find(item => item.id === event.target.value); setVariant(next.id); setCards([...next.defaults]); setError(''); }} className="mt-2 block w-full rounded-xl bg-slate-800 p-3">{PRACTICE_GAMES.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-bold">{ja ? '自分の開始手札' : 'Your starting hand'} · {cards.length} / {game.count}</h2><button type="button" className={buttonClass} onClick={() => setCards([])}>{ja ? '選択をクリア' : 'Clear selection'}</button></div>
         <div className="flex min-h-12 flex-wrap gap-2" aria-label={ja ? '選んだ手札' : 'Selected hand'}>{cards.map(card => <span key={card} className={`rounded-lg bg-white px-3 py-3 font-bold ${/[HD]$/.test(card) ? 'text-red-700' : 'text-slate-950'}`}>{cardLabel(card)}</span>)}</div>
@@ -159,7 +154,7 @@ function PracticeContent({ incoming, replayPreview }) {
           {[['neverFold', 'CPUはフォールドしない', 'CPU never folds'], ['selfPlay', '全席を自分で操作する', 'Control every seat'], ['showAll', '全員の手札を表示する', 'Show all hands']].map(([key, jp, en]) => <label key={key} className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={Boolean(options[key])} onChange={event => changeOption(key, event.target.checked)} />{ja ? jp : en}</label>)}
           <p className="text-sm text-slate-300">{ja ? '毎回2,000点から開始します。全席操作では手番の席のカードを表示し、ハンド終了前まで一手戻せます。' : 'Each hand starts with 2,000 chips. In all-seat practice, the acting seat’s cards are shown. Undo is available until the hand ends.'}</p>
         </fieldset>
-        {!showTablePreview && startButton}
+        {!replayPractice && startButton}
         <ShareLink url={validatePracticeSetup(variant, cards) ? `${window.location.origin}${practiceUrl({ variant, cards })}` : null} />
         <PracticePresets variant={variant} cards={cards} language={language} onLoad={setup => { setVariant(setup.variant); setCards(setup.cards); setError(''); }} />
       </section> : <section className="space-y-5" data-testid="practice-table">

@@ -87,13 +87,12 @@ test("a real Badugi hand replays the same actions, chips, pot, and draw cards", 
     { timeout: 30_000 },
   ).then((handle) => handle.jsonValue());
   const layoutBoxes = new Map<string, Awaited<ReturnType<typeof measureGameLayout>>>();
-  const previewEnabled = process.env.VITE_MGX_BADUGI_REPLAY_PREVIEW === "1";
-  await playNaturalHandToResult(page, previewEnabled ? async (phase) => {
+  await playNaturalHandToResult(page, async (phase) => {
     if (!layoutBoxes.has(phase)) {
       layoutBoxes.set(phase, await measureGameLayout(page, phase));
       await page.screenshot({ path: info.outputPath(`badugi-normal-${phase}.png`) });
     }
-  } : undefined);
+  });
 
   const record = await page.evaluate((completedHandId) => {
     const history = window.__BADUGI_E2E__?.getHandHistory?.() ?? [];
@@ -177,60 +176,72 @@ test("a real Badugi hand replays the same actions, chips, pot, and draw cards", 
   await page.getByTestId("replay-last-frame").click();
   await expect(page.getByText(/Awarded pot:/)).toBeVisible();
 
-  if (previewEnabled) {
-    const preview = page.getByTestId("badugi-replay-decision-preview");
-    await preview.getByRole("button", { name: "最初の判断へ" }).click();
-    const cards = record.seats.find((seat: any) => seat.isHero).initialHand;
-    await expect(preview.getByText("EV差 — 採点保留")).toBeVisible();
-    await preview.getByRole("button", { name: "対局画面で見る" }).click();
-    const replayTable = page.getByRole("dialog", { name: "操作前の対局画面" });
-    await expect(replayTable.getByTestId("game-table-surface")).toBeVisible();
-    await expect(replayTable.getByTestId(/^player-0-card-[0-3]$/)).toHaveCount(cards.length);
-    await expect(replayTable.getByTestId("player-action-hint")).toHaveText("あなたの操作前");
-    const replayFold = replayTable.getByTestId("action-fold");
-    if (await replayFold.count()) await expect(replayFold).toBeDisabled();
-    await page.screenshot({ path: info.outputPath("badugi-replay-game-screen.png") });
-    const replayMenu = replayTable.getByLabel("対局メニュー");
-    if (await replayMenu.isVisible()) await replayMenu.click();
-    await replayTable.getByRole("button", { name: "判断の振り返りに戻る" }).click();
-    await expect(replayTable).not.toBeVisible();
-    const practice = preview.getByRole("link", { name: "この開始手札で練習" });
-    const href = await practice.getAttribute("href");
-    expect(new URL(href!, page.url()).searchParams.get("cards")).toBe(cards.join(","));
-    await page.evaluate(() =>
-      localStorage.setItem("mgx.practice.options", JSON.stringify({ cpuDelay: 150, neverFold: true })),
-    );
-    await practice.click();
-    await expect(page).toHaveURL(/\/learn\/practice\?/);
-    const start = page.getByRole("button", { name: "この手札で練習する", exact: true });
-    await expect(start).toBeInViewport();
-    await start.click();
-    const table = page.getByTestId("badugi-practice-game-preview");
-    await expect(table.getByTestId("game-table-surface")).toBeVisible();
-    const heroCards = table.getByTestId(/^player-0-card-[0-3]$/);
-    await expect(heroCards).toHaveCount(4);
-    const fold = table.getByTestId("action-fold");
-    await expect(fold).toBeEnabled();
-    await expect(fold).toBeInViewport();
-    expectSameLayout(layoutBoxes.get("bet"), await measureGameLayout(page, "bet"));
-    await page.screenshot({ path: info.outputPath("badugi-practice-game-preview.png") });
-    const exchange = table.getByTestId("action-draw-selected");
-    const enabledDecision = table.locator('[data-testid="action-check"]:enabled, [data-testid="action-call"]:enabled');
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      await expect(exchange.or(enabledDecision)).toBeEnabled({ timeout: 15_000 });
-      if (await exchange.isVisible()) break;
-      await enabledDecision.click();
-    }
-    await expect(exchange).toBeEnabled();
-    expectSameLayout(layoutBoxes.get("draw"), await measureGameLayout(page, "draw"));
-    const drawCard = table.getByTestId("player-0-card-0");
-    const previousCard = (await drawCard.textContent())?.replace(/\s/g, "");
-    await drawCard.click();
-    await expect(drawCard).toHaveAttribute("aria-pressed", "true");
-    await expect(exchange).toContainText(/1枚(?:を)?交換/);
-    await expect(exchange).toBeInViewport();
-    await page.screenshot({ path: info.outputPath("badugi-practice-draw-preview.png") });
-    await exchange.click();
-    await expect.poll(async () => (await drawCard.textContent())?.replace(/\s/g, "")).not.toBe(previousCard);
+  const preview = page.getByTestId("badugi-replay-decision-preview");
+  await preview.getByRole("button", { name: "最初の判断へ" }).click();
+  const cards = record.seats.find((seat: any) => seat.isHero).initialHand;
+  await expect(preview.getByText("EV差 — 採点保留")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Show Analysis" })).toHaveCount(0);
+  await preview.getByRole("button", { name: "対局画面で見る" }).click();
+  const replayTable = page.getByRole("dialog", { name: "操作前の対局画面" });
+  await expect(replayTable.getByTestId("game-table-surface")).toBeVisible();
+  await expect(replayTable.getByTestId(/^player-0-card-[0-3]$/)).toHaveCount(cards.length);
+  await expect(replayTable.getByTestId("player-action-hint")).toHaveText("あなたの操作前");
+  const replayFold = replayTable.getByTestId("action-fold");
+  if (await replayFold.count()) await expect(replayFold).toBeDisabled();
+  await page.screenshot({ path: info.outputPath("badugi-replay-game-screen.png") });
+  const replayMenu = replayTable.getByLabel("対局メニュー");
+  if (await replayMenu.isVisible()) await replayMenu.click();
+  await replayTable.getByRole("button", { name: "判断の振り返りに戻る" }).click();
+  await expect(replayTable).not.toBeVisible();
+  const practice = preview.getByRole("link", { name: "この開始手札で練習" });
+  const href = await practice.getAttribute("href");
+  const practiceUrl = new URL(href!, page.url());
+  expect(practiceUrl.searchParams.get("cards")).toBe(cards.join(","));
+  expect(practiceUrl.searchParams.get("source")).toBe("replay");
+  await page.evaluate(() =>
+    localStorage.setItem("mgx.practice.options", JSON.stringify({ cpuDelay: 150, neverFold: true })),
+  );
+  const regularStats = () => page.evaluate(() => [
+    localStorage.getItem("badugi.history.hands"),
+    localStorage.getItem("badugi_player_stats_v1"),
+  ]);
+  const beforePractice = await regularStats();
+  await practice.click();
+  await expect(page).toHaveURL(/\/learn\/practice\?/);
+  const start = page.getByRole("button", { name: "この手札で練習する", exact: true });
+  await expect(start).toBeInViewport();
+  await start.click();
+  const table = page.getByTestId("badugi-practice-game-preview");
+  await expect(table.getByTestId("game-table-surface")).toBeVisible();
+  const heroCards = table.getByTestId(/^player-0-card-[0-3]$/);
+  await expect(heroCards).toHaveCount(4);
+  const fold = table.getByTestId("action-fold");
+  await expect(fold).toBeEnabled();
+  await expect(fold).toBeInViewport();
+  expectSameLayout(layoutBoxes.get("bet"), await measureGameLayout(page, "bet"));
+  await page.screenshot({ path: info.outputPath("badugi-practice-game-preview.png") });
+  const exchange = table.getByTestId("action-draw-selected");
+  const enabledDecision = table.locator('[data-testid="action-check"]:enabled, [data-testid="action-call"]:enabled');
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    await expect(exchange.or(enabledDecision)).toBeEnabled({ timeout: 15_000 });
+    if (await exchange.isVisible()) break;
+    await enabledDecision.click();
   }
+  await expect(exchange).toBeEnabled();
+  expectSameLayout(layoutBoxes.get("draw"), await measureGameLayout(page, "draw"));
+  const drawCard = table.getByTestId("player-0-card-0");
+  const previousCard = (await drawCard.textContent())?.replace(/\s/g, "");
+  await drawCard.click();
+  await expect(drawCard).toHaveAttribute("aria-pressed", "true");
+  await expect(exchange).toContainText(/1枚(?:を)?交換/);
+  await expect(exchange).toBeInViewport();
+  await page.screenshot({ path: info.outputPath("badugi-practice-draw-preview.png") });
+  await exchange.click();
+  await expect.poll(async () => (await drawCard.textContent())?.replace(/\s/g, "")).not.toBe(previousCard);
+  await expect(fold).toBeEnabled({ timeout: 15_000 });
+  await fold.click();
+  await expect(table.getByTestId("hand-result-overlay")).toBeVisible({ timeout: 20_000 });
+  await table.getByTestId("hand-result-history").click();
+  await expect(page.getByRole("heading", { name: "Badugiの練習結果" })).toBeVisible();
+  expect(await regularStats()).toEqual(beforePractice);
 });

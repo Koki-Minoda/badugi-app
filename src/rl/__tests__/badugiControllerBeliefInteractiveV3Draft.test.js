@@ -1,7 +1,34 @@
 import { describe, expect, it } from 'vitest';
 import { BadugiControllerBeliefInteractiveV3Draft } from '../badugiControllerBeliefInteractiveV3Draft.js';
+import { deriveBadugiControllerPublicChipStateV2Draft } from '../badugiControllerPublicChipStateV2Draft.js';
 
 describe('candidate-only Badugi belief evidence', () => {
+  it('records the opponent public legal menu and exact price at decision time', () => {
+    const session = new BadugiControllerBeliefInteractiveV3Draft({
+      seatCount: 3, occupiedSeatCount: 3, isTournament: false, seed: 78031,
+      includeLedger: true,
+    });
+    const before = session.nextHand();
+    expect(before.phase).toBe('BET');
+    const snapshot = session.controller.getUiSnapshot(session.state);
+    const { currentBet } = deriveBadugiControllerPublicChipStateV2Draft(
+      session.controller, snapshot);
+    const expected = {
+      legalActions: before.legalMask.flatMap((legal, index) => legal && index < 5 ? [index] : []),
+      toCallBb: Math.max(0, currentBet - snapshot.players[before.seat].betThisRound) /
+        before.activeBigBlind,
+      potBb: snapshot.players.reduce((sum, player) => sum + player.totalInvested, 0) /
+        before.activeBigBlind,
+    };
+    const action = expected.legalActions.includes(2) ? 2 : expected.legalActions[0];
+    const after = session.step(action);
+    expect(after.type).toBe('decision');
+    expect(after.beliefEvidence.publicActions[0]).toMatchObject({
+      seat: before.seat, ...expected,
+    });
+    expect(after.beliefEvidence.publicActions[0].legalActions).toContain(action);
+  });
+
   it('carries the observed blind across a completed hand with raises', () => {
     const session = new BadugiControllerBeliefInteractiveV3Draft({
       seatCount: 2, occupiedSeatCount: 2, isTournament: false, seed: 2150500001,
@@ -48,8 +75,18 @@ describe('candidate-only Badugi belief evidence', () => {
       expect(opponentPublicHistory[1 - decision.seat].handsObserved).toBe(0);
       for (const event of publicActions) {
         expect(Object.keys(event).sort()).toEqual(event.type === 'BET_ACTION'
-          ? ['action', 'amountBb', 'drawRoundIndex', 'seat', 'type'].sort()
+          ? ['action', 'amountBb', 'drawRoundIndex', 'seat', 'type',
+            'legalActions', 'toCallBb', 'potBb', 'activePlayers'].sort()
           : ['drawCount', 'drawRoundIndex', 'seat', 'type'].sort());
+        if (event.type === 'BET_ACTION') {
+          const actionIndex = ['FOLD', 'CHECK', 'CALL', 'BET', 'RAISE'].indexOf(event.action);
+          expect(event.legalActions).toContain(actionIndex);
+          expect(event.toCallBb).toBeGreaterThanOrEqual(0);
+          expect(event.potBb).toBeGreaterThanOrEqual(0);
+          expect(event.activePlayers).toBeGreaterThanOrEqual(1);
+          expect(event.activePlayers).toBeLessThanOrEqual(decision.occupiedSeatCount);
+          expect(JSON.stringify(event)).not.toMatch(/hand|private|cards/i);
+        }
         if (event.type === 'DRAW_ACTION' && event.seat !== decision.seat) {
           observedOpponentDraw = true;
         }

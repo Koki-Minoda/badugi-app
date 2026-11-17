@@ -15,6 +15,7 @@ from rl.training.badugi_public_style_draft import estimate_public_style
 
 DECK = tuple(build_deck())
 BUCKETS = ("one_or_two", "three", "ten_to_king_badugi", "nine_or_better_badugi")
+BET_ACTIONS = ("FOLD", "CHECK", "CALL", "BET", "RAISE")
 
 
 def _cards(cards):
@@ -47,7 +48,8 @@ def _bucket(hand):
 
 def _event(event, target_seat):
     if not isinstance(event, dict) or set(event) - {
-            "type", "seat", "action", "amountBb", "drawCount", "drawRoundIndex"}:
+            "type", "seat", "action", "amountBb", "drawCount", "drawRoundIndex",
+            "legalActions", "toCallBb", "potBb", "activePlayers"}:
         raise ValueError("range input must contain public action fields only")
     if type(event.get("seat")) is not int or event["seat"] < 0:
         raise ValueError("range event requires a seat")
@@ -55,8 +57,24 @@ def _event(event, target_seat):
     if kind == "BET_ACTION":
         if event.get("action") not in ("FOLD", "CHECK", "CALL", "BET", "RAISE") or not isinstance(event.get("amountBb"), (int, float)) or not math.isfinite(event["amountBb"]) or event["amountBb"] < 0:
             raise ValueError("range event requires public bet action and amount")
+        context = {"legalActions", "toCallBb", "potBb", "activePlayers"}
+        if context & event.keys():
+            if not context <= event.keys():
+                raise ValueError("range event requires complete public legal context")
+            legal = event["legalActions"]
+            if (not isinstance(legal, (list, tuple)) or not legal or
+                    any(type(index) is not int or index not in range(5) for index in legal) or
+                    tuple(legal) != tuple(sorted(set(legal))) or
+                    BET_ACTIONS.index(event["action"]) not in legal or
+                    any(type(event[key]) not in (int, float) or
+                        not math.isfinite(event[key]) or event[key] < 0
+                        for key in ("toCallBb", "potBb")) or
+                    type(event["activePlayers"]) is not int or
+                    not 1 <= event["activePlayers"] <= 6):
+                raise ValueError("range event has invalid public legal context")
     elif kind == "DRAW_ACTION":
-        if type(event.get("drawCount")) is not int or not 0 <= event["drawCount"] <= 4:
+        if (type(event.get("drawCount")) is not int or not 0 <= event["drawCount"] <= 4 or
+                {"legalActions", "toCallBb", "potBb", "activePlayers"} & event.keys()):
             raise ValueError("range event requires public draw count")
     else:
         raise ValueError("range event type is not public BET or DRAW")
@@ -81,30 +99,18 @@ def _likelihood(event, bucket, made):
     return 0.40 - strength * 0.10
 
 
-def _style_conditioned_likelihood(event, bucket, made, style, weight):
-    """Research-only mixture of hand evidence and prior-hand public tendency.
+def _public_action_likelihood(event, bucket, made):
+    """Normalize against the public legal menu, when that menu was recorded.
 
-    The style term is constant across particle hands. It reduces how strongly
-    a frequent action is taken as evidence of a strong hand. The mixture weight
-    must be chosen on development data and independently checked before use.
+    Legacy events without a menu retain their frozen diagnostic likelihood.
+    No uncalibrated style mixing is allowed to change the posterior here.
     """
     baseline = _likelihood(event, bucket, made)
-    if style is None or event["type"] != "BET_ACTION" or weight == 0:
+    if event["type"] != "BET_ACTION" or "legalActions" not in event:
         return baseline
-    action = event["action"]
-    if action in ("FOLD", "CALL", "RAISE"):
-        actions = ("FOLD", "CALL", "RAISE")
-        style_probability = {
-            "FOLD": style.fold_when_facing_mean,
-            "CALL": style.call_when_facing_mean,
-            "RAISE": style.raise_when_facing_mean,
-        }[action]
-    else:
-        actions = ("CHECK", "BET")
-        style_probability = style.bet_when_free_mean if action == "BET" else 1 - style.bet_when_free_mean
-    base_probability = baseline / sum(_likelihood({**event, "action": candidate}, bucket, made)
-                                      for candidate in actions)
-    return (1 - weight) * base_probability + weight * style_probability
+    total = sum(_likelihood({**event, "action": BET_ACTIONS[index]}, bucket, made)
+                for index in event["legalActions"])
+    return baseline / total
 
 
 def _after_draw(hand, used_cards, draw_count, unseen, rng):
@@ -149,11 +155,10 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
         raise ValueError("range estimate requires ordered public events")
     if type(style_weight) not in (int, float) or not math.isfinite(style_weight) or not 0 <= style_weight <= 1:
         raise ValueError("style weight must be finite and inside [0, 1]")
-    style = (estimate_public_style(opponent_public_history)
-             if opponent_public_history is not None else None)
-    if style is None or not style.enough_history_for_diagnosis:
-        style = None
-    applied_weight = float(style_weight) if style is not None else 0.0
+    if opponent_public_history is not None:
+        estimate_public_style(opponent_public_history)  # Validate public-only history.
+    if style_weight != 0:
+        raise ValueError("uncalibrated style mixture is disabled")
     unseen = tuple(card for card in DECK if card not in seen)
     if len(unseen) < 8:
         raise ValueError("insufficient unseen cards")
@@ -169,8 +174,7 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
         next_weights = []
         for hand, weight in zip(hands, weights):
             made = evaluate_badugi(hand)[0]
-            next_weights.append(weight * _style_conditioned_likelihood(
-                event, _bucket(hand), made, style, applied_weight))
+            next_weights.append(weight * _public_action_likelihood(event, _bucket(hand), made))
         total = sum(next_weights)
         if total <= 0 or not math.isfinite(total):
             raise ValueError("range weights collapsed")
@@ -204,7 +208,7 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
         probabilities[_bucket(hand)] += weight
     counts = remaining_rank_counts(seen)
     return RangeEstimate(tuple(probabilities), counts[0], counts[3], used, particles,
-                         style_weight_applied=applied_weight)
+                         style_weight_applied=0.0)
 
 
 def guarded_range_action(*, base_action, legal_mask, hero_made, hero_high,

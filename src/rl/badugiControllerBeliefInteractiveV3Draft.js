@@ -1,6 +1,7 @@
 // Candidate-only actor-visible evidence. The published v2 inference path stays unchanged.
 import { BadugiControllerInteractiveV2Draft } from './badugiControllerInteractiveV2Draft.js';
 import { buildBadugiControllerSeatEventViewV2Draft } from './badugiControllerSeatEventViewV2Draft.js';
+import { deriveBadugiControllerPublicChipStateV2Draft } from './badugiControllerPublicChipStateV2Draft.js';
 import { evaluateHand } from '../games/badugi/utils/badugiEvaluator.js';
 
 const RANKS = 'A23456789TJQK';
@@ -69,10 +70,25 @@ export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerIn
 
   step(actionIndex) {
     const before = this.currentDecision();
+    const snapshot = this.controller.getUiSnapshot(this.state);
+    const { currentBet } = deriveBadugiControllerPublicChipStateV2Draft(this.controller, snapshot);
+    const actor = snapshot.players[before.seat];
+    const publicContext = before.phase === 'BET' ? {
+      legalActions: before.legalMask.flatMap((legal, index) => legal && index < 5 ? [index] : []),
+      toCallBb: Math.max(0, currentBet - actor.betThisRound) / before.activeBigBlind,
+      potBb: snapshot.players.reduce((total, player) => total + player.totalInvested, 0) /
+        before.activeBigBlind,
+      activePlayers: snapshot.players.filter((player) =>
+        player.stack > 0 && !player.folded && !player.hasFolded &&
+        !player.seatOut && !player.sittingOut && !player.isBusted && !player.busted).length,
+    } : null;
     const result = super.step(actionIndex);
     this.currentHandDecisionRecords.push({ seat: before.seat, phase: before.phase,
-      legalMask: before.legalMask, actionIndex });
-    return result;
+      drawRoundIndex: before.drawRoundIndex, legalMask: before.legalMask,
+      actionIndex, publicContext });
+    // V2 computes its return decision before this subclass records the previous
+    // action. Rebuild it so the external actor sees the complete public context.
+    return result.type === 'decision' ? this.currentDecision() : result;
   }
 
   currentDecision() {
@@ -99,12 +115,21 @@ export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerIn
         }
       }
     }
-    const publicActions = visible.map((event) => event.type === 'BET_ACTION'
-      ? { type: 'BET_ACTION', seat: event.seat, action: event.action.toUpperCase(),
-        amountBb: event.amount / decision.activeBigBlind,
-        drawRoundIndex: event.drawRoundIndex }
-      : { type: 'DRAW_ACTION', seat: event.seat, drawCount: event.drawCount,
-        drawRoundIndex: event.drawRoundIndex });
+    const publicActions = visible.map((event, index) => {
+      const record = this.currentHandDecisionRecords[index];
+      if (record && (record.seat !== event.seat ||
+          record.drawRoundIndex !== event.drawRoundIndex ||
+          record.phase !== (event.type === 'BET_ACTION' ? 'BET' : 'DRAW'))) {
+        throw new TypeError('belief public event and decision context diverged');
+      }
+      return event.type === 'BET_ACTION'
+        ? { type: 'BET_ACTION', seat: event.seat, action: event.action.toUpperCase(),
+          amountBb: event.amount / decision.activeBigBlind,
+          drawRoundIndex: event.drawRoundIndex,
+          ...(record?.publicContext ?? {}) }
+        : { type: 'DRAW_ACTION', seat: event.seat, drawCount: event.drawCount,
+          drawRoundIndex: event.drawRoundIndex };
+    });
     return { ...decision, beliefEvidence: {
       actorSeenCards: [...seen.values()], publicActions,
       actorHandProgress: { initial, current,

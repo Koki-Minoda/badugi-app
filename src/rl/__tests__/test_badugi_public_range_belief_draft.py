@@ -3,7 +3,8 @@ import dataclasses
 import unittest
 
 from rl.training.badugi_public_range_belief_draft import (
-    RangeEstimate, estimate_public_range, guarded_range_action, remaining_rank_counts,
+    RangeEstimate, _public_action_likelihood, estimate_public_range,
+    guarded_range_action, remaining_rank_counts,
 )
 
 
@@ -62,17 +63,14 @@ class PublicRangeBeliefTests(unittest.TestCase):
             estimate_public_range(actor_seen_cards=self.seen, public_events=[hidden],
                                   target_seat=1, seed=3, particles=64)
 
-    def test_prior_hand_style_can_condition_research_posterior_only(self):
+    def test_uncalibrated_style_mixture_is_disabled(self):
         event = {'type': 'BET_ACTION', 'seat': 1, 'action': 'CALL', 'amountBb': 1}
         params = {'actor_seen_cards': self.seen, 'public_events': [event],
                   'target_seat': 1, 'seed': 11, 'particles': 512}
         base = estimate_public_range(**params)
-        weighted = estimate_public_range(**params,
-            opponent_public_history=self.public_history, style_weight=0.5)
-        self.assertEqual(weighted.style_weight_applied, 0.5)
-        self.assertNotEqual(weighted.probabilities, base.probabilities)
-        self.assertAlmostEqual(sum(weighted.probabilities), 1)
-        self.assertFalse(weighted.calibrated)
+        with self.assertRaisesRegex(ValueError, 'uncalibrated style mixture is disabled'):
+            estimate_public_range(**params,
+                opponent_public_history=self.public_history, style_weight=0.5)
         sparse = {**self.public_history, 'handsObserved': 1,
                   'fold': 0, 'check': 0, 'call': 2, 'bet': 0,
                   'raise': 0, 'raiseAmountBbSum': 0,
@@ -81,7 +79,7 @@ class PublicRangeBeliefTests(unittest.TestCase):
                   'calledFacingBet': 2, 'raisedFacingBet': 0,
                   'freeBetOpportunities': 0, 'betWhenFree': 0}
         fallback = estimate_public_range(**params,
-            opponent_public_history=sparse, style_weight=0.5)
+            opponent_public_history=sparse, style_weight=0)
         self.assertEqual(fallback, base)
         with self.assertRaisesRegex(ValueError, 'exact public-history'):
             estimate_public_range(**params,
@@ -89,6 +87,24 @@ class PublicRangeBeliefTests(unittest.TestCase):
                 style_weight=0.5)
         with self.assertRaisesRegex(ValueError, 'style weight'):
             estimate_public_range(**params, style_weight=1.1)
+
+    def test_recorded_public_legal_menu_normalizes_without_hidden_cards(self):
+        event = {'type': 'BET_ACTION', 'seat': 1, 'action': 'CALL',
+                 'amountBb': 1, 'drawRoundIndex': 0,
+                 'legalActions': [0, 2, 4], 'toCallBb': 1,
+                 'potBb': 4, 'activePlayers': 3}
+        for bucket in range(4):
+            total = sum(_public_action_likelihood({**event, 'action': action}, bucket, 2)
+                        for action in ('FOLD', 'CALL', 'RAISE'))
+            self.assertAlmostEqual(total, 1)
+        result = estimate_public_range(actor_seen_cards=self.seen,
+            public_events=[event], target_seat=1, seed=11, particles=256)
+        self.assertFalse(result.calibrated)
+        self.assertAlmostEqual(sum(result.probabilities), 1)
+        with self.assertRaisesRegex(ValueError, 'public legal context'):
+            estimate_public_range(actor_seen_cards=self.seen,
+                public_events=[{**event, 'legalActions': [0, 4]}],
+                target_seat=1, seed=11, particles=256)
 
     def test_uncalibrated_or_sparse_evidence_cannot_override(self):
         estimate = estimate_public_range(actor_seen_cards=self.seen, public_events=[

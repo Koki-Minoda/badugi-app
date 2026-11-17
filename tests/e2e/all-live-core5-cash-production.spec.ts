@@ -233,7 +233,7 @@ async function playOneRealButtonHand(
   let steps = 0;
   let sizingActions = 0;
   const phases = new Set<string>();
-  while (Date.now() < deadline) {
+  handLoop: while (Date.now() < deadline) {
     const progress = await getProgressState(page);
     phases.add(String(progress.phase));
     const resultOverlayVisible = await page
@@ -271,7 +271,15 @@ async function playOneRealButtonHand(
         for (let cardIndex = 0; cardIndex < requestedCardCount; cardIndex += 1) {
           const card = page.getByTestId(`player-0-card-${cardIndex}`).first();
           if (await card.isVisible().catch(() => false)) {
-            await card.click({ timeout: 5_000 });
+            try {
+              await card.click({ timeout: 5_000 });
+            } catch (error) {
+              if (!BUST_REJOIN || !(await page.getByTestId("hand-result-overlay").isVisible())
+                || !(await getProgressState(page)).isTerminal) throw error;
+              // A final CPU action settled this hand before the click. The
+              // next iteration still requires the visible settled result.
+              continue handLoop;
+            }
           }
         }
         if (maxDiscard === 3) {
@@ -512,6 +520,20 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
       rows,
       ...details,
     });
+  const requireCleanBrowser = () => {
+      const relevantErrors = browserErrors.filter(
+        (entry) =>
+          !/Failed to load resource.*404|favicon|ResizeObserver loop|onnxruntime.*Unknown CPU vendor/i.test(
+            entry,
+          ),
+      );
+      const relevantResponses = failedResponses.filter(
+        (entry) => !/404:GET:.+\/characters\/.+\.png/.test(entry),
+      );
+      mark("final-browser-check", { relevantErrors, relevantResponses });
+      expect(relevantErrors).toEqual([]);
+      expect(relevantResponses).toEqual([]);
+  };
   try {
     const releaseResponse = await page.request.get(`${APP_URL.replace(/\/$/, "")}/release.json`);
     if (releaseResponse.ok() && (releaseResponse.headers()["content-type"] ?? "").includes("application/json")) {
@@ -607,8 +629,8 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
           expect(heroStack, "settled history and cash-out roster report the same bankroll").toBe(0);
           mark("bankroll-empty", {hand, finalizedHandId});
           const rejoin = await verifyBankrollRejoin(page, hand, finalizedHandId, "maxDiscard" in variant ? variant.maxDiscard : null);
-          expect(browserErrors).toEqual([]);
-          expect(failedResponses.filter(message => /^(5\d\d):/.test(message))).toEqual([]);
+          mark("rejoin-verified", {rejoin});
+          requireCleanBrowser();
           return {status: "PASS", sourceCommit: SOURCE_COMMIT, mode: "separate-bankroll-rejoin",
             variant: variant.variant, device, seed: SEED, ...rejoin, heroActionsBeforeBust: totalHeroButtonClicks};
         }
@@ -716,18 +738,7 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
     await expect(page.getByText(/Select Your Variant|ゲームを選択/i)).toBeVisible({ timeout: 20_000 });
     mark("cash-out-complete");
 
-    const relevantErrors = browserErrors.filter(
-      (entry) =>
-        !/Failed to load resource.*404|favicon|ResizeObserver loop|onnxruntime.*Unknown CPU vendor/i.test(
-          entry,
-        ),
-    );
-    const relevantResponses = failedResponses.filter(
-      (entry) => !/404:GET:.+\/characters\/.+\.png/.test(entry),
-    );
-    mark("final-browser-check", { relevantErrors, relevantResponses });
-    expect(relevantErrors).toEqual([]);
-    expect(relevantResponses).toEqual([]);
+    requireCleanBrowser();
     return {
       status: "PASS",
       servedCommit,

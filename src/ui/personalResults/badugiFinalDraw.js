@@ -123,7 +123,8 @@ export function evaluateFinalDraw({ cards, pot, range, opponentDraw = 1, knownDe
       const bothDrawWeight = opponentDrawWeight / (unseen.length - opponentDraw);
       for (const opponentCard of opponentCards) {
         const opponent = evaluateBadugi(opponentCard ? [...kept, opponentCard] : kept);
-        const bets = opponent.count === 4 && opponent.kicker <= 10;
+        // The legacy evaluator numbers ranks from Ace=0, so T is index 9.
+        const bets = opponent.count === 4 && opponent.kicker < 10;
         addOutcome(branches[0], "pat", heroPat, opponent, opponentDrawWeight, bets);
         for (const heroCard of unseen) {
           if (heroCard === opponentCard) continue;

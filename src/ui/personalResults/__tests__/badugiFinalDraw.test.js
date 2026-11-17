@@ -4,6 +4,16 @@ import {
 } from "../badugiFinalDraw.js";
 
 describe("third-draw decision model", () => {
+  it("uses the stated T-high betting cutoff without treating J-high as a bet", () => {
+    const result = evaluateFinalDraw({
+      cards: ["AS", "3H", "5D", "10C"], pot: 3, range: "balanced", opponentDraw: 0,
+      knownDead: ["7H", "4D"],
+    });
+    // Independent full enumeration: this fixture distinguishes the intended
+    // T-high threshold (1.50) from the off-by-one J-high model (1.18).
+    expect(result.actions.find(action => action.id === "pat").ev).toBeCloseTo(1.5, 10);
+  });
+
   it("changes the preferred action when only the opponent's draw changes", () => {
     const [one, pat] = finalDrawQuestions("practice");
     expect(one.cards).toEqual(pat.cards);
@@ -14,7 +24,9 @@ describe("third-draw decision model", () => {
   });
 
   it("finds a close choice and reports a loss from the best modeled action", () => {
-    const result = evaluateFinalDraw(finalDrawQuestions("practice").at(-1));
+    const result = evaluateFinalDraw({
+      cards: ["AS", "3H", "QD", "4C"], pot: 2, range: "low", opponentDraw: 0,
+    });
     expect(result.actions).toHaveLength(5);
     expect(result.actions[0].loss).toBe(0);
     expect(result.actions[1].loss).toBeGreaterThan(0);

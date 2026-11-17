@@ -73,6 +73,8 @@ def _conservation_bounds(cell: dict, hands: int) -> tuple[float, float]:
 def validate_manifest(plan: dict) -> None:
     if plan.get("schema") != SCHEMA or plan.get("scoreUnit") != "big_bet_per_100_hands":
         raise ValueError("unknown gate schema or score unit")
+    if plan.get("scoreBoundMethod", "global") not in ("global", "cell_conservation"):
+        raise ValueError("unknown score-bound method")
     for key in ("candidateModelSha256", "referenceModelSha256", "controllerContractSha256"):
         if not _sha(plan.get(key)):
             raise ValueError(f"missing or invalid {key}")
@@ -244,13 +246,24 @@ def _estimate(plan: dict, grouped: dict, n: int, metric: str) -> dict:
             sample_variance = sum((value - center) ** 2 for value in values) / (n - 1)
             total += weight * weight * sample_variance / n
         descriptive_variance[arm] = total
-    width = plan["scoreBounds"][1] - plan["scoreBounds"][0]
     alpha_per_metric_look = plan["familywiseAlpha"] / (
         len(plan["lookSessionsPerCell"]) * len(METRICS))
-    variance_factor = sum(weight * weight / n for _, weight in weights)
-    arm_radius = width * math.sqrt(0.5 * math.log(4 / alpha_per_metric_look) *
-                                   variance_factor)
-    return {
+    if plan.get("scoreBoundMethod", "global") == "cell_conservation":
+        cells = {cell["name"]: cell for cell in selected}
+        # Hoeffding's heterogeneous-range bound, applied to each frozen cell's
+        # conserved no-rebuy chip pool. Union bound covers both arms and tails.
+        range_variance = 0.0
+        for name, weight in weights:
+            low, high = _conservation_bounds(cells[name], plan["handsPerSession"])
+            range_variance += weight * weight * (high - low) ** 2 / n
+        arm_radius = math.sqrt(0.5 * math.log(4 / alpha_per_metric_look) *
+                               range_variance)
+    else:
+        width = plan["scoreBounds"][1] - plan["scoreBounds"][0]
+        variance_factor = sum(weight * weight / n for _, weight in weights)
+        arm_radius = width * math.sqrt(0.5 * math.log(4 / alpha_per_metric_look) *
+                                       variance_factor)
+    result = {
         "candidate": candidate, "reference": reference,
         "difference": candidate - reference,
         "lower": candidate - reference - 2 * arm_radius,
@@ -259,6 +272,9 @@ def _estimate(plan: dict, grouped: dict, n: int, metric: str) -> dict:
         "descriptiveVarianceOfWeightedMean": descriptive_variance,
         "unit": plan["scoreUnit"],
     }
+    if plan.get("scoreBoundMethod") == "cell_conservation":
+        result["confidenceBoundMethod"] = "per_cell_hoeffding_union_arms_tails_looks_metrics"
+    return result
 
 
 def evaluate(plan: dict, rows: dict[str, list[dict]]) -> dict:

@@ -13,6 +13,7 @@
 | `scoreUnit` | `big_bet_per_100_hands` 固定。Badugi固定リミットのビッグベットを使い、ビッグブラインドと区別する |
 | `candidateModelSha256` / `referenceModelSha256` / `controllerContractSha256` | 候補、公開Pro、実controller契約の同一性 |
 | `scoreBounds` | 各cellの固定初期stack・bet単位・参加席数から判定器が導く理論上下限を必ず包含する。観測後に変更しない。範囲外はclippingせず失敗 |
+| `scoreBoundMethod` | 省略時は従来の `global`。新規の凍結planでは `cell_conservation` を選べる。既存planの途中変更は禁止 |
 | `familywiseAlpha`, `minimumImprovement` | 許容誤判定率と実用改善幅。学習・選択・holdout観測前に固定 |
 | `lookSessionsPerCell` | 各cell・各armで同数の独立sessionを揃える評価時点。最後の値が最大look |
 | `handsPerSession`, `maxHandsPerArm` | 全session共通のhand数と1 armの計算上限。等長に固定することでsession平均を100 hand当たりの収益と一致させる |
@@ -26,6 +27,8 @@ session JSONLには `sessionId`、cell内の連番 `sessionIndex`、一意の `s
 後続の連結収集器を使う場合は、各判断の全席stack＋commitと終局stackを別の監査器が照合した `decisionLedgerAudited=true`、収集前に固定したmanifestを表す `frozenManifestAttested=true` を追加で必須とする。D03の乱数seedは32-bitへ変換されるため、seed窓は生の整数だけでなく `2^32` を法とした重複も拒否する。既存H33b原本にはこの判断ごとのledgerがないため、新ゲートの入力へ再分類しない。
 
 `O=occupiedSeats`、`S=startingStackChips`、`U=bigBetChips`、`H=handsPerSession` とし、全handで補充なし・ベット単位一定・全席チップ保存・負stackなしが成立すれば、英雄の純増減は `−S` 以上 `(O−1)S` 以下。よってscore範囲は `[−100S/(HU), 100(O−1)S/(HU)]`。判定器は全cellの和集合をplanの範囲が包含するか検査する。これはcontrollerがplanどおり動き、trace adapterのhand間連続性監査が正しいことを条件とする。planの凍結時刻とモデルbodyの真正性は独立監査が必要。
+
+新規planで事前に `scoreBoundMethod=cell_conservation` を固定した場合、各cellの上記の幅を使う。指標内の正規化重みを `w_i`、各cellのsession数を `n`、理論幅を `R_i` とすると、各armの半径は `sqrt(log(4/α_look) × Σ_i(w_i² R_i²/n) / 2)`、候補−Proの半径はその2倍となる。独立なsessionの異なる幅に対するHoeffding上界と、両arm・両側・3指標・予定lookの合併界を使う。`global` は従来どおり全cell共通の最大幅を使う。どちらの方法もα、改善幅、look、最大費用を緩めない。今回進行中の凍結評価へ新方式を事後適用しない。
 
 ## 判定と統計的保証
 

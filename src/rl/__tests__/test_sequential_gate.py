@@ -52,6 +52,15 @@ def rows(config, n, candidate_score, reference_score):
         for cell_number, cell in enumerate(config["cells"]):
             for index in range(1, n + 1):
                 value = score() if callable(score) else score
+                stack = cell["startingStackChips"]
+                occupied = cell["occupiedSeats"]
+                seats = cell["tableSeats"]
+                big_bet = cell["bigBetChips"]
+                initial = [stack if seat < occupied else 0 for seat in range(seats)]
+                final = initial.copy()
+                delta = value * config["handsPerSession"] * big_bet / 100
+                final[0] += delta
+                final[1] -= delta
                 result[arm].append({
                     "sessionId": f"{arm}-{cell_number}-{index}",
                     "sessionIndex": index,
@@ -60,7 +69,7 @@ def rows(config, n, candidate_score, reference_score):
                     "heroSeat": 0,
                     "cell": cell["name"],
                     "hands": 20,
-                    "netBigBets": value / 5,
+                    "netBigBets": value * config["handsPerSession"] / 100,
                     "modelSha256": config[f"{arm}ModelSha256"],
                     "controllerContractSha256": config["controllerContractSha256"],
                     "source": "real-controller", "chipBalanced": True,
@@ -69,11 +78,11 @@ def rows(config, n, candidate_score, reference_score):
                     "illegalActions": 0, "fallbacks": 0,
                     "inferenceRequests": 4, "inferenceUsed": 4,
                     "maxInferenceMs": 15,
-                    "initialStacks": [500, 500],
-                    "finalStacks": [500 + 8 * value, 500 - 8 * value],
-                    "initialChipPool": 1000,
-                    "activeBigBlindMin": 20,
-                    "activeBigBlindMax": 20,
+                    "initialStacks": initial,
+                    "finalStacks": final,
+                    "initialChipPool": occupied * stack,
+                    "activeBigBlindMin": big_bet / 2,
+                    "activeBigBlindMax": big_bet / 2,
                 })
     return result
 
@@ -103,6 +112,35 @@ class SequentialGateTest(unittest.TestCase):
             self.assertGreater(early["metrics"][name]["radius"],
                                later["metrics"][name]["radius"])
             self.assertTrue(math.isclose(later["metrics"][name]["difference"], 0))
+
+    def test_frozen_cell_conservation_bounds_tighten_without_changing_mean(self):
+        config = plan()
+        config["scoreBounds"] = [-100, 500]
+        config["cells"][1].update(tableSeats=6, occupiedSeats=6,
+                                   startingStackChips=2000, bigBetChips=100)
+        config["scoreBoundMethod"] = "cell_conservation"
+        data = rows(config, 100, 0, 0)
+        local = gate.evaluate(config, data)
+        global_config = copy.deepcopy(config)
+        del global_config["scoreBoundMethod"]
+        broad = gate.evaluate(global_config, data)
+        for metric in gate.METRICS:
+            self.assertEqual(local["metrics"][metric]["difference"],
+                             broad["metrics"][metric]["difference"])
+            self.assertLessEqual(local["metrics"][metric]["radius"],
+                                 broad["metrics"][metric]["radius"])
+        self.assertLess(local["metrics"]["cash"]["radius"],
+                        broad["metrics"]["cash"]["radius"])
+        self.assertAlmostEqual(local["metrics"]["mtt"]["radius"],
+                               broad["metrics"]["mtt"]["radius"])
+        self.assertEqual(local["metrics"]["cash"]["confidenceBoundMethod"],
+                         "per_cell_hoeffding_union_arms_tails_looks_metrics")
+
+    def test_unknown_bound_method_is_rejected(self):
+        config = plan()
+        config["scoreBoundMethod"] = "estimated_from_observed_scores"
+        with self.assertRaisesRegex(ValueError, "unknown score-bound method"):
+            gate.validate_manifest(config)
 
     def test_nonzero_hero_seat_uses_its_own_terminal_stack(self):
         config = plan()
@@ -215,6 +253,54 @@ class SequentialGateTest(unittest.TestCase):
                 if result["decision"] == "REJECT":
                     break
         self.assertLessEqual(false_promotions, 3)
+
+    def test_cell_bound_synthetic_null_across_repeated_looks(self):
+        """Independent endpoint draws check the declared finite-look workflow."""
+        rng = random.Random(20261117)
+        config = plan()
+        config["cells"][1].update(tableSeats=6, occupiedSeats=6,
+                                   startingStackChips=2000, bigBetChips=100)
+        config["scoreBounds"] = [-100, 500]
+        config["scoreBoundMethod"] = "cell_conservation"
+        config["lookSessionsPerCell"] = [50, 100, 250]
+        config["maxHandsPerArm"] = 10_000
+        false_promotions = 0
+        for _ in range(200):
+            full = rows(config, 250, 0, 0)
+            for arm in ("candidate", "reference"):
+                for row in full[arm]:
+                    cell = next(cell for cell in config["cells"]
+                                if cell["name"] == row["cell"])
+                    low, high = gate._conservation_bounds(cell, 20)
+                    value = high if rng.random() < -low / (high - low) else low
+                    stack, occupied, big_bet = (cell["startingStackChips"],
+                                                cell["occupiedSeats"],
+                                                cell["bigBetChips"])
+                    final = [stack] * occupied
+                    delta = value * 20 * big_bet / 100
+                    final[0] += delta
+                    if delta >= 0:
+                        remainder = delta
+                        for seat in range(1, occupied):
+                            paid = min(stack, remainder)
+                            final[seat] -= paid
+                            remainder -= paid
+                    else:
+                        final[1] -= delta
+                    row["netBigBets"] = value / 5
+                    row["finalStacks"] = final
+            for look in config["lookSessionsPerCell"]:
+                truncated = {
+                    arm: [row for row in full[arm] if row["sessionIndex"] <= look]
+                    for arm in ("candidate", "reference")
+                }
+                decision = gate.evaluate(config, truncated)["decision"]
+                if decision == "PROMOTE":
+                    false_promotions += 1
+                    break
+                if decision == "REJECT":
+                    break
+        self.assertLessEqual(false_promotions, 2)
 
 
 if __name__ == "__main__":

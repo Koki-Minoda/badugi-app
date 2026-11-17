@@ -8,6 +8,7 @@ import { buildSyntheticSnapshot, runProgressScenario } from "../scenario/runProg
 import {
   findNextEligibleActor,
   getEligibleActorSeats,
+  hasSingleShowdownContender,
   normalizeTurnState,
 } from "../../core/turn/actorEligibility.js";
 import { normalizeDiscardIndexes, normalizeDrawAction } from "../../core/draw/normalizeDrawAction.js";
@@ -226,6 +227,24 @@ describe("MGX known game progress bug regressions", () => {
     expect(findNextEligibleActor(snapshot, { phase: "BET", startIndex: 1 })).toBe(2);
     // All-in seat must not appear in the BET eligible set.
     expect(getEligibleActorSeats(snapshot, { phase: "BET" })).not.toContain(1);
+  });
+
+  test("TURN-018 heads-up all-in does not settle before the remaining player responds", () => {
+    const snapshot = {
+      currentActor: 0,
+      currentBet: 40,
+      players: [
+        { stack: 460, betThisStreet: 0, hasActedThisRound: true },
+        { stack: 0, betThisStreet: 40, allIn: true },
+        { stack: 500, folded: true },
+      ],
+    };
+    expect(getEligibleActorSeats(snapshot, { phase: "BET" })).toEqual([0]);
+    expect(hasSingleShowdownContender(snapshot.players)).toBe(false);
+
+    const [hero, ...otherSeats] = snapshot.players;
+    expect(hasSingleShowdownContender([{ ...hero, folded: true }, ...otherSeats])).toBe(true);
+    expect(hasSingleShowdownContender([{ ...hero, allIn: true, stack: 0 }, ...otherSeats])).toBe(false);
   });
 
   test("TURN-012 all-in seat is included in DRAW actor selection when hasDrawn=false, excluded after hasDrawn=true", () => {

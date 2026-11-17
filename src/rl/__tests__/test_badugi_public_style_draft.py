@@ -20,7 +20,9 @@ class PublicStyleTests(unittest.TestCase):
         self.assertEqual(value.faced_bets, 40)
         self.assertAlmostEqual(value.fold_when_facing_mean, 17 / 43)
         self.assertAlmostEqual(value.call_when_facing_mean, 19 / 43)
-        self.assertAlmostEqual(value.raise_when_facing_mean, 7 / 42)
+        self.assertAlmostEqual(value.raise_when_facing_mean, 7 / 43)
+        self.assertAlmostEqual(value.fold_when_facing_mean + value.call_when_facing_mean +
+                               value.raise_when_facing_mean, 1)
         self.assertAlmostEqual(value.average_raise_amount_bb, 1.5)
         self.assertTrue(value.enough_history_for_diagnosis)
         self.assertFalse(value.calibrated_for_action)

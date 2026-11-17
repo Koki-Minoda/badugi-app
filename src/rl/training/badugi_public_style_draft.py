@@ -60,8 +60,14 @@ def estimate_public_style(history):
         raise ValueError("style has inconsistent public opportunities")
     fold = (history["foldedFacingBet"] + 1) / (faced + 3)
     call = (history["calledFacingBet"] + 1) / (faced + 3)
-    raise_mean, raise_half = _mean_and_half_width(history["raisedFacingBet"],
-                                                  faced - history["raisedFacingBet"])
+    # The three facing-bet actions share one Dirichlet(1, 1, 1) prior.
+    # Its raise marginal is Beta(raise + 1, fold + call + 2).
+    raise_alpha = history["raisedFacingBet"] + 1
+    raise_total = faced + 3
+    raise_mean = raise_alpha / raise_total
+    raise_half = min(1.0, 2.576 * math.sqrt(
+        raise_alpha * (raise_total - raise_alpha) /
+        (raise_total * raise_total * (raise_total + 1))))
     bet_mean, _ = _mean_and_half_width(history["betWhenFree"],
                                        history["freeBetOpportunities"] - history["betWhenFree"])
     total_draws = sum(draws)

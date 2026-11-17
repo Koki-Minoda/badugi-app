@@ -185,6 +185,7 @@ def audit_seed_history(root: Path, scheduled: dict[str, list[int]],
         if path.resolve() in excluded_paths:
             continue
         training_trace_files += 1
+        colliding_session_seeds = set()
         with path.open() as source:
             for line in source:
                 row = json.loads(line)
@@ -192,7 +193,9 @@ def audit_seed_history(root: Path, scheduled: dict[str, list[int]],
                 if type(seed) is not int:
                     raise ValueError(f"training hand trace is missing an integer seed: {path}")
                 training_hand_rows += 1
-                if seed % gate.SEED_PERIOD in residues:
+                if (seed % gate.SEED_PERIOD in residues and
+                        seed not in colliding_session_seeds):
+                    colliding_session_seeds.add(seed)
                     actual_collisions.append({"path": str(path.relative_to(root)),
                                               "seed": seed})
     return {

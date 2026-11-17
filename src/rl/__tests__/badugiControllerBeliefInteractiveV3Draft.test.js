@@ -2,6 +2,30 @@ import { describe, expect, it } from 'vitest';
 import { BadugiControllerBeliefInteractiveV3Draft } from '../badugiControllerBeliefInteractiveV3Draft.js';
 
 describe('candidate-only Badugi belief evidence', () => {
+  it('carries the observed blind across a completed hand with raises', () => {
+    const session = new BadugiControllerBeliefInteractiveV3Draft({
+      seatCount: 2, occupiedSeatCount: 2, isTournament: false, seed: 2150500001,
+      includeLedger: true,
+    });
+    let state = session.nextHand();
+    let raises = 0;
+    let decisions = 0;
+    while (state.type === 'decision') {
+      const order = state.phase === 'DRAW' ? [1, 0, 2, 3, 4] : [4, 3, 2, 1, 0];
+      const action = order.find((index) => state.legalMask[index] === 1);
+      if (state.phase === 'BET' && action === 4) raises += 1;
+      state = session.step(action);
+      decisions += 1;
+      expect(decisions).toBeLessThan(201);
+    }
+    expect(raises).toBeGreaterThan(0);
+    expect(state.ledger.accounted).toBe(state.ledger.chipPool);
+    const next = session.nextHand();
+    expect(next.type).toBe('decision');
+    const opponent = next.beliefEvidence.opponentPublicHistory[1 - next.seat];
+    expect(opponent.raiseAmountBbSum).toBeGreaterThan(0);
+  });
+
   it('uses the real controller but exposes only actor cards and public opponent actions', () => {
     const session = new BadugiControllerBeliefInteractiveV3Draft({
       seatCount: 2, occupiedSeatCount: 2, isTournament: false, seed: 66117,

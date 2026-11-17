@@ -37,8 +37,10 @@ export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerIn
         if (event.type === 'BET_ACTION') {
           history[event.action] += 1;
           if (event.action === 'raise') {
-            history.raiseAmountBbSum += event.amount /
-              this.blindStructure[this.state.blindState.blindLevelIndex].bb;
+            if (!Number.isFinite(this.currentHandBigBlind) || this.currentHandBigBlind <= 0) {
+              throw new TypeError('belief history requires the observed hand blind');
+            }
+            history.raiseAmountBbSum += event.amount / this.currentHandBigBlind;
           }
         } else if (event.type === 'DRAW_ACTION') {
           history.drawCounts[event.drawCount] += 1;
@@ -61,6 +63,7 @@ export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerIn
     }
     this.initialActorHands = new Map();
     this.currentHandDecisionRecords = [];
+    this.currentHandBigBlind = null;
     return super.nextHand();
   }
 
@@ -74,6 +77,10 @@ export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerIn
 
   currentDecision() {
     const decision = super.currentDecision();
+    if (this.currentHandBigBlind === null) this.currentHandBigBlind = decision.activeBigBlind;
+    if (this.currentHandBigBlind !== decision.activeBigBlind) {
+      throw new TypeError('belief history blind changed within a hand');
+    }
     const seat = decision.seat;
     const visible = buildBadugiControllerSeatEventViewV2Draft({
       publicEvents: this.publicEvents, actorDrawEvents: this.actorDrawEvents[seat], seatIndex: seat,

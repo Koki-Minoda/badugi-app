@@ -10,6 +10,14 @@ from rl.training.badugi_public_range_belief_draft import (
 class PublicRangeBeliefTests(unittest.TestCase):
     def setUp(self):
         self.seen = [(0, 0), (3, 1), (3, 2), (8, 3)]
+        self.public_history = {
+            'handsObserved': 40, 'fold': 10, 'check': 12, 'call': 40,
+            'bet': 8, 'raise': 10, 'raiseAmountBbSum': 15.0,
+            'drawCounts': [20, 50, 20, 10, 0],
+            'facedBetOpportunities': 60, 'foldedFacingBet': 10,
+            'calledFacingBet': 40, 'raisedFacingBet': 10,
+            'freeBetOpportunities': 20, 'betWhenFree': 8,
+        }
 
     def test_exact_seen_ace_and_four_counts(self):
         ranks = remaining_rank_counts(self.seen)
@@ -53,6 +61,34 @@ class PublicRangeBeliefTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "public action fields only"):
             estimate_public_range(actor_seen_cards=self.seen, public_events=[hidden],
                                   target_seat=1, seed=3, particles=64)
+
+    def test_prior_hand_style_can_condition_research_posterior_only(self):
+        event = {'type': 'BET_ACTION', 'seat': 1, 'action': 'CALL', 'amountBb': 1}
+        params = {'actor_seen_cards': self.seen, 'public_events': [event],
+                  'target_seat': 1, 'seed': 11, 'particles': 512}
+        base = estimate_public_range(**params)
+        weighted = estimate_public_range(**params,
+            opponent_public_history=self.public_history, style_weight=0.5)
+        self.assertEqual(weighted.style_weight_applied, 0.5)
+        self.assertNotEqual(weighted.probabilities, base.probabilities)
+        self.assertAlmostEqual(sum(weighted.probabilities), 1)
+        self.assertFalse(weighted.calibrated)
+        sparse = {**self.public_history, 'handsObserved': 1,
+                  'fold': 0, 'check': 0, 'call': 2, 'bet': 0,
+                  'raise': 0, 'raiseAmountBbSum': 0,
+                  'drawCounts': [0, 1, 0, 0, 0],
+                  'facedBetOpportunities': 2, 'foldedFacingBet': 0,
+                  'calledFacingBet': 2, 'raisedFacingBet': 0,
+                  'freeBetOpportunities': 0, 'betWhenFree': 0}
+        fallback = estimate_public_range(**params,
+            opponent_public_history=sparse, style_weight=0.5)
+        self.assertEqual(fallback, base)
+        with self.assertRaisesRegex(ValueError, 'exact public-history'):
+            estimate_public_range(**params,
+                opponent_public_history={**self.public_history, 'opponentPrivateCards': []},
+                style_weight=0.5)
+        with self.assertRaisesRegex(ValueError, 'style weight'):
+            estimate_public_range(**params, style_weight=1.1)
 
     def test_uncalibrated_or_sparse_evidence_cannot_override(self):
         estimate = estimate_public_range(actor_seen_cards=self.seen, public_events=[

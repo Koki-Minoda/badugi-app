@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 from rl.env.badugi_env import build_deck, evaluate_badugi
 from rl.training.badugi_starting_ranges import best_badugi_keep
+from rl.training.badugi_public_style_draft import estimate_public_style
 
 DECK = tuple(build_deck())
 BUCKETS = ("one_or_two", "three", "ten_to_king_badugi", "nine_or_better_badugi")
@@ -80,6 +81,32 @@ def _likelihood(event, bucket, made):
     return 0.40 - strength * 0.10
 
 
+def _style_conditioned_likelihood(event, bucket, made, style, weight):
+    """Research-only mixture of hand evidence and prior-hand public tendency.
+
+    The style term is constant across particle hands. It reduces how strongly
+    a frequent action is taken as evidence of a strong hand. The mixture weight
+    must be chosen on development data and independently checked before use.
+    """
+    baseline = _likelihood(event, bucket, made)
+    if style is None or event["type"] != "BET_ACTION" or weight == 0:
+        return baseline
+    action = event["action"]
+    if action in ("FOLD", "CALL", "RAISE"):
+        actions = ("FOLD", "CALL", "RAISE")
+        style_probability = {
+            "FOLD": style.fold_when_facing_mean,
+            "CALL": style.call_when_facing_mean,
+            "RAISE": style.raise_when_facing_mean,
+        }[action]
+    else:
+        actions = ("CHECK", "BET")
+        style_probability = style.bet_when_free_mean if action == "BET" else 1 - style.bet_when_free_mean
+    base_probability = baseline / sum(_likelihood({**event, "action": candidate}, bucket, made)
+                                      for candidate in actions)
+    return (1 - weight) * base_probability + weight * style_probability
+
+
 def _after_draw(hand, used_cards, draw_count, unseen, rng):
     if draw_count == 0:
         return hand, used_cards
@@ -104,10 +131,12 @@ class RangeEstimate:
     public_events_used: int
     particles: int
     calibrated: bool = False
+    style_weight_applied: float = 0.0
 
 
 def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
-                          particles=2048):
+                          particles=2048, opponent_public_history=None,
+                          style_weight=0.0):
     """Particle posterior for a single opponent, with no private-opponent input.
 
     Rebuild from all actor-visible cards and chronological public events. This
@@ -118,6 +147,13 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
         raise ValueError("range estimate requires seat, deterministic seed and >=64 particles")
     if not isinstance(public_events, (list, tuple)):
         raise ValueError("range estimate requires ordered public events")
+    if type(style_weight) not in (int, float) or not math.isfinite(style_weight) or not 0 <= style_weight <= 1:
+        raise ValueError("style weight must be finite and inside [0, 1]")
+    style = (estimate_public_style(opponent_public_history)
+             if opponent_public_history is not None else None)
+    if style is None or not style.enough_history_for_diagnosis:
+        style = None
+    applied_weight = float(style_weight) if style is not None else 0.0
     unseen = tuple(card for card in DECK if card not in seen)
     if len(unseen) < 8:
         raise ValueError("insufficient unseen cards")
@@ -133,7 +169,8 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
         next_weights = []
         for hand, weight in zip(hands, weights):
             made = evaluate_badugi(hand)[0]
-            next_weights.append(weight * _likelihood(event, _bucket(hand), made))
+            next_weights.append(weight * _style_conditioned_likelihood(
+                event, _bucket(hand), made, style, applied_weight))
         total = sum(next_weights)
         if total <= 0 or not math.isfinite(total):
             raise ValueError("range weights collapsed")
@@ -166,7 +203,8 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
     for hand, weight in zip(hands, weights):
         probabilities[_bucket(hand)] += weight
     counts = remaining_rank_counts(seen)
-    return RangeEstimate(tuple(probabilities), counts[0], counts[3], used, particles)
+    return RangeEstimate(tuple(probabilities), counts[0], counts[3], used, particles,
+                         style_weight_applied=applied_weight)
 
 
 def guarded_range_action(*, base_action, legal_mask, hero_made, hero_high,

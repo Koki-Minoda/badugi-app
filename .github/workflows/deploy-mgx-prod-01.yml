@@ -301,6 +301,7 @@ jobs:
           MGX_CASH_ANDROID_HANDS: "5"
         run: |
           bash scripts/ci/run-with-backend.sh npx playwright test \
+            tests/e2e/cashout-new-table.spec.ts \
             tests/e2e/production-cash-playability.spec.ts \
             tests/e2e/fixed-limit-opening-bet.spec.ts \
             tests/e2e/seat-hud-navigation.spec.ts \

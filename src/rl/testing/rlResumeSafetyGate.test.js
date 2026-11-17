@@ -115,12 +115,15 @@ describe("MGX RL resume safety gate", () => {
     expect(result.handEnded).toBe(true);
   });
 
-  it("validates Badugi 96-dim schema and ONNX feature shape", () => {
+  it("keeps legacy Badugi features separate from the Pro controller schema", () => {
     const payload = badugiPayload();
-    const entry = selectModelForVariant({ variantId: "D03", tierId: "pro" });
+    const entry = selectModelForVariant({ variantId: "D03", tierId: "iron" });
+    const pro = selectModelForVariant({ variantId: "D03", tierId: "pro" });
     expect(BADUGI_OBSERVATION_VECTOR_SIZE).toBe(96);
     expect(entry.inputShape).toEqual([96]);
     expectFiniteVector(buildBadugiOnnxFeatures(entry, payload), 96, "badugi-onnx");
+    expect(pro.featureSet).toBe("badugi-controller-observation-v2-draft");
+    expect(() => buildBadugiOnnxFeatures(pro, payload)).toThrow(/Unsupported Badugi ONNX feature set/);
   });
 
   test.each(["D01", "D02", "S01", "S02"])("%s validates draw 96-slot schema and ONNX route", (variantId) => {

@@ -93,6 +93,7 @@ process.stdout.write(JSON.stringify(JSON.parse(input).map(row => ({
         cwd=ROOT, capture_output=True, text=True, check=True,
     )
     rows = []
+    live_rows = []
     encoded = json.loads(result.stdout)
     for case, vectors in zip(cases, encoded):
         actual = vectors["training"]
@@ -104,12 +105,37 @@ process.stdout.write(JSON.stringify(JSON.parse(input).map(row => ({
             "javascriptLength": len(actual), "pythonLength": len(expected),
             "differences": differences,
         })
+        live_differences = [{"slot": slot, "live": live, "training": training}
+                            for slot, (live, training) in enumerate(zip(vectors["live"], actual))
+                            if abs(live - training) > 1e-6]
+        live_rows.append({
+            "seed": case["seed"], "phase": case["phase"], "scenario": case["scenario"],
+            "seat": case["seat"], "liveLength": len(vectors["live"]),
+            "trainingLength": len(actual), "differences": live_differences,
+        })
     passed = all(row["javascriptLength"] == row["pythonLength"] == 96 and
                  not row["differences"] for row in rows)
+    live_matches = all(row["liveLength"] == row["trainingLength"] == 96 and
+                       not row["differences"] for row in live_rows)
     report = {
-        "status": "PASS" if passed else "MISMATCH",
+        "status": ("TRAINING_PARITY_PASS_LIVE_MATCH" if live_matches else
+                   "TRAINING_PARITY_PASS_LIVE_MISMATCH") if passed else "TRAINING_PARITY_MISMATCH",
         "scope": "Offline Python six-max state to isolated JS training encoder; not the live inference path or model-strength QA.",
         "caseCount": len(rows), "rows": rows,
+        "liveComparison": {
+            "status": "MATCH" if live_matches else "MISMATCH",
+            "scope": "Same constructed public state, live v1 encoder versus Python-matched six-max training encoder; not played-hand EV.",
+            "caseCount": len(live_rows),
+            "differentCount": sum(bool(row["differences"]) for row in live_rows),
+            "differentSlots": sorted({difference["slot"] for row in live_rows
+                                      for difference in row["differences"]}),
+            "byPhase": {phase: {
+                "caseCount": sum(row["phase"] == phase for row in live_rows),
+                "differentCount": sum(row["phase"] == phase and bool(row["differences"])
+                                      for row in live_rows),
+            } for phase in ("BET", "DRAW")},
+            "rows": live_rows,
+        },
     }
     if args.model:
         import numpy as np
@@ -153,6 +179,8 @@ process.stdout.write(JSON.stringify(JSON.parse(input).map(row => ({
     output.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps({"status": report["status"], "caseCount": len(rows),
                       "mismatches": sum(bool(row["differences"]) for row in rows),
+                      "liveComparison": {key: value for key, value in report["liveComparison"].items()
+                                         if key in ("caseCount", "differentCount", "differentSlots", "byPhase")},
                       "decisionComparison": {key: value for key, value in
                                              report.get("decisionComparison", {}).items()
                                              if key in ("caseCount", "differentCount", "byPhase")}}))

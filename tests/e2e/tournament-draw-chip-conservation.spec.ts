@@ -35,9 +35,14 @@ for(const delay of process.env.MGX_CPU_DECISION_DELAY_MS?[Number(process.env.MGX
     const history=histories.find(item=>item.handId===id);
     expect(history).toBeTruthy();
     expect(history.seats.reduce((sum,seat)=>sum+seat.endStack,0),'hand payout conserves the table chips').toBe(history.seats.reduce((sum,seat)=>sum+seat.startStack,0));
-    const blinds=history.seats.flatMap(seat=>seat.actions).filter(action=>action.type==='blind');
-    expect(blinds.find(action=>action.metadata.blind==='SB')?.amount).toBe(completed.size>2?10:5);
-    expect(blinds.find(action=>action.metadata.blind==='BB')?.amount).toBe(completed.size>2?20:10);
+    const expectedSmallBlind=completed.size>2?10:5;
+    const expectedBigBlind=completed.size>2?20:10;
+    expect(history.level).toEqual({sb:expectedSmallBlind,bb:expectedBigBlind,ante:0});
+    const blinds=history.seats.flatMap(seat=>seat.actions.filter(action=>action.type==='blind').map(action=>({seat,action})));
+    const smallBlind=blinds.find(({action})=>action.metadata.blind==='SB');
+    const bigBlind=blinds.find(({action})=>action.metadata.blind==='BB');
+    expect(smallBlind?.action.amount).toBe(Math.min(expectedSmallBlind,smallBlind?.seat.startStack??0));
+    expect(bigBlind?.action.amount).toBe(Math.min(expectedBigBlind,bigBlind?.seat.startStack??0));
     const tournament=await page.evaluate(()=>JSON.parse(localStorage.getItem('mgx.tournament.mtt.active')).tournamentState);
     expect(tournament.levelIndex).toBe(completed.size>=2?1:0);
     expect(tournament.tables.find(table=>table.tableId==='table-1').handsPlayedAtThisLevel).toBe(completed.size>=2?completed.size-2:completed.size);

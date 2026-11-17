@@ -215,6 +215,22 @@ describe("BadugiUIAdapter", () => {
     expect(actions).toContain("raise");
   });
 
+  it("uses live street commitments when the cached bet still says 60", () => {
+    const adapter = new BadugiUIAdapter({});
+    const snapshot = mockSnapshot({
+      currentBet: 60,
+      players: [
+        { name: "Hero", stack: 460, betThisRound: 40, betThisStreet: 0, hand: ["AS", "KH", "QC", "JD"] },
+        { name: "CPU 1", stack: 460, betThisRound: 40, hand: ["2S", "3H", "4C", "5D"] },
+      ],
+    });
+    const controls = adapter.buildViewProps({ controllerSnapshot: snapshot, tableConfig: mockTableConfig }).controlsConfig;
+    expect(controls.currentBet).toBe(40);
+    expect(controls.canCheck).toBe(true);
+    expect(adapter.getAvailableActions({ controllerSnapshot: snapshot, seatIndex: 0 })).toContain("check");
+    expect(adapter.getAvailableActions({ controllerSnapshot: snapshot, seatIndex: 0 })).not.toContain("call");
+  });
+
   it("exposes fixed-limit bet sizing per street", () => {
     const adapter = new BadugiUIAdapter({});
     const preDraw = adapter.buildViewProps({
@@ -224,12 +240,19 @@ describe("BadugiUIAdapter", () => {
     expect(preDraw.controlsConfig.betSize).toBe(mockTableConfig.bbValue);
     expect(preDraw.controlsConfig.isBigBetStreet).toBe(false);
 
-    const postDraw = adapter.buildViewProps({
+    const afterFirstDraw = adapter.buildViewProps({
       controllerSnapshot: mockSnapshot({ drawRound: 1 }),
       tableConfig: mockTableConfig,
     });
-    expect(postDraw.controlsConfig.betSize).toBe(mockTableConfig.bbValue * 2);
-    expect(postDraw.controlsConfig.isBigBetStreet).toBe(true);
+    expect(afterFirstDraw.controlsConfig.betSize).toBe(mockTableConfig.bbValue);
+    expect(afterFirstDraw.controlsConfig.isBigBetStreet).toBe(false);
+
+    const afterSecondDraw = adapter.buildViewProps({
+      controllerSnapshot: mockSnapshot({ drawRound: 2 }),
+      tableConfig: mockTableConfig,
+    });
+    expect(afterSecondDraw.controlsConfig.betSize).toBe(mockTableConfig.bbValue * 2);
+    expect(afterSecondDraw.controlsConfig.isBigBetStreet).toBe(true);
   });
 
   it("compresses seat labels when busted seats are between blinds", () => {

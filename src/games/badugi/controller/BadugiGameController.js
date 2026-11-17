@@ -104,6 +104,13 @@ function deriveLegalActions(snapshot, seatIndex) {
     return [];
   }
 
+  if (snapshot?.phase === "DRAW") {
+    return isSeatEligibleForDraw(player) && !player.hasDrawn
+      ? [{ type: "DRAW" }]
+      : [];
+  }
+  if (snapshot?.phase !== "BET") return [];
+
   const currentBet = maxBetThisRound(players);
   const betThisRound =
     typeof player.betThisRound === "number"
@@ -136,11 +143,6 @@ function deriveLegalActions(snapshot, seatIndex) {
     hasActiveNonAllInOpponent(players, seatIndex)
   ) {
     baseActions.push({ type: "RAISE" });
-  }
-
-  const isDrawPhase = snapshot?.phase === "DRAW";
-  if (isDrawPhase && isSeatEligibleForDraw(player) && !player.hasDrawn) {
-    baseActions.push({ type: "DRAW" });
   }
 
   return baseActions;
@@ -202,6 +204,7 @@ export class BadugiGameController extends GameController {
 
   startNewHand(options = {}) {
     const result = this.legacy.startNewHand(options);
+    this.config.betSize = result.blindValues?.bb ?? this.config.betSize;
     this._lastState = this._buildControllerState({
       handIndex: (this._lastState?.handIndex ?? 0) + 1,
       context: result,
@@ -251,6 +254,7 @@ export class BadugiGameController extends GameController {
         Math.max(0, (this.config.blindStructure?.length ?? DEFAULT_BLINDS.length) - 1),
       drawCardsForSeat: options.drawCardsForSeat ?? null,
     });
+    this.config.betSize = startPayload.blindValues?.bb ?? this.config.betSize;
 
     return this._buildControllerState({
       handIndex: (prevState?.handIndex ?? 0) + 1,

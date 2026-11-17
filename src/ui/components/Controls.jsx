@@ -13,6 +13,7 @@ export default function Controls({
   onDraw,
   canDraw = true,
   canRaise = true,
+  legalActions = null,
   betSizing = null,
   layoutMode = "desktop",
   className,
@@ -37,8 +38,8 @@ export default function Controls({
   ]);
   const betActions = useMemo(() => {
     if (phase !== "BET") return [];
-    return getAvailableActions({ currentBet, player, canRaise });
-  }, [phase, currentBet, player, canRaise]);
+    return getAvailableActions({ currentBet, player, canRaise, legalActions });
+  }, [phase, currentBet, player, canRaise, legalActions]);
 
   if (!player) return null;
   const toCall = Math.max(0, Number(currentBet || 0) - Number(player.betThisRound || 0));

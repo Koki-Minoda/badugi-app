@@ -190,8 +190,13 @@ def teacher_action(env) -> int:
     position_fraction = env._position_fraction() if hasattr(env, "_position_fraction") else 0.5
     is_sixmax = table_size >= 6
     late_position = position_fraction >= 0.6
-    opponent_profile = getattr(getattr(env, "opponent_profile", None), "name", "")
-    passive_or_draw_heavy = opponent_profile in {"loose_passive", "tight_passive", "draw_heavy"}
+    # Opt-in observable training cannot label the opponent from its private
+    # simulator profile. Preserve the historical teacher for legacy runs.
+    if getattr(env, "teacher_observable_only", False):
+        passive_or_draw_heavy = False
+    else:
+        opponent_profile = getattr(getattr(env, "opponent_profile", None), "name", "")
+        passive_or_draw_heavy = opponent_profile in {"loose_passive", "tight_passive", "draw_heavy"}
     exploit_opportunity = (
         env._opponent_exploit_opportunity()
         if hasattr(env, "_opponent_exploit_opportunity")

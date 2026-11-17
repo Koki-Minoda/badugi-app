@@ -49,6 +49,47 @@ class ReplayBuffer:
     def __len__(self) -> int:
         return len(self.storage)
 
+    def state_dict(self) -> dict:
+        """Capture replay contents and sampling progress for a training restart."""
+        return {
+            "capacity": self.capacity,
+            "storage": list(self.storage),
+            "next_idx": self.next_idx,
+            "alpha": self.alpha,
+            "beta_start": self.beta_start,
+            "beta_frames": self.beta_frames,
+            "frame": self._frame,
+            "priorities": self._priorities.copy(),
+        }
+
+    def load_state_dict(self, state: dict) -> None:
+        """Restore a trusted local snapshot without silently changing replay rules."""
+        if (state.get("capacity") != self.capacity or
+                state.get("alpha") != self.alpha or
+                state.get("beta_start") != self.beta_start or
+                state.get("beta_frames") != self.beta_frames):
+            raise ValueError("replay configuration differs from checkpoint")
+        storage = state.get("storage")
+        priorities = state.get("priorities")
+        next_idx = state.get("next_idx")
+        frame = state.get("frame")
+        if (not isinstance(storage, list) or len(storage) > self.capacity or
+                not all(isinstance(item, Transition) for item in storage) or
+                not isinstance(priorities, np.ndarray) or
+                priorities.shape != (self.capacity,) or
+                priorities.dtype != np.float32 or
+                not np.isfinite(priorities).all() or
+                (len(storage) and np.any(priorities[:len(storage)] <= 0)) or
+                not isinstance(next_idx, int) or
+                not 0 <= next_idx < self.capacity or
+                (len(storage) < self.capacity and next_idx != len(storage)) or
+                not isinstance(frame, int) or frame < 0):
+            raise ValueError("invalid replay checkpoint")
+        self.storage = list(storage)
+        self._priorities = priorities.copy()
+        self.next_idx = next_idx
+        self._frame = frame
+
     def add(
         self,
         obs,

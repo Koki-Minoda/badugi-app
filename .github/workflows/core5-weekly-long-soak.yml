@@ -15,7 +15,7 @@ concurrency:
 jobs:
   nightly-soak-gate:
     name: ${{ matrix.target }} 400-hand gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 360
     strategy:
       fail-fast: false

@@ -33,7 +33,9 @@ export async function applyBracesPatch(packageDirectory) {
     // installation must fail, not be silently repaired or marked protected.
     await verifyBracesPatch(packageDirectory, 'original')
   }
-  execFileSync('git', ['apply', '--no-index', resolve(patchDirectory, 'depth-limit.patch')], {
+  // Git for Windows commonly defaults to core.autocrlf=true. Keep the patched
+  // dependency byte-for-byte identical to the audited LF checksums.
+  execFileSync('git', ['-c', 'core.autocrlf=false', 'apply', '--no-index', resolve(patchDirectory, 'depth-limit.patch')], {
     cwd: packageDirectory, stdio: 'pipe',
   })
   await verifyBracesPatch(packageDirectory)

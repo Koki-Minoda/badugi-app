@@ -1,0 +1,356 @@
+"""Isolated D03 controller evaluation; frozen only with a matching manifest.
+
+Each row is a fresh controller session. Hands within it share a stack trajectory.
+An exploratory run cannot be re-labelled as a frozen evaluation afterward.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import random
+import subprocess
+import time
+from collections import Counter
+from pathlib import Path
+
+import numpy as np
+import onnxruntime as ort
+
+if __package__:
+    from .train_badugi_controller_v2_draft import (
+        ControllerBridge, DQNAgent, PROFILES, SCHEMA, check_decision, contract_hash,
+        opponent_action, observable_reference_action,
+    )
+else:
+    from train_badugi_controller_v2_draft import (
+        ControllerBridge, DQNAgent, PROFILES, SCHEMA, check_decision, contract_hash,
+        opponent_action, observable_reference_action,
+    )
+from rl.env.badugi_env import evaluate_badugi
+
+GROUPS = tuple((seats, occupied, tournament) for tournament in (False, True)
+               for seats, occupied in ((2, 2), (3, 3), (6, 6), (6, 2), (6, 3)))
+GROUP_NAMES = [f'{seats}/{occupied}-{("mtt" if tournament else "cash")}'
+               for seats, occupied, tournament in GROUPS]
+REFERENCE_POLICY_ID = 'observable-reference-v1'
+
+
+def file_sha256(path):
+    digest = hashlib.sha256()
+    with path.open('rb') as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def opening_context(observation, action):
+    """Public decision context and hero's own cards at the first pre-draw BET."""
+    cards = [(round(observation[2 * i] * 12), round(observation[2 * i + 1] * 3))
+             for i in range(4)]
+    if len(set(cards)) != 4:
+        raise ValueError('opening observation does not contain four distinct cards')
+    made_cards, ranks = evaluate_badugi(cards)
+    high_rank = max(ranks) if ranks else 12
+    if (round(observation[24] * 4) != made_cards or
+            round(observation[25] * 12) != high_rank):
+        raise ValueError('opening card evaluation differs from controller observation')
+    return {'cards': cards, 'madeCards': made_cards, 'highRank': high_rank,
+            'rankSum': sum(ranks), 'relativePosition': observation[12],
+            'stackBb': observation[14] * 200,
+            'toCallBb': observation[18] * 20,
+            'raiseCount': round(observation[20] * 4), 'actionIndex': action}
+
+
+class OnnxAgent:
+    """Use the same six Q values and legal mask as the browser adapter."""
+
+    def __init__(self, path):
+        self.session = ort.InferenceSession(str(path), providers=['CPUExecutionProvider'])
+        inputs, outputs = self.session.get_inputs(), self.session.get_outputs()
+        if (len(inputs) != 1 or len(outputs) != 1 or
+                inputs[0].name != 'observation' or outputs[0].name != 'q_values' or
+                inputs[0].shape[-1] != 96 or outputs[0].shape[-1] != 6):
+            raise ValueError('ONNX candidate observation/action contract mismatch')
+
+    def act(self, obs, epsilon, action_mask):
+        if epsilon != 0.0:
+            raise ValueError('controller validation requires greedy ONNX inference')
+        q_values = self.session.run(['q_values'], {'observation': obs[None, :]})[0][0]
+        if q_values.shape != (6,) or not np.all(np.isfinite(q_values)):
+            raise ValueError('ONNX candidate returned invalid Q values')
+        allowed = np.flatnonzero(np.asarray(action_mask) > 0)
+        if not len(allowed):
+            raise ValueError('controller validation requires legal ONNX actions')
+        return int(allowed[np.argmax(q_values[allowed])])
+
+
+class PhaseRoutedAgent:
+    """Diagnostic policy routing on the public phase slot, with no hidden profile input."""
+
+    def __init__(self, bet_agent, draw_agent):
+        self.bet_agent = bet_agent
+        self.draw_agent = draw_agent
+
+    def act(self, obs, epsilon, action_mask):
+        phase_draw = float(obs[8])
+        if phase_draw not in (0.0, 1.0):
+            raise ValueError('controller phase slot must be exactly zero or one')
+        agent = self.draw_agent if phase_draw == 1.0 else self.bet_agent
+        return agent.act(obs, epsilon=epsilon, action_mask=action_mask)
+
+
+class FoldGuardedPhaseAgent(PhaseRoutedAgent):
+    """Exploratory BET guard: retain a published Standard FOLD on public input."""
+
+    def act(self, obs, epsilon, action_mask):
+        phase_draw = float(obs[8])
+        if phase_draw not in (0.0, 1.0):
+            raise ValueError('controller phase slot must be exactly zero or one')
+        standard_action = self.draw_agent.act(obs, epsilon=epsilon, action_mask=action_mask)
+        if phase_draw == 1.0 or standard_action == 0:
+            return standard_action
+        return self.bet_agent.act(obs, epsilon=epsilon, action_mask=action_mask)
+
+
+def phase_model_sha(bet_path, draw_path, fold_guardian=False):
+    bet_sha = hashlib.sha256(bet_path.read_bytes()).hexdigest()
+    draw_sha = hashlib.sha256(draw_path.read_bytes()).hexdigest()
+    suffix = 'STANDARD_FOLD_GUARDIAN\n' if fold_guardian else ''
+    return hashlib.sha256(f'{bet_sha}:BET\n{draw_sha}:DRAW\n{suffix}'.encode()).hexdigest()
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model', type=Path)
+    parser.add_argument('--onnx-model', type=Path)
+    parser.add_argument('--bet-onnx', type=Path)
+    parser.add_argument('--draw-onnx', type=Path)
+    parser.add_argument('--reference', action='store_true')
+    parser.add_argument('--fold-guardian', action='store_true',
+                        help='Exploratory phase pair only: keep published Standard BET FOLD')
+    parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--sessions-per-profile', type=int, default=6)
+    parser.add_argument('--session-start-index', type=int, default=0,
+                        help='Zero-based first session index for a frozen incremental look')
+    parser.add_argument('--hands-per-session', type=int, default=20)
+    parser.add_argument('--seed-base', type=int, default=410040001)
+    parser.add_argument('--evaluation-manifest', type=Path)
+    parser.add_argument('--decision-ledger', action='store_true',
+                        help='Record every controller decision and terminal all-seat chip ledger')
+    parser.add_argument('--only-group', choices=GROUP_NAMES,
+                        help='Exploratory diagnosis only; frozen product evaluations require all groups')
+    parser.add_argument('--only-profile', choices=PROFILES,
+                        help='Exploratory diagnosis only; frozen product evaluations require all profiles')
+    parser.add_argument('--capture-opening', action='store_true',
+                        help='Exploratory replay only: save hero first pre-draw BET cards/context')
+    args = parser.parse_args()
+    if (args.output.exists() or not 1 <= args.sessions_per_profile <= 5000 or
+            not 0 <= args.session_start_index or
+            args.session_start_index + args.sessions_per_profile > 5000 or
+            not 1 <= args.hands_per_session <= 100):
+        raise ValueError('new output directory and bounded session counts required')
+    if args.session_start_index and not args.evaluation_manifest:
+        raise ValueError('incremental collection requires a frozen manifest')
+    if args.sessions_per_profile > 100 and not args.evaluation_manifest:
+        raise ValueError('large controller evaluations require a frozen manifest')
+    if args.evaluation_manifest and (args.only_group or args.only_profile):
+        raise ValueError('frozen product evaluations cannot filter groups or profiles')
+    if args.evaluation_manifest and args.capture_opening:
+        raise ValueError('opening capture is diagnostic only; do not change a frozen evaluation')
+    phase_pair = args.bet_onnx is not None and args.draw_onnx is not None
+    if args.fold_guardian and not phase_pair:
+        raise ValueError('fold guardian requires a BET candidate and published Standard DRAW ONNX')
+    if ((args.bet_onnx is None) != (args.draw_onnx is None) or
+            sum((args.reference, args.model is not None,
+                 args.onnx_model is not None, phase_pair)) != 1):
+        raise ValueError('choose exactly one of --model, --onnx-model, --reference or a phase pair')
+    agent = (None if args.reference else
+             (FoldGuardedPhaseAgent if args.fold_guardian else PhaseRoutedAgent)(
+                 OnnxAgent(args.bet_onnx), OnnxAgent(args.draw_onnx))
+             if phase_pair else OnnxAgent(args.onnx_model) if args.onnx_model else
+             DQNAgent.load(str(args.model), device='cpu'))
+    if args.model and (agent.obs_dim != 96 or agent.n_actions != 6 or
+                  agent.checkpoint_training_state.get('schemaVersion') != SCHEMA):
+        raise ValueError('candidate observation/action contract mismatch')
+    candidate_path = args.model or args.onnx_model
+    model_sha = (REFERENCE_POLICY_ID if args.reference else
+                 phase_model_sha(args.bet_onnx, args.draw_onnx, args.fold_guardian) if phase_pair else
+                 hashlib.sha256(candidate_path.read_bytes()).hexdigest())
+    code_sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+    manifest_sha = None
+    if args.evaluation_manifest:
+        manifest_bytes = args.evaluation_manifest.read_bytes()
+        manifest = json.loads(manifest_bytes)
+        manifest_sha = hashlib.sha256(manifest_bytes).hexdigest()
+        if (manifest.get('status') != 'FROZEN' or
+                manifest.get('codeGitSha') != code_sha or
+                manifest.get('contractSha256') != contract_hash() or
+                (manifest.get('referencePolicyId') if args.reference else
+                 manifest.get('modelSha256')) != model_sha or
+                manifest.get('seedBase') != args.seed_base or
+                type(manifest.get('sessionsPerProfileGroup')) is not int or
+                not (args.session_start_index + args.sessions_per_profile <=
+                     manifest['sessionsPerProfileGroup'] <= 5000) or
+                manifest.get('handsPerSessionMax') != args.hands_per_session or
+                manifest.get('groupMatrix') != GROUP_NAMES or
+                manifest.get('opponentProfiles') != list(PROFILES)):
+            raise ValueError('evaluation arguments differ from frozen manifest')
+        if manifest.get('requireDecisionLedger', False) != args.decision_ledger:
+            raise ValueError('decision-ledger setting differs from frozen manifest')
+        if manifest.get('foldGuardian', False) != args.fold_guardian:
+            raise ValueError('fold guardian differs from frozen manifest')
+        if phase_pair and (manifest.get('betModelSha256') != hashlib.sha256(args.bet_onnx.read_bytes()).hexdigest() or
+                           manifest.get('drawModelSha256') != hashlib.sha256(args.draw_onnx.read_bytes()).hexdigest()):
+            raise ValueError('phase model identities differ from frozen manifest')
+    args.output.mkdir(parents=True)
+    session_partial = args.output / 'sessions.jsonl.partial'
+    hand_partial = args.output / 'hand-trace.jsonl.partial'
+    session_stream = session_partial.open('x')
+    hand_stream = hand_partial.open('x')
+    session_count = 0
+    total_hands = 0
+    zero_sum_sessions = 0
+    bridge = ControllerBridge()
+    try:
+        for group_index, (seats, occupied, tournament) in enumerate(GROUPS):
+            if args.only_group and GROUP_NAMES[group_index] != args.only_group:
+                continue
+            for profile_index, profile in enumerate(PROFILES):
+                if args.only_profile and profile != args.only_profile:
+                    continue
+                for session_index in range(args.session_start_index,
+                                           args.session_start_index + args.sessions_per_profile):
+                    seed = args.seed_base + group_index * 1_000_000 + profile_index * 10_000 + session_index
+                    rng = random.Random(seed + 997)
+                    response = bridge.send({'command': 'reset', 'seatCount': seats,
+                                            'occupiedSeatCount': occupied,
+                                            'isTournament': tournament, 'seed': seed,
+                                            'includeLedger': args.decision_ledger})
+                    hero = session_index % occupied
+                    chips = 0
+                    chip_bb = 0.0
+                    hands = 0
+                    actions = Counter()
+                    zero_sum = True
+                    no_decision_hands = 0
+                    for hand_index in range(args.hands_per_session):
+                        if hand_index:
+                            response = bridge.send({'command': 'next_hand'})
+                        if response['type'] == 'hand_end' and response['decisionCount'] == 0:
+                            break
+                        if response['type'] != 'decision':
+                            raise ValueError('session did not enter a controller decision')
+                        active_bb = response['activeBigBlind']
+                        hero_decisions = 0
+                        decision_trace = []
+                        first_opening = None
+                        while response['type'] == 'decision':
+                            check_decision(response, seats, occupied, tournament)
+                            start = time.perf_counter()
+                            if response['seat'] == hero:
+                                action = (observable_reference_action(response) if args.reference else
+                                          agent.act(np.asarray(response['observation'], dtype=np.float32),
+                                                    epsilon=0.0,
+                                                    action_mask=np.asarray(response['legalMask'], dtype=np.float32)))
+                                actions[f"{response['phase']}:{action}"] += 1
+                                hero_decisions += 1
+                                if (args.capture_opening and first_opening is None and
+                                        response['phase'] == 'BET' and response['drawRoundIndex'] == 0):
+                                    first_opening = opening_context(response['observation'], action)
+                                    first_opening['decisionOrdinal'] = len(decision_trace)
+                            else:
+                                action = opponent_action(response, profile, rng)
+                            decision_trace.append({'seat': response['seat'],
+                                                   'phase': response['phase'],
+                                                   'actionIndex': action,
+                                                   'legalMask': response['legalMask'],
+                                                   'status': ('reference' if args.reference else 'used')
+                                                   if response['seat'] == hero else 'opponent',
+                                                   'elapsedMs': (time.perf_counter() - start) * 1000,
+                                                   **({'ledger': response['ledger']}
+                                                      if args.decision_ledger else {})})
+                            if response['legalMask'][action] != 1:
+                                raise ValueError('illegal selected action')
+                            response = bridge.send({'command': 'step', 'actionIndex': action})
+                        if response['type'] != 'hand_end':
+                            raise ValueError('controller hand did not terminate')
+                        zero_sum &= sum(response['chipDeltaBySeat']) == 0
+                        chips += response['chipDeltaBySeat'][hero]
+                        chip_bb += response['chipDeltaBySeat'][hero] / active_bb
+                        hands += 1
+                        no_decision_hands += hero_decisions == 0
+                        if len(decision_trace) != response['decisionCount'] or len(decision_trace) != len(response['publicActionTrace']):
+                            raise ValueError('controller decision and public action trace length mismatch')
+                        for public_action in response['publicActionTrace']:
+                            if public_action['type'] == 'BET_ACTION':
+                                if (public_action['action'] not in ('fold', 'check', 'call', 'bet', 'raise') or
+                                        not 0 <= public_action['amount'] <= public_action['stackBefore']):
+                                    raise ValueError('invalid public bet action or amount')
+                            elif public_action['type'] == 'DRAW_ACTION':
+                                if not 0 <= public_action['drawCount'] <= 4:
+                                    raise ValueError('invalid public draw count')
+                            else:
+                                raise ValueError('unknown public action type')
+                        hand_row = {'seed': seed, 'handIndex': hand_index,
+                                          'group': f'{seats}/{occupied}-{("mtt" if tournament else "cash")}',
+                                          'profile': profile, 'heroSeat': hero,
+                                          'activeBigBlind': active_bb,
+                                          'startingStacks': response['startingStacks'],
+                                          'endingStacks': response['endingStacks'],
+                                          'chipDeltaBySeat': response['chipDeltaBySeat'],
+                                          'decisions': decision_trace,
+                                          'publicActionTrace': response['publicActionTrace'],
+                                          **({'terminalLedger': response['ledger']}
+                                             if args.decision_ledger else {})}
+                        if args.capture_opening:
+                            hand_row['heroOpening'] = first_opening
+                        hand_stream.write(json.dumps(hand_row, separators=(',', ':')) + '\n')
+                    session_row = {'group': f'{seats}/{occupied}-{("mtt" if tournament else "cash")}',
+                                 'seatCount': seats, 'occupiedSeatCount': occupied,
+                                 'isTournament': tournament, 'profile': profile,
+                                 'seed': seed, 'heroSeat': hero,
+                                 'hands': hands, 'chipDelta': chips,
+                                 'chipPerHand': chips / hands if hands else None,
+                                 'chipBbPerHand': chip_bb / hands if hands else None,
+                                 'noHeroDecisionHands': no_decision_hands,
+                                 'zeroSum': zero_sum, 'heroActions': dict(actions)}
+                    session_stream.write(json.dumps(session_row, separators=(',', ':')) + '\n')
+                    session_count += 1
+                    total_hands += hands
+                    zero_sum_sessions += zero_sum
+    finally:
+        bridge.close()
+        session_stream.close()
+        hand_stream.close()
+    session_path = args.output / 'sessions.jsonl'
+    hand_path = args.output / 'hand-trace.jsonl'
+    session_partial.replace(session_path)
+    hand_partial.replace(hand_path)
+    summary = {'status': 'FROZEN_EVALUATION' if manifest_sha else 'EXPLORATORY_VALIDATION_ONLY',
+               'evaluationManifestSha256': manifest_sha, 'codeGitSha': code_sha,
+               'modelSha256': model_sha,
+               'contractSha256': contract_hash(),
+               'candidatePath': ({'bet': str(args.bet_onnx), 'draw': str(args.draw_onnx)}
+                                 if phase_pair else str(candidate_path) if candidate_path else None),
+               'modelKind': ('phase-routed-onnx' if phase_pair else 'onnx' if args.onnx_model
+                             else 'pytorch' if args.model else 'reference'),
+               'foldGuardian': args.fold_guardian,
+               'decisionLedgerIncluded': args.decision_ledger,
+               'captureOpening': args.capture_opening,
+               'seedBase': args.seed_base, 'sessionStartIndex': args.session_start_index,
+               'sessions': session_count,
+               'hands': total_hands,
+               'zeroSumSessions': zero_sum_sessions,
+               'sessionTraceSha256': file_sha256(session_path),
+               'handTraceSha256': file_sha256(hand_path),
+               'sessionsPerProfileGroup': args.sessions_per_profile,
+               'handsPerSessionMax': args.hands_per_session,
+               'opponentProfiles': [args.only_profile] if args.only_profile else PROFILES,
+               'groups': [args.only_group] if args.only_group else GROUP_NAMES}
+    (args.output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
+    print(json.dumps(summary, indent=2))
+
+
+if __name__ == '__main__':
+    main()

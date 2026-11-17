@@ -51,6 +51,7 @@ import {
   recordBadugiBetToDrawTransitionTrace,
 } from "../games/badugi/auditBadugiBetToDrawTransition.js";
 import { recordBrowserCpuDecisionTrace } from "../ai/qa/cpuDecisionTraceCore.js";
+import { buildControllerRaiseFallbackPayload } from "../ai/qa/controllerRaiseFallback.js";
 import {
   buildCpuDecisionTelemetry,
   mergeCpuDecisionTelemetry,
@@ -66,8 +67,9 @@ import {
   shouldSyncLegacyTurnToController,
   shouldPreferControllerActionActor,
 } from "./utils/actorSourceOfTruth.js";
-import { runNpcDrawAllInAutoFastPath } from "./utils/npcAutoActionTiming.js";
+import { BOARD_NPC_AUTO_ACTION_DELAY_MS, NPC_AUTO_ACTION_DELAY_MS, runNpcDrawAllInAutoFastPath } from "./utils/npcAutoActionTiming.js";
 import { resolveControllerDrawHistory } from "./utils/controllerDrawHistory.js";
+import { resolveBadugiBetControls } from "./app/badugiBetControls.js";
 
 import {
   nextAliveFrom,
@@ -196,10 +198,25 @@ import {
   inferDrawDecisionWithOnnx,
 } from "../ai/onnxPolicyAdapter.js";
 import {
+  inferBadugiBeginnerControllerV2Bet,
+  inferBadugiBeginnerControllerV2Draw,
+} from "../ai/badugiBeginnerControllerV2.js";
+import {
+  inferBadugiStandardControllerV2Bet,
+  inferBadugiStandardControllerV2Draw,
+} from "../ai/badugiStandardControllerV2.js";
+import {
+  inferBadugiProControllerV2Bet,
+  inferBadugiProControllerV2Draw,
+} from "../ai/badugiProControllerV2.js";
+import {
   matchesPendingOnnxInference,
   runTracedOnnxInferenceWithDeadline,
 } from "../ai/onnxInferenceDeadline.js";
 import { buildBadugiObservationPayload } from "../rl/badugiObservationSchema.js";
+import { selectBadugiTrainingDiscardIndexes } from "../rl/badugiTrainingDrawSelection.js";
+import { selectBadugiControllerDrawIndexesV2Draft } from "../rl/badugiControllerDrawIndexesV2Draft.js";
+import { canBadugiTrainingModelIncreaseBet } from "../rl/badugiTrainingBetEligibility.js";
 import { chooseProAction } from "../ai/pro/proDecisionOverlay.js";
 import { useGameEngine } from "./engine/useGameEngine.js";
 import { mergeEngineSnapshot } from "./utils/engineSnapshotUtils.js";
@@ -945,8 +962,9 @@ export default function App() {
         baseBet: BB,
         drawRound,
         betRound: betRoundIndex,
+        firstBigBetRound: normalizedDrawVariantForRounds === APP_VARIANT_IDS.BADUGI ? 2 : 1,
       }),
-    [BB, drawRound, betRoundIndex],
+    [BB, drawRound, betRoundIndex, normalizedDrawVariantForRounds],
   );
   const FAST_FORWARD_SLEEP_MS = 5;
   const [players, setPlayers] = useState(() =>
@@ -1153,6 +1171,10 @@ export default function App() {
         blindStructure: activeBlindStructure,
         lastStructureIndex,
         structure: { sb: SB, bb: BB, ante: currentAnte },
+        evaluateHand:
+          normalizedVariant === APP_VARIANT_IDS.BADUGI
+            ? evaluateBadugi
+            : undefined,
       };
       const controllerFactory =
         normalizedVariant === APP_VARIANT_IDS.BADUGI
@@ -1185,6 +1207,7 @@ export default function App() {
     BB,
     activeBlindStructure,
     currentAnte,
+    evaluateBadugi,
     gameVariant,
     heroProfile,
     lastStructureIndex,
@@ -1763,13 +1786,17 @@ export default function App() {
   const [devTierOverride, setDevTierOverride] = useState(() =>
     loadAiTierOverride(),
   );
+  const [cashTierChoice, setCashTierChoice] = useState(null);
   const cashAiTierConfig = useMemo(
     () =>
       resolveAiTierForGameContext({
         mode: "cash",
         devTierOverride,
+        cashTierId: normalizedGameVariant === APP_VARIANT_IDS.BADUGI
+          ? (cashTierChoice ?? new URLSearchParams(location.search).get("aiTier"))
+          : null,
       }),
-    [devTierOverride],
+    [cashTierChoice, devTierOverride, location.search, normalizedGameVariant],
   );
   const [tournamentStageTierConfig, setTournamentStageTierConfig] = useState(
     () =>
@@ -2326,6 +2353,18 @@ export default function App() {
           ),
         );
         const sourceSnapshot = controller.getUiSnapshot(controllerState) ?? {};
+        if (normalizedGameVariant === APP_VARIANT_IDS.BADUGI &&
+            typeof controller.updateConfig === "function") {
+          const levelIndex = Math.max(0, Number(sourceSnapshot.blindLevelIndex) || 0);
+          const blindStructure = [...(controller.config?.blindStructure ?? [])];
+          blindStructure[levelIndex] = {
+            ...(blindStructure[levelIndex] ?? {}),
+            sb: SB,
+            bb: BB,
+            ante: currentAnte,
+          };
+          controller.updateConfig({ betSize: BB, blindStructure });
+        }
         const liveSnapshot = {
           ...sourceSnapshot,
           variantId: normalizedGameVariant,
@@ -2337,6 +2376,9 @@ export default function App() {
           dealerIdx,
           dealerSeat: dealerIdx,
           currentBet: liveCurrentBet,
+          drawRound,
+          drawRoundIndex: drawRound,
+          betRoundIndex,
           currentActor: liveActor,
           actingPlayerIndex: liveActor,
           nextTurn: liveActor,
@@ -2344,6 +2386,8 @@ export default function App() {
           metadata: {
             ...(sourceSnapshot.metadata ?? {}),
             currentBet: liveCurrentBet,
+            drawRoundIndex: drawRound,
+            betRoundIndex,
             actingPlayerIndex: liveActor,
           },
         };
@@ -2445,6 +2489,11 @@ export default function App() {
       currentBet,
       dealerIdx,
       betSize,
+      SB,
+      BB,
+      currentAnte,
+      drawRound,
+      betRoundIndex,
       mode,
       normalizedGameVariant,
       phase,
@@ -3148,11 +3197,12 @@ export default function App() {
         hand: me.hand,
       });
       const onnxTier = activeAiTierConfig?.id;
-      const shouldUseOnnx = onnxTier === "beginner" || onnxTier === "standard";
+      const shouldUseOnnx = ["beginner", "standard", "pro"].includes(onnxTier);
       const drawDecisionStartedAt = Date.now();
       let drawInferenceTrace = null;
       let onnxDrawDecision = null;
       let onnxDrawTimedOut = false;
+      let onnxDrawSelectionFailed = false;
       if (shouldUseOnnx) {
         const inferenceHandId = handIdRef.current;
         const pendingInference = {
@@ -3169,7 +3219,9 @@ export default function App() {
           return true;
         }
         onnxInferencePendingRef.current = pendingInference;
-        const drawLegalActions = ["draw_0", "draw_1", "draw_2", "draw_3"];
+        const drawLegalActions = ["beginner", "standard", "pro"].includes(onnxTier)
+          ? ["draw_0", "draw_1", "draw_2", "draw_3", "draw_4"]
+          : ["draw_0", "draw_1", "draw_2", "draw_3"];
         const observation = buildBadugiObservationPayload({
           state: {
             variantId: "D03",
@@ -3189,13 +3241,24 @@ export default function App() {
           legalActions: drawLegalActions,
         });
         const inferenceResult = await runTracedOnnxInferenceWithDeadline(
-          inferDrawDecisionWithOnnx, {
+          onnxTier === "beginner"
+            ? inferBadugiBeginnerControllerV2Draw
+            : onnxTier === "standard"
+              ? inferBadugiStandardControllerV2Draw
+              : onnxTier === "pro"
+                ? inferBadugiProControllerV2Draw
+                : inferDrawDecisionWithOnnx, {
             phase: "DRAW",
             variantId: "D03",
             tierId: onnxTier,
             characterId: me?.characterId ?? me?.cpuCharacterId ?? null,
             observation,
             legalActions: drawLegalActions,
+            v2Controller: sessionControllerRef.current,
+            v2State: sessionControllerStateRef.current,
+            v2SeatIndex: seatToAct,
+            v2Events: handHistoryRef.current?.events ?? [],
+            v2Tournament: isTournament,
           },
         );
         if (onnxInferencePendingRef.current === pendingInference) {
@@ -3207,6 +3270,29 @@ export default function App() {
         drawInferenceTrace = inferenceResult.inferenceTrace;
         onnxDrawDecision = inferenceResult.decision;
         onnxDrawTimedOut = inferenceResult.timedOut;
+        if (onnxDrawDecision) {
+          try {
+            onnxDrawDecision = {
+              ...onnxDrawDecision,
+              discardIndexes: (["beginner", "standard", "pro"].includes(onnxTier)
+                ? selectBadugiControllerDrawIndexesV2Draft
+                : selectBadugiTrainingDiscardIndexes)(
+                me.hand,
+                onnxDrawDecision.drawCount,
+              ),
+            };
+          } catch (error) {
+            console.warn("[ONNX] invalid Badugi draw card selection", error);
+            onnxDrawSelectionFailed = true;
+            onnxDrawDecision = null;
+            drawInferenceTrace = {
+              ...drawInferenceTrace,
+              usedModelId: null,
+              status: "fallback",
+              reason: "draw-card-selection-invalid",
+            };
+          }
+        }
         const liveSeat = playersRef.current?.[seatToAct];
         if (
           phaseRef.current !== "DRAW" ||
@@ -3219,7 +3305,7 @@ export default function App() {
         }
       }
       const aiDrawDecision =
-        activeAiTierConfig?.id === "pro"
+        activeAiTierConfig?.id === "pro" && !shouldUseOnnx
           ? chooseProAction({
               variantId: "D03",
               family: "badugi",
@@ -3259,7 +3345,9 @@ export default function App() {
                   tierId: onnxTier,
                   fallbackReason: onnxDrawTimedOut
                     ? "ONNX_INFERENCE_TIMEOUT"
-                    : "ONNX_INFERENCE_UNAVAILABLE",
+                    : onnxDrawSelectionFailed
+                      ? "ONNX_DRAW_CARD_SELECTION_INVALID"
+                      : "ONNX_INFERENCE_UNAVAILABLE",
                 }
               : standardDrawDecision;
       const fallbackDrawCount = npcAutoDrawCount(drawEvaluator);
@@ -3553,6 +3641,7 @@ export default function App() {
     getAiDecisionContextForActor,
     activeAiTierConfig,
     isDrawLowballControllerGame,
+    isTournament,
     isSingleTableDramaha,
     controllerTurn,
     tryControllerBetAction,
@@ -4340,6 +4429,9 @@ export default function App() {
         : Number.isFinite(metadata?.paid)
           ? metadata.paid
           : Math.max(0, (resolvedBetAfter ?? 0) - (resolvedBetBefore ?? 0));
+    const resolvedHandId =
+      handIdRef.current ?? currentHandHistoryRef.current?.handId ??
+      metadata?.handId ?? null;
     const resolvedToCall = Number.isFinite(metadata?.toCall)
       ? metadata.toCall
       : null;
@@ -4353,7 +4445,7 @@ export default function App() {
       drawRound: resolvedDrawRound,
       betRound: resolvedBetRound,
       actionType: type,
-      metadata: mergedMeta,
+      metadata: { ...mergedMeta, handId: resolvedHandId },
       toCall: resolvedToCall,
       currentBet,
       pot: potAfter ?? totalPotRef.current,
@@ -4384,7 +4476,7 @@ export default function App() {
     );
 
     const nextEntry = {
-      handId: handIdRef.current ?? metadata?.handId ?? null,
+      handId: resolvedHandId,
       playerId:
         seatSnapshot?.playerId ??
         seatSnapshot?.tournamentPlayerId ??
@@ -4426,10 +4518,9 @@ export default function App() {
     let canonicalActionMetadata = nextEntry.metadata;
     if (idx !== null && currentHandHistoryRef.current) {
       const historyType = normalizeHandHistoryType(type);
-      const amountDelta = Math.max(
-        0,
-        (resolvedBetAfter ?? 0) - (resolvedBetBefore ?? 0),
-      );
+      // The controller can reset betThisRound when this action closes a round.
+      // Stack movement still records the chips actually paid by this action.
+      const amountDelta = resolvedPaid;
       const totalInvestedValue =
         seatSnapshot?.totalInvested ??
         playerState?.totalInvested ??
@@ -4507,6 +4598,8 @@ export default function App() {
         appendCanonicalHandEvent({
           type: "DRAW_ACTION",
           seat: idx,
+          drawRoundIndex: drawRoundTracker.current,
+          betRoundIndex: betRoundTracker.current,
           actionSeq: historyAction?.seq ?? null,
           drawCount: normalizedDrawInfo.drawCount ?? 0,
           discarded: Array.isArray(normalizedDrawInfo.drawIndexes)
@@ -4532,13 +4625,12 @@ export default function App() {
         });
       } else {
         const normalizedType = normalizeHandHistoryType(type);
-        const amountDelta = Math.max(
-          0,
-          (resolvedBetAfter ?? 0) - (resolvedBetBefore ?? 0),
-        );
+        const amountDelta = resolvedPaid;
         appendCanonicalHandEvent({
           type: "BET_ACTION",
           seat: idx,
+          drawRoundIndex: drawRoundTracker.current,
+          betRoundIndex: betRoundTracker.current,
           action: normalizedType,
           actionSeq: historyAction?.seq ?? null,
           amount: amountDelta,
@@ -4594,19 +4686,24 @@ export default function App() {
         return false;
       const snap = roster.map(clonePlayerState).filter(Boolean);
       const seatBefore = snap[seat] ? { ...snap[seat] } : null;
-      if (isControllerDrivenSingleTable || isDrawLowballControllerGame) {
+      const forcedCurrentBet = snap.reduce(
+        (max, player) => Math.max(max, Number(player?.betThisRound) || 0),
+        0,
+      );
+      const forcedToCall = Math.max(
+        0,
+        forcedCurrentBet - Math.max(0, Number(seatBefore?.betThisRound) || 0),
+      );
+      const useBadugiMttController =
+        normalizedGameVariant === APP_VARIANT_IDS.BADUGI &&
+        modeRef.current === "tournament-mtt" &&
+        Boolean(sessionControllerRef.current && sessionControllerStateRef.current);
+      if (isControllerDrivenSingleTable || isDrawLowballControllerGame ||
+          useBadugiMttController) {
         const actionType = payload?.type ?? "call";
-        const forcedCurrentBet = snap.reduce(
-          (max, player) => Math.max(max, Number(player?.betThisRound) || 0),
-          0,
-        );
         const callAmount =
           String(actionType).toLowerCase() === "call" && payload?.amount == null
-            ? Math.max(
-                0,
-                forcedCurrentBet -
-                  Math.max(0, Number(seatBefore?.betThisRound) || 0),
-              )
+            ? forcedToCall
             : (payload?.amount ?? 0);
         const controllerOutcome = helpers.tryControllerBetAction({
           actionType,
@@ -4645,6 +4742,7 @@ export default function App() {
             metadata: {
               ...(payload?.metadata ?? {}),
               ...payload,
+              toCall: forcedToCall,
             },
             playersAfterSnapshot: actionPlayers,
           });
@@ -4652,13 +4750,23 @@ export default function App() {
           helpers.syncLegacyFromControllerSnapshot(controllerOutcome.snapshot, {
             seatIndex: seat,
           });
+          lastControllerActionFailureRef.current = null;
           return true;
         }
         if (controllerOutcome?.rejected) {
+          lastControllerActionFailureRef.current = {
+            seat,
+            payload,
+            code: controllerOutcome.code ?? "controller-action-rejected",
+            message: controllerOutcome.message ?? "action rejected",
+            events: Array.isArray(controllerOutcome.events)
+              ? controllerOutcome.events : [],
+          };
           const isForcedInstantFold =
             payload?.__forceInstant === true &&
             String(actionType).toLowerCase() === "fold";
-          if (!isForcedInstantFold || isDrawLowballControllerGame) {
+          if (!isForcedInstantFold || isDrawLowballControllerGame ||
+              useBadugiMttController) {
             forcedSeatActionsRef.current.delete(seat);
             return false;
           }
@@ -4666,7 +4774,7 @@ export default function App() {
             `forced instant fold fallback seat=${seat} code=${controllerOutcome.code ?? "unknown"}`,
           );
         }
-        if (isDrawLowballControllerGame) return false;
+        if (isDrawLowballControllerGame || useBadugiMttController) return false;
         if (isSingleTableBadugi) {
           warnLegacySingleTablePath(`forced-bet fallback seat=${seat}`);
         }
@@ -4677,7 +4785,10 @@ export default function App() {
           ? controller.applyPlayerAction({
               seatIndex: seat,
               payload,
-              betSize,
+              // Badugi's legacy controller accepts the base blind and applies
+              // the larger fixed-limit unit on later streets itself.
+              betSize:
+                normalizedGameVariant === APP_VARIANT_IDS.BADUGI ? BB : betSize,
               players: snap,
             })
           : applyForcedBetActionSnapshot({
@@ -4687,6 +4798,13 @@ export default function App() {
               betSize,
             });
       if (!result.success) {
+        lastControllerActionFailureRef.current = {
+          seat,
+          payload,
+          code: result.code ?? result.reason ?? "legacy-action-rejected",
+          message: result.error ?? result.reason ?? "legacy action rejected",
+          events: [],
+        };
         forcedSeatActionsRef.current.delete(seat);
         return false;
       }
@@ -4720,6 +4838,7 @@ export default function App() {
         metadata: {
           ...(payload?.metadata ?? {}),
           ...payload,
+          toCall: forcedToCall,
         },
       });
 
@@ -4732,11 +4851,14 @@ export default function App() {
       }
 
       helpers.afterBetActionWithSnapshot(updatedPlayers, seat);
+      lastControllerActionFailureRef.current = null;
       return true;
     },
     [
       phase,
       betSize,
+      BB,
+      normalizedGameVariant,
       raiseCountThisRound,
       setBetHead,
       setLastAggressor,
@@ -7107,7 +7229,7 @@ export default function App() {
 
   const handleSelectRing = (
     variantId = gameVariantRef.current ?? DEFAULT_GAME_VARIANT,
-    { keepMixed = false } = {},
+    { keepMixed = false, cashTierId = null } = {},
   ) => {
     if (!keepMixed) {
       dealerChoiceActiveRef.current = false;
@@ -7119,6 +7241,9 @@ export default function App() {
       variantId,
       DEFAULT_GAME_VARIANT,
     );
+    setCashTierChoice(normalizedVariant === APP_VARIANT_IDS.BADUGI
+      ? (["beginner", "standard", "pro"].includes(cashTierId) ? cashTierId : "standard")
+      : null);
     const gate = canLaunchVariant(normalizedVariant);
     if (!gate.canLaunch) {
       console.warn("[VARIANT_GATE] launch blocked", {
@@ -8528,20 +8653,6 @@ export default function App() {
 
   const drawSelectedRef = useRef(() => {});
   drawSelectedRef.current = drawSelected;
-
-  useEffect(() => {
-    if (!handResultVisible) return undefined;
-    // Cash results remain visible until the player explicitly chooses Next
-    // Hand. Auto-advancing made the result, history and replay controls vanish
-    // while mobile players were still reading them.
-    if (mode !== "tournament-mtt" || tournamentStateRef.current?.isFinished) {
-      return undefined;
-    }
-    const timer = setTimeout(() => {
-      startNextHand();
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [handResultVisible, mode, startNextHand]);
 
   useEffect(() => {
     const forceHeroDraw = () => drawSelectedRef.current();
@@ -11857,16 +11968,19 @@ export default function App() {
       typeof liveControllerSnapshot.players[0] === "object"
         ? liveControllerSnapshot.players[0]
         : null;
-    const maxNow = Number.isFinite(Number(liveControllerSnapshot?.currentBet))
+    const badugiActionBet = normalizedGameVariant === APP_VARIANT_IDS.BADUGI
+      ? resolveBadugiBetControls(liveControllerSnapshot)
+      : null;
+    const maxNow = badugiActionBet?.currentBet ?? (Number.isFinite(Number(liveControllerSnapshot?.currentBet))
       ? Number(liveControllerSnapshot.currentBet)
-      : maxBetThisRound(snap);
-    const heroCommitted = Number.isFinite(Number(controllerHero?.betThisStreet))
+      : maxBetThisRound(snap));
+    const heroCommitted = badugiActionBet?.heroBet ?? (Number.isFinite(Number(controllerHero?.betThisStreet))
       ? Number(controllerHero.betThisStreet)
       : Number.isFinite(Number(controllerHero?.betThisRound))
         ? Number(controllerHero.betThisRound)
         : Number.isFinite(Number(me.betThisRound))
           ? Number(me.betThisRound)
-          : 0;
+          : 0);
     const toCall = Math.max(0, maxNow - heroCommitted);
     const pay = toCall;
     const raiseCountBeforeControllerAction =
@@ -11973,17 +12087,27 @@ export default function App() {
       typeof liveControllerSnapshot.players[0] === "object"
         ? liveControllerSnapshot.players[0]
         : null;
-    const maxNow = Number.isFinite(Number(liveControllerSnapshot?.currentBet))
+    const badugiActionBet = normalizedGameVariant === APP_VARIANT_IDS.BADUGI
+      ? resolveBadugiBetControls(liveControllerSnapshot)
+      : null;
+    const maxNow = badugiActionBet?.currentBet ?? (Number.isFinite(Number(liveControllerSnapshot?.currentBet))
       ? Number(liveControllerSnapshot.currentBet)
-      : maxBetThisRound(snap);
-    const heroCommitted = Number.isFinite(Number(controllerHero?.betThisStreet))
+      : maxBetThisRound(snap));
+    const heroCommitted = badugiActionBet?.heroBet ?? (Number.isFinite(Number(controllerHero?.betThisStreet))
       ? Number(controllerHero.betThisStreet)
       : Number.isFinite(Number(controllerHero?.betThisRound))
         ? Number(controllerHero.betThisRound)
         : Number.isFinite(Number(me.betThisRound))
           ? Number(me.betThisRound)
-          : 0;
+          : 0);
     if (isControllerDrivenSingleTable && maxNow > heroCommitted) {
+      if (isSingleTableBadugi) {
+        console.warn("[CTRL][BET] stale Badugi check rejected", {
+          currentBet: maxNow,
+          heroBet: heroCommitted,
+        });
+        return;
+      }
       playerCall();
       return;
     }
@@ -12078,10 +12202,13 @@ export default function App() {
       return;
     }
 
-    const maxNow = Number.isFinite(Number(liveControllerSnapshot?.currentBet))
+    const badugiActionBet = normalizedGameVariant === APP_VARIANT_IDS.BADUGI
+      ? resolveBadugiBetControls(liveControllerSnapshot)
+      : null;
+    const maxNow = badugiActionBet?.currentBet ?? (Number.isFinite(Number(liveControllerSnapshot?.currentBet))
       ? Number(liveControllerSnapshot.currentBet)
-      : maxBetThisRound(snap);
-    const heroCommitted = Number(
+      : maxBetThisRound(snap));
+    const heroCommitted = badugiActionBet?.heroBet ?? Number(
       liveControllerSnapshot?.players?.[0]?.betThisStreet ??
         liveControllerSnapshot?.players?.[0]?.betThisRound ??
         me.betThisRound ??
@@ -12161,6 +12288,10 @@ export default function App() {
     }
     if (controllerOutcome?.rejected) {
       if (controllerOutcome.code === "FL_RAISE_CAP") {
+        if (isSingleTableBadugi) {
+          console.warn("[CTRL][BET] stale Badugi raise rejected at cap");
+          return;
+        }
         playerCall();
         return;
       }
@@ -12832,7 +12963,7 @@ export default function App() {
             phase: "BET", reason: "automatic-check-call", startedAt: decisionStartedAt,
           }),
         });
-      }, 180);
+      }, BOARD_NPC_AUTO_ACTION_DELAY_MS);
       return () => clearTimeout(timer);
     }
 
@@ -12873,7 +13004,9 @@ export default function App() {
         if (!me) return;
         if (
           sessionControllerRef.current &&
-          typeof sessionControllerRef.current.getCpuAction === "function"
+          typeof sessionControllerRef.current.getCpuAction === "function" &&
+          !(normalizedGameVariant === APP_VARIANT_IDS.BADUGI &&
+            activeAiTierConfig?.id === "beginner")
         ) {
           const controller = sessionControllerRef.current;
           const controllerState = sessionControllerStateRef.current;
@@ -13021,7 +13154,6 @@ export default function App() {
         const madeCards = Array.isArray(evalResult?.ranks)
           ? evalResult.ranks.length
           : 0;
-        const canRaise = !me.allIn && raiseCountThisRound < 4;
         const activeOpponents = snap.filter(
           (player, seatIndex) =>
             seatIndex !== activeSeat &&
@@ -13029,6 +13161,21 @@ export default function App() {
             !isFoldedOrOut(player) &&
             !player.allIn,
         ).length;
+        const badugiControllerSnapshot =
+          normalizedGameVariant === APP_VARIANT_IDS.BADUGI
+            ? sessionControllerRef.current?.getUiSnapshot?.(
+                sessionControllerStateRef.current,
+              )
+            : null;
+        const effectiveRaiseCount = badugiControllerSnapshot
+          ? Number(badugiControllerSnapshot.raiseCountThisRound ?? 0)
+          : raiseCountThisRound;
+        const effectiveRaiseCap = badugiControllerSnapshot
+          ? Number(badugiControllerSnapshot.raiseCap ?? 4)
+          : 4;
+        const canRaise =
+          !me.allIn && me.stack > 0 && activeOpponents > 0 &&
+          effectiveRaiseCount < effectiveRaiseCap;
         const standardBetDecision = computeBetDecision({
           context: getAiDecisionContextForActor(me),
           toCall,
@@ -13042,7 +13189,7 @@ export default function App() {
           betRound: betRoundIndex,
         });
         const onnxTier = activeAiTierConfig?.id;
-        const shouldUseOnnx = onnxTier === "beginner" || onnxTier === "standard";
+        const shouldUseOnnx = ["beginner", "standard", "pro"].includes(onnxTier);
         const betDecisionStartedAt = Date.now();
         let betInferenceTrace = null;
         let onnxBetDecision = null;
@@ -13064,9 +13211,13 @@ export default function App() {
             return;
           }
           onnxInferencePendingRef.current = pendingInference;
+          const canModelIncreaseBet = canBadugiTrainingModelIncreaseBet({
+            stack: me.stack, toCall, liveBetSize: betSize,
+            trainerBetSize: drawRound >= 2 ? BB * 2 : BB, canRaise,
+          });
           const onnxLegalActions = toCall > 0
-            ? ["FOLD", "CALL", ...(canRaise ? ["RAISE"] : [])]
-            : ["CHECK", ...(canRaise ? ["BET"] : [])];
+            ? ["FOLD", "CALL", ...(canModelIncreaseBet ? ["RAISE"] : [])]
+            : ["CHECK", ...(canModelIncreaseBet ? ["BET"] : [])];
           const observation = buildBadugiObservationPayload({
             state: {
               variantId: "D03",
@@ -13086,7 +13237,13 @@ export default function App() {
             legalActions: onnxLegalActions,
           });
           const inferenceResult = await runTracedOnnxInferenceWithDeadline(
-            inferBetActionWithOnnx, {
+            onnxTier === "beginner"
+              ? inferBadugiBeginnerControllerV2Bet
+              : onnxTier === "standard"
+                ? inferBadugiStandardControllerV2Bet
+                : onnxTier === "pro"
+                  ? inferBadugiProControllerV2Bet
+                  : inferBetActionWithOnnx, {
               phase: "BET",
               variantId: "D03",
               tierId: onnxTier,
@@ -13094,6 +13251,11 @@ export default function App() {
               observation,
               legalActions: onnxLegalActions,
               betSize,
+              v2Controller: sessionControllerRef.current,
+              v2State: sessionControllerStateRef.current,
+              v2SeatIndex: activeSeat,
+              v2Events: handHistoryRef.current?.events ?? [],
+              v2Tournament: isTournament,
             },
           );
           if (onnxInferencePendingRef.current === pendingInference) {
@@ -13121,7 +13283,7 @@ export default function App() {
           }
         }
         const betDecision =
-          activeAiTierConfig?.id === "pro"
+          activeAiTierConfig?.id === "pro" && !shouldUseOnnx
             ? chooseProAction({
                 variantId: "D03",
                 family: "badugi",
@@ -13236,15 +13398,16 @@ export default function App() {
           ...badugiValueTelemetry,
         };
 
+        lastControllerActionFailureRef.current = null;
         if (applyForcedBetAction(activeSeat, actionPayload)) {
           return;
         }
         if (actionPayload?.type === "raise") {
-          const fallbackPayload = {
-            type: toCall === 0 ? "check" : "call",
-            amount: toCall,
-            __forceInstant: true,
-          };
+          const fallbackPayload = buildControllerRaiseFallbackPayload(
+            actionPayload,
+            toCall,
+            lastControllerActionFailureRef.current?.code ?? null,
+          );
           if (applyForcedBetAction(activeSeat, fallbackPayload)) {
             return;
           }
@@ -13258,7 +13421,7 @@ export default function App() {
         autoResolveCpuDrawIfNeeded();
         return;
       }
-    }, 250);
+    }, NPC_AUTO_ACTION_DELAY_MS);
 
     return () => clearTimeout(timer);
   }, [
@@ -13278,6 +13441,8 @@ export default function App() {
     debugLog,
     getAiDecisionContextForActor,
     activeAiTierConfig,
+    isTournament,
+    normalizedGameVariant,
     applyForcedBetAction,
     autoResolveCpuDrawIfNeeded,
     checkIfOneLeftThenEnd,
@@ -13399,7 +13564,8 @@ export default function App() {
         }
         if (
           (activeAiTierConfig?.id === "beginner" ||
-            activeAiTierConfig?.id === "standard") &&
+            activeAiTierConfig?.id === "standard" ||
+            activeAiTierConfig?.id === "pro") &&
           matchesPendingOnnxInference(onnxInferencePendingRef.current, {
             handId: handIdRef.current,
             phase: "BET",
@@ -13485,7 +13651,8 @@ export default function App() {
         }
         if (
           (activeAiTierConfig?.id === "beginner" ||
-            activeAiTierConfig?.id === "standard") &&
+            activeAiTierConfig?.id === "standard" ||
+            activeAiTierConfig?.id === "pro") &&
           matchesPendingOnnxInference(onnxInferencePendingRef.current, {
             handId: handIdRef.current,
             phase: "DRAW",
@@ -13866,12 +14033,18 @@ export default function App() {
       "-",
   };
   const heroSeatView = seatViews.find((seat) => seat?.seatIndex === 0) ?? null;
-  const heroPlayerForControls = heroSeatView
+  const badugiBetControls = normalizedGameVariant === APP_VARIANT_IDS.BADUGI
+    ? resolveBadugiBetControls(effectiveControllerSnapshot)
+    : null;
+  const heroPlayerForControlsBase = heroSeatView
     ? {
         ...(playersSrc[0] ? clonePlayerState(playersSrc[0]) : {}),
         ...heroSeatView,
       }
     : (playersSrc[0] ?? null);
+  const heroPlayerForControls = badugiBetControls && heroPlayerForControlsBase
+    ? { ...heroPlayerForControlsBase, betThisRound: badugiBetControls.heroBet, stack: badugiBetControls.heroStack }
+    : heroPlayerForControlsBase;
   const controllerRaiseCountForUi =
     (isSingleTableBoardGame || isSingleTableBadugi) &&
     typeof gameControllerRef.current?.raiseCountThisStreet === "number"
@@ -13880,7 +14053,7 @@ export default function App() {
 
   const controlsPhase =
     effectiveControllerSnapshot?.phase ?? controlsConfig?.phase ?? tablePhase;
-  const controlsCurrentBet = resolveActionCurrentBet({
+  const controlsCurrentBet = badugiBetControls?.currentBet ?? resolveActionCurrentBet({
     preferController: preferControllerActionActor,
     controllerCurrentBet: effectiveControllerSnapshot?.currentBet,
     legacyCurrentBet: controlsConfig?.currentBet ?? currentBetSrc,
@@ -13888,7 +14061,8 @@ export default function App() {
   const heroBetThisRound = Math.max(
     0,
     Number(
-      heroPlayerForControls?.betThisStreet ??
+      badugiBetControls?.heroBet ??
+        heroPlayerForControls?.betThisStreet ??
         heroPlayerForControls?.betThisRound,
     ) || 0,
   );
@@ -13930,6 +14104,7 @@ export default function App() {
       effectiveControllerSnapshot?.betRoundIndex ??
       effectiveControllerSnapshot?.metadata?.betRoundIndex ??
       betRoundIndexSrc,
+    firstBigBetRound: normalizedGameVariant === APP_VARIANT_IDS.BADUGI ? 2 : 1,
   });
   const variableBettingStructure = getVariableBettingStructure(
     normalizedGameVariant,
@@ -13948,6 +14123,11 @@ export default function App() {
   });
   const heroSeatIndex =
     typeof heroSeatView?.seatIndex === "number" ? heroSeatView.seatIndex : 0;
+  const badugiLegalActions = badugiBetControls
+    ? (sessionControllerRef.current ?? gameControllerRef.current)?.getLegalActions?.(
+        { snapshot: effectiveControllerSnapshot }, heroSeatIndex,
+      ) ?? null
+    : null;
   const currentActorSeat =
     typeof controllerTurn === "number" ? controllerTurn : null;
   const currentActorView =
@@ -14470,7 +14650,9 @@ export default function App() {
     language,
     ratingState,
     rankInfo,
-    gameTitle: guestTrial ? `${currentGameTitle} · ${language === 'ja' ? '体験' : 'Trial'}` : currentGameTitle,
+    gameTitle: guestTrial
+      ? `${currentGameTitle} · ${language === 'ja' ? '体験' : 'Trial'}${currentGameVariantId === APP_VARIANT_IDS.BADUGI ? ` · ${language === 'ja' ? 'CPU設定' : 'CPU setting'} ${activeAiTierConfig?.label ?? activeAiTierConfig?.id ?? 'Standard'}` : ''}`
+      : currentGameTitle,
     labels: headerLabels,
     onNavigateTitle: handleBackToMenu,
     onNavigateLeaderboard: () => navigate("/leaderboard"),
@@ -14554,6 +14736,14 @@ export default function App() {
     layoutProfile,
   };
 
+  const resultHandId = handIdRef.current;
+  const canAutoAdvanceResult = !guestTrial && Boolean(resultHandId) &&
+    (sessionSnapshot?.overlays?.showNextButton ?? showNextButton) &&
+    (mode === "cash" || mode === "tournament-mtt") &&
+    !cashRebuyRequired &&
+    (mode !== "tournament-mtt" || (!tournamentBreakState && !tournamentStateRef.current?.isFinished)) &&
+    Number(playersSrc?.[heroSeatIndex]?.stack) > 0 && canContinueGame(playersSrc);
+
   const overlaysProps = {
     guestTrial,
     reviewHandId: guestTrial ? null : handIdRef.current,
@@ -14563,6 +14753,9 @@ export default function App() {
     handResultSummary:
       sessionSnapshot?.overlays?.handResult?.summary ?? handResultSummary,
     onNextHand: guestTrial ? () => navigate('/try') : startNextHand,
+    onAutoNextHand: canAutoAdvanceResult ? () =>
+      handIdRef.current === resultHandId && !dealingRef.current && startNextHand() : undefined,
+    autoNextBlocked: Boolean(gameUtilityModal || cashOutSummary),
     nextHandLabel: guestTrial ? (language === 'ja' ? '体験を終了・種目を選ぶ' : 'Finish trial / choose a game') : nextHandLabel,
     onReplayTarget: handleOpenReplayTarget,
     mode,
@@ -14583,6 +14776,7 @@ export default function App() {
     heroPlayerForControls,
     controlsPhase,
     controlsCurrentBet,
+    legalActions: badugiLegalActions,
     actionPanelInfo,
     betSizingModel,
     playerFold,

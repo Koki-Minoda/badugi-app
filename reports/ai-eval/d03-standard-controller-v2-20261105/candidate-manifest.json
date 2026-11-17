@@ -1,0 +1,59 @@
+{
+  "status": "FROZEN",
+  "frozenAtUtc": "2026-11-04T23:47:41.977047+00:00",
+  "codeGitSha": "7fe453d8239d4206ad42e98a4baa855814d823ee",
+  "contractSha256": "eb388f88808ab31483d823586e73503697ec3436d3f084ee436a15959d6b7df3",
+  "groupMatrix": [
+    "2/2-cash",
+    "3/3-cash",
+    "6/6-cash",
+    "6/2-cash",
+    "6/3-cash",
+    "2/2-mtt",
+    "3/3-mtt",
+    "6/6-mtt",
+    "6/2-mtt",
+    "6/3-mtt"
+  ],
+  "opponentProfiles": [
+    "passive",
+    "pressure",
+    "draw_heavy",
+    "random_legal"
+  ],
+  "sessionsPerProfileGroup": 200,
+  "handsPerSessionMax": 20,
+  "unit": "independent continuous real-controller session; hands within a session are not independent",
+  "comparison": "candidate and Beginner arms use disjoint seeds; unpaired cell-stratified bootstrap",
+  "trainingFreeze": "No new gradient training after the 2000-hand Standard checkpoint; cash and MTT Standard weight interpolations, public heads-up MTT route to published Beginner checkpoint.",
+  "arm": "candidate",
+  "modelKind": "onnx",
+  "modelSha256": "af31b433508c5e5a941ed04463380721e32fc7ebfe6715fa7b790396be91c80c",
+  "seedBase": 4030040001,
+  "onnxSha256": "af31b433508c5e5a941ed04463380721e32fc7ebfe6715fa7b790396be91c80c",
+  "browserModelId": "isolated-d03-v2-standard-mode-candidate",
+  "browserEvidenceMatrix": "cash-6-mtt-2-3-6-both-engines",
+  "browserEvidenceSha256": {
+    "chromium-cash.json": "c38f515516f2648137b15df46b23918a7cb4c26471519adb5fe28517270d0dfe",
+    "chromium-timeout.json": "09aa84d2cadae4b6c012739c8d3c8167be2d1f2e1e8c9ba1bd67271db57f8b2f",
+    "chromium-tournament-2.json": "89c93e32ac9153f4b5de9c3b030df38f6ac41f17f15d91aae825c61dd1cac5e8",
+    "chromium-tournament-3.json": "f3f46c214c097028a252c0546290d8e3104c97b3cb731bbda6ce24231ce970c9",
+    "chromium-tournament-6.json": "ec7c26a0ffce172e9138276f185610bb02f5004625122a211333301abc3786ae",
+    "webkit-cash.json": "b601a6ed7ad3f5bf240c44ff1aa4a507762b3fc4a6fd572d9f97d01ed72fec13",
+    "webkit-timeout.json": "6f122506346962e1ea7b4db2375198fbc7e49521a09a1b8194bb61391e348d57",
+    "webkit-tournament-2.json": "b4564ae8ee007ace3640e59baac81e9c76a6d3e270ac60da300e0d6c575cb208",
+    "webkit-tournament-3.json": "1a0b781614905c848c4b3a6cb23c0e4fbbcc153cc0b9d3059037a0ed22f98aa8",
+    "webkit-tournament-6.json": "72b7d52ec941db9dc5d865608fce0d3d005baba879e71b16d299daa7cad09944"
+  },
+  "quality": {
+    "bootstrapReplicates": 5000,
+    "bootstrapSeed": 4230040001,
+    "minimumImprovementBbPerHand": 0.05,
+    "minimumCellMeanBbPerHand": -1.0,
+    "maximumMaterialCellRegressionBbPerHand": 0.1,
+    "minimumFoldRate": 0.02,
+    "minimumPatRate": 0.15,
+    "deltaInterpretation": "At least 1 BB improvement per 20-hand session over published Beginner, two-sided 95% lower bound above 0.05 BB/hand for overall, cash and MTT. No of 40 cell differences may have a two-sided 95% upper bound below -0.10 BB/hand; this is an adoption veto, with no multiplicity claim."
+  },
+  "evaluationPlanSha256": "9b851635e76f72dba93c5dfc4ab235ef0902c9e6c6f84ba97a6eaa1242d7312e"
+}

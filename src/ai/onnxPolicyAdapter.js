@@ -47,6 +47,14 @@ function getLegalActions(payload = {}) {
 }
 
 export function buildBadugiOnnxFeatures(entry, payload = {}) {
+  const featureSet = entry?.featureSet;
+  if (featureSet != null && ![
+    "badugi-observation-v1",
+    "badugi-observation-v1-ev",
+    "badugi-observation-v1-ev-range",
+  ].includes(featureSet)) {
+    throw new Error(`Unsupported Badugi ONNX feature set: ${featureSet}`);
+  }
   const vector = buildBadugiObservationVector(payload.observation ?? payload);
   if (entry?.featureSet !== "badugi-observation-v1-ev" && entry?.featureSet !== "badugi-observation-v1-ev-range") {
     for (let idx = 48; idx <= 55; idx += 1) {
@@ -319,6 +327,9 @@ export async function inferBetActionWithOnnx(payload) {
     modelId: payload.modelId,
   });
   if (!entry) return report(null, null, "model-not-configured");
+  if (entry.featureSet === "badugi-controller-observation-v2-draft") {
+    return report(entry, null, "feature-set-requires-v2-adapter");
+  }
   const session = await getOrCreateSession(entry);
   if (!session) return report(entry, null, "session-unavailable");
   const totalLength = expectedInputLength(entry);
@@ -356,6 +367,9 @@ export async function inferDrawDecisionWithOnnx(payload) {
     modelId: payload.modelId,
   });
   if (!entry) return report(null, null, "model-not-configured");
+  if (entry.featureSet === "badugi-controller-observation-v2-draft") {
+    return report(entry, null, "feature-set-requires-v2-adapter");
+  }
   const session = await getOrCreateSession(entry);
   if (!session) return report(entry, null, "session-unavailable");
   const totalLength = expectedInputLength(entry);

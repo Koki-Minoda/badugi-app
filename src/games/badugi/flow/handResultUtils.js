@@ -1,4 +1,5 @@
 // src/games/badugi/flow/handResultUtils.js
+import { evaluateBadugi } from "../utils/badugiEvaluator.js";
 
 export const BADUGI_RANK_SYMBOLS = [
   "A",
@@ -18,6 +19,7 @@ export const BADUGI_RANK_SYMBOLS = [
 
 export function resolveEvaluationCount(evaluation) {
   if (evaluation && typeof evaluation.count === "number") return evaluation.count;
+  if (Number.isInteger(evaluation?.metadata?.size)) return evaluation.metadata.size;
   switch (evaluation?.rankType) {
     case "BADUGI":
       return 4;
@@ -26,8 +28,9 @@ export function resolveEvaluationCount(evaluation) {
     case "TWO_CARD":
       return 2;
     case "ONE_CARD":
-    default:
       return 1;
+    default:
+      return 0;
   }
 }
 
@@ -57,7 +60,7 @@ export function buildHandResultSummary({
   sbSeat = null,
   bbSeat = null,
 }) {
-  const evaluate = typeof evaluateHand === "function" ? evaluateHand : null;
+  const evaluate = typeof evaluateHand === "function" ? evaluateHand : evaluateBadugi;
   const potEntries = Array.isArray(summary) ? summary : [];
   const hydrateWinnerEntry = (entry, explicitSeat = null) => {
     const seatIndex =

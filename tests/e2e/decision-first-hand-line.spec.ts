@@ -79,3 +79,28 @@ test('live NLH exposes recorded CPU actions in the current hand', async ({page})
   await sheet.getByRole('button',{name:/^(閉じる|Close)$/}).click();
   await expect(action).toBeEnabled();
 });
+
+// Settlement may happen while the player is reading CPU actions. Neither the
+// desktop nor mobile layout may deal behind the open history dialog.
+for (const mobile of [false, true]) test(`open hand line blocks auto-next on ${mobile ? 'mobile' : 'desktop'}`, async ({page}) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize(mobile ? {width:844,height:390} : {width:1280,height:900});
+  await openAuthenticatedGame(page, `${APP_URL}?variant=nlh&mode=cash${mobile ? '&mgxQa=mobile' : ''}`);
+  await waitForE2EDriver(page);
+  await expect(page.getByTestId(mobile ? 'mobile-play-layout' : 'decision-panel')).toBeVisible();
+  await page.getByTestId('current-hand-history-open').click();
+  const sheet = page.getByTestId('current-hand-history');
+  await expect(sheet).toBeVisible();
+  await invokeE2E(page, 'resolveHandNow');
+  const result = page.getByTestId('hand-result-overlay');
+  await expect(result).toBeVisible();
+  const handId = await result.getAttribute('data-hand-id');
+  expect(handId).toBeTruthy();
+  const autoNext = page.getByTestId('hand-result-auto-next');
+  await expect(autoNext).toBeDisabled();
+  await page.waitForTimeout(2200);
+  await expect(result).toHaveAttribute('data-hand-id', handId!);
+  await sheet.getByRole('button',{name:/^(閉じる|Close)$/}).click();
+  await expect(autoNext).toBeEnabled();
+  await expect(result).toBeHidden({timeout: 6000});
+});

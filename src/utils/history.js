@@ -12,9 +12,13 @@ const TOURNEY_HANDS_KEY = "history.tournamentHands";
  * @param {Object} hand - { handId, ts, players, pot, ... }
  */
 export function saveHandHistory(hand) {
-  if (!hand?.handId) hand.handId = crypto.randomUUID?.() ?? String(Date.now());
-  hand.ts ??= Date.now();
-  return pushToArray(HANDS_KEY, hand, { limit: 2000 });
+  if (!hand || typeof hand !== 'object') throw new TypeError('hand history record required');
+  const snapshot = {
+    ...hand,
+    handId: hand?.handId ?? crypto.randomUUID?.() ?? String(Date.now()),
+    ts: hand?.ts ?? Date.now(),
+  };
+  return pushToArray(HANDS_KEY, snapshot, { limit: 2000 });
 }
 
 /**
@@ -28,9 +32,13 @@ export function saveTournamentHistory(t) {
 }
 
 export function saveTournamentHandHistory(hand) {
-  if (!hand?.handId) hand.handId = crypto.randomUUID?.() ?? String(Date.now());
-  hand.ts ??= Date.now();
-  return pushToArray(TOURNEY_HANDS_KEY, hand, { limit: 2000 });
+  if (!hand || typeof hand !== 'object') throw new TypeError('tournament hand history record required');
+  const snapshot = {
+    ...hand,
+    handId: hand?.handId ?? crypto.randomUUID?.() ?? String(Date.now()),
+    ts: hand?.ts ?? Date.now(),
+  };
+  return pushToArray(TOURNEY_HANDS_KEY, snapshot, { limit: 2000 });
 }
 
 /**

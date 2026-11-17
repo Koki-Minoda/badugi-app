@@ -1,0 +1,26 @@
+{
+  "status": "PRODUCT_ROUTE_PREFLIGHT_PASS_NOT_DEPLOYMENT_PROOF",
+  "modelId": "model-badugi-standard-controller-v2-20261105",
+  "onnxSha256": "af31b433508c5e5a941ed04463380721e32fc7ebfe6715fa7b790396be91c80c",
+  "normalCases": 8,
+  "normalHands": 24,
+  "normalTargetDecisions": 590,
+  "normalUsedDecisions": 590,
+  "practiceUiCases": 2,
+  "timeoutFallbackCases": 2,
+  "filesSha256": {
+    "chromium-cash.json": "993cd4b3b6e40dba13fc42aee318f22d1118a15fdfc46e0c4669e7a911032c0e",
+    "chromium-practice-ui.json": "d157ed65749842e30f8379d7d0804c20ddd597d97bc66ec836d2ceebd9f32353",
+    "chromium-timeout.json": "1e936635bd75a6f0ea0956356587671b2425aa1f73e919f844c8d5f5744466e0",
+    "chromium-tournament-2.json": "9fbbdef60ca14c611a68017ef101ce8588d99a9cf6847e3f2f3003ac67e55696",
+    "chromium-tournament-3.json": "f12e00d26ca58727a55bf9c7cfc58944feb84fb51d2b1bbb563947f3b4bfa6a3",
+    "chromium-tournament-6.json": "022f88e286de1590c74fea1d2aa18e3ffa92c5728b3498197cc71b34be2f835a",
+    "webkit-cash.json": "ef52b2aa8ba4d83aca4aaca777c4fb257d5a882dd4b1ca24a46137f3953c2794",
+    "webkit-practice-ui.json": "75cb1840d1a16165adfa2f1489f4c799ecaa03bd7a210e7c6f4312102ed91e02",
+    "webkit-timeout.json": "112bf23259b870413cf879cbfcf4f75186401e9ccb6d953264506168bf05a6f1",
+    "webkit-tournament-2.json": "dfd6d3bb01184d2a22727f404c16662314e29f724efa30235537f92b9a10b675",
+    "webkit-tournament-3.json": "d5c80a3e7d5e3ea1201a0fceadd34b86d0742594c56f66919b32e02c906018fd",
+    "webkit-tournament-6.json": "efb64f79570db50faeb740196c9c3aa6ba583e4c1ac9274cfffdc36dec5c095b"
+  },
+  "limitations": "Local browser with API stub; persistence beyond local hand history, remote production delivery and human-opponent strength are not established."
+}

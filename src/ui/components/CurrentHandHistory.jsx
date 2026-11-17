@@ -1,9 +1,9 @@
-import React, {useEffect, useId, useRef, useState} from 'react';
+import React, {useEffect, useLayoutEffect, useId, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import '../../styles/current-hand-history.css';
 
 /** Presentation only: showing the line never dispatches a poker action. */
-export default function CurrentHandHistory({handId, actions = [], language = 'ja', onHistory}) {
+export default function CurrentHandHistory({handId, actions = [], language = 'ja', onHistory, onOpenChange}) {
   const ja = language === 'ja';
   const titleId = useId();
   const dialog = useRef(null);
@@ -12,6 +12,11 @@ export default function CurrentHandHistory({handId, actions = [], language = 'ja
   const [openedHand, setOpenedHand] = useState(null);
   // A new hand closes the old view, including when the component stays mounted.
   const open = openedHand !== null && openedHand.id === handId;
+  useLayoutEffect(() => {
+    if (!open || !onOpenChange) return undefined;
+    onOpenChange(true);
+    return () => onOpenChange(false);
+  }, [open, onOpenChange]);
   useEffect(() => {
     const node = dialog.current;
     if (!open) return undefined;

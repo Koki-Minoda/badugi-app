@@ -1,0 +1,1310 @@
+{
+  "status": "DESCRIPTIVE_DIAGNOSTIC_NOT_CAUSAL",
+  "auditSha256": "ee786da58eb6cc46458761355e2c956d61bad71208e2ea679c358ac45b7794a8",
+  "weakCellNames": [
+    "2/2-cash|pressure",
+    "2/2-cash|random_legal",
+    "2/2-mtt|passive",
+    "2/2-mtt|pressure",
+    "3/3-cash|passive",
+    "3/3-cash|pressure",
+    "3/3-cash|random_legal",
+    "3/3-mtt|pressure",
+    "6/2-cash|passive",
+    "6/2-cash|pressure",
+    "6/3-cash|random_legal",
+    "6/3-mtt|pressure",
+    "6/6-cash|random_legal"
+  ],
+  "candidate": {
+    "2/2-cash|pressure": {
+      "heroBet": {
+        "call": 2449,
+        "raise": 1494,
+        "check": 2602,
+        "bet": 223,
+        "fold": 17
+      },
+      "heroDraw": {
+        "1": 1697,
+        "0": 645,
+        "3": 51,
+        "4": 1
+      },
+      "opponentBet": {
+        "raise": 1768,
+        "bet": 1782,
+        "call": 735,
+        "check": 1499
+      },
+      "opponentDraw": {
+        "1": 2394
+      },
+      "opponentBetAfterHeroAggression": {
+        "raise": 990,
+        "call": 727
+      },
+      "heroDecisionStatuses": {
+        "used": 9179
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 8760.5,
+      "heroBetAmountCount": 6785,
+      "heroNoDecisionHands": 1434,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.291156963890936,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.18949999999999997,
+        "lower95": -0.4375,
+        "upper95": 0.060500000000000026,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 0.1,
+        "lower95": -0.075,
+        "upper95": 0.275,
+        "sessionUnits": 200
+      }
+    },
+    "2/2-cash|random_legal": {
+      "heroBet": {
+        "call": 2368,
+        "bet": 630,
+        "check": 4519,
+        "raise": 1091,
+        "fold": 12
+      },
+      "heroDraw": {
+        "0": 727,
+        "1": 3236,
+        "3": 22,
+        "4": 3
+      },
+      "opponentBet": {
+        "check": 2225,
+        "bet": 1541,
+        "fold": 932,
+        "raise": 1079,
+        "call": 916
+      },
+      "opponentDraw": {
+        "1": 804,
+        "3": 839,
+        "0": 763,
+        "2": 746,
+        "4": 836
+      },
+      "opponentBetAfterHeroAggression": {
+        "fold": 643,
+        "raise": 429,
+        "call": 649
+      },
+      "heroDecisionStatuses": {
+        "used": 12608
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 7633.0,
+      "heroBetAmountCount": 8620,
+      "heroNoDecisionHands": 330,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 0.8854988399071926,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.017000000000000126,
+        "lower95": -0.07103437500000015,
+        "upper95": 0.035749999999999955,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 1.20725,
+        "lower95": 1.15925,
+        "upper95": 1.244628125,
+        "sessionUnits": 200
+      }
+    },
+    "2/2-mtt|passive": {
+      "heroBet": {
+        "call": 1499,
+        "check": 12459,
+        "fold": 499,
+        "bet": 44,
+        "raise": 2
+      },
+      "heroDraw": {
+        "1": 8380,
+        "0": 2123
+      },
+      "opponentBet": {
+        "check": 12000,
+        "call": 2046
+      },
+      "opponentDraw": {
+        "0": 10503
+      },
+      "opponentBetAfterHeroAggression": {
+        "call": 46
+      },
+      "heroDecisionStatuses": {
+        "used": 25006
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 839.5,
+      "heroBetAmountCount": 14503,
+      "heroNoDecisionHands": 0,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 0.05788457560504723,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.027375000000000038,
+        "lower95": -0.06075312499999986,
+        "upper95": 0.0052499999999999795,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 0.541875,
+        "lower95": 0.5173718749999999,
+        "upper95": 0.56575,
+        "sessionUnits": 200
+      }
+    },
+    "2/2-mtt|pressure": {
+      "heroBet": {
+        "call": 5034,
+        "check": 4296,
+        "raise": 2537,
+        "fold": 307,
+        "bet": 173
+      },
+      "heroDraw": {
+        "1": 3600,
+        "0": 1166,
+        "4": 1
+      },
+      "opponentBet": {
+        "raise": 2976,
+        "bet": 3977,
+        "call": 1294,
+        "check": 440
+      },
+      "opponentDraw": {
+        "1": 4767
+      },
+      "opponentBetAfterHeroAggression": {
+        "raise": 1443,
+        "call": 1267
+      },
+      "heroDecisionStatuses": {
+        "used": 17114
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 16204.0,
+      "heroBetAmountCount": 12347,
+      "heroNoDecisionHands": 239,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.3123835749574795,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.16037500000000016,
+        "lower95": -0.40612812499999984,
+        "upper95": 0.085253125,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 1.412,
+        "lower95": 1.220103125,
+        "upper95": 1.59164375,
+        "sessionUnits": 200
+      }
+    },
+    "3/3-cash|passive": {
+      "heroBet": {
+        "call": 1759,
+        "check": 7944,
+        "bet": 3071,
+        "fold": 182,
+        "raise": 8
+      },
+      "heroDraw": {
+        "1": 7210,
+        "0": 1716,
+        "3": 173
+      },
+      "opponentBet": {
+        "call": 8531,
+        "check": 14530
+      },
+      "opponentDraw": {
+        "0": 15420
+      },
+      "opponentBetAfterHeroAggression": {
+        "call": 3079
+      },
+      "heroDecisionStatuses": {
+        "used": 22063
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 7226.5,
+      "heroBetAmountCount": 12964,
+      "heroNoDecisionHands": 0,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 0.5574282628818266,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.02124999999999977,
+        "lower95": -0.09587499999999995,
+        "upper95": 0.05087499999999957,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 2.291375,
+        "lower95": 2.2365,
+        "upper95": 2.342628125,
+        "sessionUnits": 200
+      }
+    },
+    "3/3-cash|pressure": {
+      "heroBet": {
+        "call": 1888,
+        "raise": 735,
+        "check": 1385,
+        "bet": 231,
+        "fold": 63
+      },
+      "heroDraw": {
+        "1": 808,
+        "3": 163,
+        "0": 263,
+        "4": 1
+      },
+      "opponentBet": {
+        "raise": 2780,
+        "call": 1096,
+        "bet": 1008,
+        "check": 2472
+      },
+      "opponentDraw": {
+        "1": 1910
+      },
+      "opponentBetAfterHeroAggression": {
+        "raise": 688,
+        "call": 278
+      },
+      "heroDecisionStatuses": {
+        "used": 5537
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 6773.0,
+      "heroBetAmountCount": 4302,
+      "heroNoDecisionHands": 2471,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.5743840074384008,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.017125,
+        "lower95": -0.3537625,
+        "upper95": 0.3166468749999997,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": -0.057125,
+        "lower95": -0.29375,
+        "upper95": 0.19200312499999997,
+        "sessionUnits": 200
+      }
+    },
+    "3/3-cash|random_legal": {
+      "heroBet": {
+        "fold": 314,
+        "call": 4233,
+        "bet": 1477,
+        "check": 4356,
+        "raise": 1272
+      },
+      "heroDraw": {
+        "1": 4776,
+        "3": 176,
+        "0": 1206,
+        "4": 1
+      },
+      "opponentBet": {
+        "fold": 2673,
+        "raise": 2706,
+        "call": 2746,
+        "bet": 2421,
+        "check": 3276
+      },
+      "opponentDraw": {
+        "4": 1509,
+        "3": 1550,
+        "0": 1590,
+        "2": 1484,
+        "1": 1563
+      },
+      "opponentBetAfterHeroAggression": {
+        "call": 1018,
+        "fold": 1030,
+        "raise": 701
+      },
+      "heroDecisionStatuses": {
+        "used": 17811
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 12587.5,
+      "heroBetAmountCount": 11652,
+      "heroNoDecisionHands": 320,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.0802866460693443,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.05037499999999984,
+        "lower95": -0.17175624999999983,
+        "upper95": 0.06249999999999957,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 2.326125,
+        "lower95": 2.222115625,
+        "upper95": 2.4107499999999997,
+        "sessionUnits": 200
+      }
+    },
+    "3/3-mtt|pressure": {
+      "heroBet": {
+        "call": 7745,
+        "raise": 2087,
+        "fold": 837,
+        "check": 3077,
+        "bet": 320
+      },
+      "heroDraw": {
+        "1": 4209,
+        "0": 1500,
+        "3": 15
+      },
+      "opponentBet": {
+        "raise": 9143,
+        "call": 2933,
+        "bet": 5598,
+        "check": 880
+      },
+      "opponentDraw": {
+        "1": 8257
+      },
+      "opponentBetAfterHeroAggression": {
+        "raise": 1619,
+        "call": 788
+      },
+      "heroDecisionStatuses": {
+        "used": 19790
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 20475.5,
+      "heroBetAmountCount": 14066,
+      "heroNoDecisionHands": 907,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.455673254656619,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.023374999999999924,
+        "lower95": -0.5240312500000002,
+        "upper95": 0.46805312499999896,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 1.1495,
+        "lower95": 0.7751187499999999,
+        "upper95": 1.4976593749999996,
+        "sessionUnits": 200
+      }
+    },
+    "6/2-cash|passive": {
+      "heroBet": {
+        "call": 1764,
+        "check": 12867,
+        "fold": 227,
+        "bet": 409
+      },
+      "heroDraw": {
+        "1": 9095,
+        "0": 2185
+      },
+      "opponentBet": {
+        "check": 12895,
+        "call": 2404
+      },
+      "opponentDraw": {
+        "0": 11280
+      },
+      "opponentBetAfterHeroAggression": {
+        "call": 409
+      },
+      "heroDecisionStatuses": {
+        "used": 26547
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 1700.0,
+      "heroBetAmountCount": 15267,
+      "heroNoDecisionHands": 0,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 0.1113512805397262,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.010000000000000009,
+        "lower95": -0.06275312500000008,
+        "upper95": 0.04012812500000003,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 0.784625,
+        "lower95": 0.7509999999999999,
+        "upper95": 0.818128125,
+        "sessionUnits": 200
+      }
+    },
+    "6/2-cash|pressure": {
+      "heroBet": {
+        "call": 4899,
+        "raise": 693,
+        "check": 2779,
+        "fold": 255,
+        "bet": 161
+      },
+      "heroDraw": {
+        "1": 3136,
+        "0": 973,
+        "3": 18
+      },
+      "opponentBet": {
+        "raise": 1888,
+        "bet": 3464,
+        "call": 422,
+        "check": 967
+      },
+      "opponentDraw": {
+        "1": 4127
+      },
+      "opponentBetAfterHeroAggression": {
+        "raise": 456,
+        "call": 398
+      },
+      "heroDecisionStatuses": {
+        "used": 12914
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 9402.5,
+      "heroBetAmountCount": 8787,
+      "heroNoDecisionHands": 803,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.0700466598383975,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.1302500000000001,
+        "lower95": -0.34200937499999995,
+        "upper95": 0.07600624999999986,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 0.505375,
+        "lower95": 0.3473625,
+        "upper95": 0.656878125,
+        "sessionUnits": 200
+      }
+    },
+    "6/3-cash|random_legal": {
+      "heroBet": {
+        "fold": 581,
+        "call": 5605,
+        "check": 5316,
+        "bet": 879,
+        "raise": 757
+      },
+      "heroDraw": {
+        "1": 5569,
+        "0": 1473,
+        "3": 27
+      },
+      "opponentBet": {
+        "call": 2536,
+        "check": 4285,
+        "bet": 3318,
+        "fold": 2519,
+        "raise": 2754
+      },
+      "opponentDraw": {
+        "3": 1802,
+        "1": 1788,
+        "0": 1821,
+        "2": 1872,
+        "4": 1785
+      },
+      "opponentBetAfterHeroAggression": {
+        "raise": 467,
+        "fold": 575,
+        "call": 594
+      },
+      "heroDecisionStatuses": {
+        "used": 20207
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 11778.5,
+      "heroBetAmountCount": 13138,
+      "heroNoDecisionHands": 373,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 0.8965215405693409,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.04074999999999962,
+        "lower95": -0.167875,
+        "upper95": 0.08487812499999978,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 2.141125,
+        "lower95": 2.03886875,
+        "upper95": 2.2341281250000002,
+        "sessionUnits": 200
+      }
+    },
+    "6/3-mtt|pressure": {
+      "heroBet": {
+        "call": 8892,
+        "raise": 1133,
+        "fold": 1036,
+        "check": 2923,
+        "bet": 126
+      },
+      "heroDraw": {
+        "1": 4312,
+        "0": 1568,
+        "3": 1
+      },
+      "opponentBet": {
+        "raise": 9266,
+        "call": 2572,
+        "bet": 6142,
+        "check": 633
+      },
+      "opponentDraw": {
+        "1": 8631
+      },
+      "opponentBetAfterHeroAggression": {
+        "raise": 854,
+        "call": 405
+      },
+      "heroDecisionStatuses": {
+        "used": 19991
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 18657.0,
+      "heroBetAmountCount": 14110,
+      "heroNoDecisionHands": 708,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.3222537207654146,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.005499999999999838,
+        "lower95": -0.44215624999999986,
+        "upper95": 0.4360156250000002,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 1.40025,
+        "lower95": 1.0732468750000002,
+        "upper95": 1.716546874999999,
+        "sessionUnits": 200
+      }
+    },
+    "6/6-cash|random_legal": {
+      "heroBet": {
+        "call": 7136,
+        "bet": 2272,
+        "raise": 2335,
+        "check": 3684,
+        "fold": 376
+      },
+      "heroDraw": {
+        "1": 5210,
+        "0": 2689,
+        "4": 101,
+        "3": 323
+      },
+      "opponentBet": {
+        "call": 8681,
+        "raise": 7226,
+        "fold": 8906,
+        "bet": 3809,
+        "check": 4865
+      },
+      "opponentDraw": {
+        "3": 2960,
+        "0": 2963,
+        "1": 2847,
+        "2": 3014,
+        "4": 3036
+      },
+      "opponentBetAfterHeroAggression": {
+        "raise": 1180,
+        "fold": 1738,
+        "call": 1689
+      },
+      "heroDecisionStatuses": {
+        "used": 24126
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 22010.5,
+      "heroBetAmountCount": 15803,
+      "heroNoDecisionHands": 290,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.3928051635765362,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.023750000000000604,
+        "lower95": -0.3643874999999999,
+        "upper95": 0.2997593749999985,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 5.173874999999999,
+        "lower95": 4.9283,
+        "upper95": 5.397765624999999,
+        "sessionUnits": 200
+      }
+    }
+  },
+  "publishedBeginner": {
+    "2/2-cash|pressure": {
+      "heroBet": {
+        "call": 2432,
+        "raise": 1522,
+        "check": 2839,
+        "bet": 187,
+        "fold": 9
+      },
+      "heroDraw": {
+        "1": 1758,
+        "0": 681,
+        "3": 37,
+        "4": 8
+      },
+      "opponentBet": {
+        "raise": 1723,
+        "bet": 1814,
+        "call": 789,
+        "check": 1262
+      },
+      "opponentDraw": {
+        "1": 2484
+      },
+      "opponentBetAfterHeroAggression": {
+        "raise": 936,
+        "call": 773
+      },
+      "heroDecisionStatuses": {
+        "used": 9473
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 8638.0,
+      "heroBetAmountCount": 6989,
+      "heroNoDecisionHands": 1199,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.235942194877665,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.18949999999999997,
+        "lower95": -0.4375,
+        "upper95": 0.060500000000000026,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 0.2895,
+        "lower95": 0.11449999999999999,
+        "upper95": 0.452,
+        "sessionUnits": 200
+      }
+    },
+    "2/2-cash|random_legal": {
+      "heroBet": {
+        "call": 2361,
+        "check": 4720,
+        "raise": 1122,
+        "bet": 529,
+        "fold": 15
+      },
+      "heroDraw": {
+        "1": 3283,
+        "0": 809,
+        "3": 8,
+        "4": 5
+      },
+      "opponentBet": {
+        "raise": 1088,
+        "check": 2225,
+        "bet": 1555,
+        "fold": 860,
+        "call": 933
+      },
+      "opponentDraw": {
+        "0": 862,
+        "2": 826,
+        "1": 810,
+        "4": 799,
+        "3": 808
+      },
+      "opponentBetAfterHeroAggression": {
+        "fold": 610,
+        "call": 636,
+        "raise": 405
+      },
+      "heroDecisionStatuses": {
+        "used": 12852
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 7544.5,
+      "heroBetAmountCount": 8747,
+      "heroNoDecisionHands": 270,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 0.8625242940436721,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.017000000000000126,
+        "lower95": -0.07103437500000015,
+        "upper95": 0.035749999999999955,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 1.22425,
+        "lower95": 1.186625,
+        "upper95": 1.249875,
+        "sessionUnits": 200
+      }
+    },
+    "2/2-mtt|passive": {
+      "heroBet": {
+        "call": 1541,
+        "check": 12593,
+        "fold": 458,
+        "bet": 33,
+        "raise": 1
+      },
+      "heroDraw": {
+        "1": 8337,
+        "0": 2289
+      },
+      "opponentBet": {
+        "check": 12167,
+        "call": 2034
+      },
+      "opponentDraw": {
+        "0": 10626
+      },
+      "opponentBetAfterHeroAggression": {
+        "call": 34
+      },
+      "heroDecisionStatuses": {
+        "used": 25252
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 838.0,
+      "heroBetAmountCount": 14626,
+      "heroNoDecisionHands": 0,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 0.05729522767674005,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.027375000000000038,
+        "lower95": -0.06075312499999986,
+        "upper95": 0.0052499999999999795,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 0.56925,
+        "lower95": 0.545625,
+        "upper95": 0.5928781249999999,
+        "sessionUnits": 200
+      }
+    },
+    "2/2-mtt|pressure": {
+      "heroBet": {
+        "call": 4963,
+        "raise": 2572,
+        "check": 4376,
+        "bet": 186,
+        "fold": 290
+      },
+      "heroDraw": {
+        "1": 3505,
+        "0": 1162,
+        "4": 1
+      },
+      "opponentBet": {
+        "raise": 2976,
+        "bet": 3951,
+        "call": 1305,
+        "check": 363
+      },
+      "opponentDraw": {
+        "1": 4668
+      },
+      "opponentBetAfterHeroAggression": {
+        "raise": 1476,
+        "call": 1282
+      },
+      "heroDecisionStatuses": {
+        "used": 17055
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 16326.0,
+      "heroBetAmountCount": 12387,
+      "heroNoDecisionHands": 183,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.3179946718333737,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.16037500000000016,
+        "lower95": -0.40612812499999984,
+        "upper95": 0.085253125,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 1.572375,
+        "lower95": 1.398615625,
+        "upper95": 1.7280312499999997,
+        "sessionUnits": 200
+      }
+    },
+    "3/3-cash|passive": {
+      "heroBet": {
+        "call": 1766,
+        "check": 7965,
+        "bet": 2909,
+        "fold": 181,
+        "raise": 12
+      },
+      "heroDraw": {
+        "1": 7003,
+        "3": 153,
+        "0": 1837,
+        "4": 13
+      },
+      "opponentBet": {
+        "call": 8289,
+        "check": 14556
+      },
+      "opponentDraw": {
+        "0": 15366
+      },
+      "opponentBetAfterHeroAggression": {
+        "call": 2921
+      },
+      "heroDecisionStatuses": {
+        "used": 21839
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 6926.0,
+      "heroBetAmountCount": 12833,
+      "heroNoDecisionHands": 0,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 0.5397023299306476,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.02124999999999977,
+        "lower95": -0.09587499999999995,
+        "upper95": 0.05087499999999957,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 2.3126249999999997,
+        "lower95": 2.263121875,
+        "upper95": 2.3598781250000003,
+        "sessionUnits": 200
+      }
+    },
+    "3/3-cash|pressure": {
+      "heroBet": {
+        "call": 1395,
+        "raise": 529,
+        "bet": 169,
+        "check": 1328,
+        "fold": 33
+      },
+      "heroDraw": {
+        "1": 501,
+        "0": 190,
+        "3": 161,
+        "4": 1
+      },
+      "opponentBet": {
+        "raise": 2318,
+        "call": 998,
+        "bet": 667,
+        "check": 2510
+      },
+      "opponentDraw": {
+        "1": 1489
+      },
+      "opponentBetAfterHeroAggression": {
+        "raise": 502,
+        "call": 196
+      },
+      "heroDecisionStatuses": {
+        "used": 4307
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 5335.5,
+      "heroBetAmountCount": 3454,
+      "heroNoDecisionHands": 2507,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.5447307469600464,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.017125,
+        "lower95": -0.3537625,
+        "upper95": 0.3166468749999997,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": -0.04,
+        "lower95": -0.28375,
+        "upper95": 0.205,
+        "sessionUnits": 200
+      }
+    },
+    "3/3-cash|random_legal": {
+      "heroBet": {
+        "call": 4314,
+        "check": 4547,
+        "bet": 1393,
+        "raise": 1462,
+        "fold": 275
+      },
+      "heroDraw": {
+        "0": 1272,
+        "1": 4808,
+        "3": 151,
+        "4": 2
+      },
+      "opponentBet": {
+        "fold": 2612,
+        "raise": 2674,
+        "check": 3317,
+        "call": 2629,
+        "bet": 2443
+      },
+      "opponentDraw": {
+        "1": 1525,
+        "0": 1518,
+        "4": 1541,
+        "2": 1526,
+        "3": 1492
+      },
+      "opponentBetAfterHeroAggression": {
+        "fold": 1018,
+        "call": 1087,
+        "raise": 750
+      },
+      "heroDecisionStatuses": {
+        "used": 18224
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 13074.5,
+      "heroBetAmountCount": 11991,
+      "heroNoDecisionHands": 275,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.0903594362438496,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.05037499999999984,
+        "lower95": -0.17175624999999983,
+        "upper95": 0.06249999999999957,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 2.3765,
+        "lower95": 2.29911875,
+        "upper95": 2.439503125,
+        "sessionUnits": 200
+      }
+    },
+    "3/3-mtt|pressure": {
+      "heroBet": {
+        "call": 7033,
+        "raise": 1972,
+        "fold": 1368,
+        "check": 2559,
+        "bet": 357
+      },
+      "heroDraw": {
+        "0": 1615,
+        "1": 3531,
+        "3": 62,
+        "4": 2
+      },
+      "opponentBet": {
+        "raise": 9919,
+        "call": 3192,
+        "bet": 5372,
+        "check": 697
+      },
+      "opponentDraw": {
+        "1": 8258
+      },
+      "opponentBetAfterHeroAggression": {
+        "raise": 1484,
+        "call": 845
+      },
+      "heroDecisionStatuses": {
+        "used": 18499
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 18560.0,
+      "heroBetAmountCount": 13289,
+      "heroNoDecisionHands": 791,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.3966438407705621,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.023374999999999924,
+        "lower95": -0.5240312500000002,
+        "upper95": 0.46805312499999896,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 1.172875,
+        "lower95": 0.8252406250000001,
+        "upper95": 1.5153999999999996,
+        "sessionUnits": 200
+      }
+    },
+    "6/2-cash|passive": {
+      "heroBet": {
+        "call": 1619,
+        "check": 12193,
+        "fold": 357,
+        "bet": 500,
+        "raise": 3
+      },
+      "heroDraw": {
+        "1": 8472,
+        "0": 2259
+      },
+      "opponentBet": {
+        "check": 12128,
+        "call": 2452
+      },
+      "opponentDraw": {
+        "0": 10731
+      },
+      "opponentBetAfterHeroAggression": {
+        "call": 503
+      },
+      "heroDecisionStatuses": {
+        "used": 25403
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 1814.0,
+      "heroBetAmountCount": 14672,
+      "heroNoDecisionHands": 0,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 0.12363685932388223,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.010000000000000009,
+        "lower95": -0.06275312500000008,
+        "upper95": 0.04012812500000003,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 0.794625,
+        "lower95": 0.755621875,
+        "upper95": 0.8336281249999998,
+        "sessionUnits": 200
+      }
+    },
+    "6/2-cash|pressure": {
+      "heroBet": {
+        "call": 4288,
+        "raise": 778,
+        "check": 2824,
+        "fold": 312,
+        "bet": 221
+      },
+      "heroDraw": {
+        "1": 2694,
+        "0": 969,
+        "3": 15
+      },
+      "opponentBet": {
+        "raise": 1926,
+        "bet": 2952,
+        "call": 442,
+        "check": 782
+      },
+      "opponentDraw": {
+        "1": 3678
+      },
+      "opponentBetAfterHeroAggression": {
+        "raise": 576,
+        "call": 423
+      },
+      "heroDecisionStatuses": {
+        "used": 12101
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 8954.0,
+      "heroBetAmountCount": 8423,
+      "heroNoDecisionHands": 638,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.0630416716134394,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.1302500000000001,
+        "lower95": -0.34200937499999995,
+        "upper95": 0.07600624999999986,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 0.6356250000000001,
+        "lower95": 0.487496875,
+        "upper95": 0.77425,
+        "sessionUnits": 200
+      }
+    },
+    "6/3-cash|random_legal": {
+      "heroBet": {
+        "call": 5034,
+        "raise": 744,
+        "check": 4941,
+        "bet": 895,
+        "fold": 725
+      },
+      "heroDraw": {
+        "1": 5054,
+        "0": 1525,
+        "3": 20
+      },
+      "opponentBet": {
+        "call": 2524,
+        "raise": 2605,
+        "bet": 3054,
+        "fold": 2530,
+        "check": 3967
+      },
+      "opponentDraw": {
+        "3": 1699,
+        "4": 1653,
+        "2": 1719,
+        "1": 1761,
+        "0": 1763
+      },
+      "opponentBetAfterHeroAggression": {
+        "fold": 621,
+        "call": 594,
+        "raise": 424
+      },
+      "heroDecisionStatuses": {
+        "used": 18938
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 10943.0,
+      "heroBetAmountCount": 12339,
+      "heroNoDecisionHands": 318,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 0.8868627927708891,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.04074999999999962,
+        "lower95": -0.167875,
+        "upper95": 0.08487812499999978,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 2.181875,
+        "lower95": 2.0976187499999996,
+        "upper95": 2.2586281250000004,
+        "sessionUnits": 200
+      }
+    },
+    "6/3-mtt|pressure": {
+      "heroBet": {
+        "fold": 1744,
+        "call": 7961,
+        "check": 2688,
+        "raise": 1025,
+        "bet": 190
+      },
+      "heroDraw": {
+        "1": 3829,
+        "0": 1641,
+        "3": 3
+      },
+      "opponentBet": {
+        "raise": 9841,
+        "call": 2727,
+        "bet": 6065,
+        "check": 349
+      },
+      "opponentDraw": {
+        "1": 8792
+      },
+      "opponentBetAfterHeroAggression": {
+        "raise": 797,
+        "call": 418
+      },
+      "heroDecisionStatuses": {
+        "used": 19081
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 16234.0,
+      "heroBetAmountCount": 13608,
+      "heroNoDecisionHands": 356,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.1929747207524986,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.005499999999999838,
+        "lower95": -0.44215624999999986,
+        "upper95": 0.4360156250000002,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 1.4057499999999998,
+        "lower95": 1.11498125,
+        "upper95": 1.692253125,
+        "sessionUnits": 200
+      }
+    },
+    "6/6-cash|random_legal": {
+      "heroBet": {
+        "call": 6169,
+        "raise": 2871,
+        "bet": 2201,
+        "check": 3238,
+        "fold": 555
+      },
+      "heroDraw": {
+        "1": 4469,
+        "0": 2845,
+        "3": 361,
+        "4": 155,
+        "2": 3
+      },
+      "opponentBet": {
+        "raise": 7500,
+        "call": 9103,
+        "fold": 9232,
+        "bet": 3644,
+        "check": 4625
+      },
+      "opponentDraw": {
+        "4": 2989,
+        "1": 3019,
+        "2": 2940,
+        "3": 2928,
+        "0": 2936
+      },
+      "opponentBetAfterHeroAggression": {
+        "fold": 1916,
+        "call": 1878,
+        "raise": 1278
+      },
+      "heroDecisionStatuses": {
+        "used": 22867
+      },
+      "hands": 4000,
+      "heroBetAmountBbSum": 21718.5,
+      "heroBetAmountCount": 15034,
+      "heroNoDecisionHands": 302,
+      "illegalDecisions": 0,
+      "heroMeanBetAmountBb": 1.4446255154982042,
+      "candidateMinusBeginner": {
+        "meanBbPerHand": -0.023750000000000604,
+        "lower95": -0.3643874999999999,
+        "upper95": 0.2997593749999985,
+        "sessionUnits": 200
+      },
+      "heroAbsoluteBbPerHand": {
+        "meanBbPerHand": 5.1976249999999995,
+        "lower95": 4.949125,
+        "upper95": 5.436503125000001,
+        "sessionUnits": 200
+      }
+    }
+  },
+  "limitations": "Arms have disjoint seeds and differing hand trajectories; response frequencies are associative. No weak-cell interval has upper95 below zero in this evaluation."
+}

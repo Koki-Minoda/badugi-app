@@ -66,7 +66,7 @@ test('protection is verified, idempotent, and fails closed for unpatched/tampere
     await cp(packageDirectory, temporary, { recursive: true })
     await applyBracesPatch(temporary)
     const patch = fileURLToPath(new URL('./patches/braces-3.0.3/depth-limit.patch', import.meta.url))
-    execFileSync('git', ['apply', '--no-index', '--reverse', patch], { cwd: temporary })
+    execFileSync('git', ['-c', 'core.autocrlf=false', 'apply', '--no-index', '--reverse', patch], { cwd: temporary })
     await assert.rejects(verifyBracesPatch(temporary), /checksum mismatch/)
     await applyBracesPatch(temporary)
     await verifyBracesPatch(temporary)

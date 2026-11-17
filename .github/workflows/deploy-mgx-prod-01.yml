@@ -31,14 +31,19 @@ jobs:
       - run: npm run build
       - run: npm run test:build:onnx
       - run: npm run test:tier1
+      - name: Audit isolated D03 Phase 1 evaluation contracts
+        run: |
+          python3 -m unittest src/rl/__tests__/test_sequential_gate.py src/rl/__tests__/test_audit_badugi_trace_units.py src/rl/__tests__/test_badugi_controller_step_ledger.py src/rl/__tests__/test_run_frozen_badugi_eval.py -q
+          npx vitest run src/rl/__tests__/badugiControllerInteractiveV2Draft.test.js
       - run: npm run test:game:progress
       - run: npm run test:game:ev
       - run: npm run test:qm:public-games
       - run: npm run test:deploy:static
       - run: node --test scripts/deploy/public-release-audit.test.mjs
+      - run: node --test scripts/deploy/public-cash-gate.test.mjs
 
   learning-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # A cold chromium+webkit system-dependency install exceeded 20 minutes in
     # the 2026-10-26 production dispatch before the actual QA could start.
     timeout-minutes: 90
@@ -107,7 +112,7 @@ jobs:
         run: python -m pytest backend/tests
 
   tournament-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Three natural full-field runs allow 15 minutes each, plus the other regressions.
     timeout-minutes: 90
     steps:
@@ -136,7 +141,7 @@ jobs:
 
 
   p2p-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
@@ -163,7 +168,7 @@ jobs:
           retention-days: 14
 
   history-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
@@ -183,15 +188,21 @@ jobs:
       - name: Exact cash and cross-variant history replay
         run: |
           bash scripts/ci/run-with-backend.sh npx playwright test \
+            tests/e2e/hand-result-auto-next.spec.ts \
             tests/e2e/hand-history-replay-fidelity.spec.ts \
             tests/e2e/cross-variant-history-replay-smoke.spec.ts \
             --project=badugi-flow
 
-  core5-qa:
-    runs-on: ubuntu-latest
-    # The complete 10-hand public-game gate took 88m37s on 2026-10-27.
-    # Keep every case while allowing normal runner-speed variation at deploy time.
-    timeout-minutes: 120
+  core5-device-qa:
+    runs-on: ubuntu-24.04
+    # The added readable CPU pause exhausted the old serial 120-minute budget
+    # after 60/70 cases. Each device retains all games and ten hands, on its own
+    # backend/runner. The protected gate below still requires the full evidence.
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [desktop, android]
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -207,32 +218,67 @@ jobs:
       - run: python -m pip install -e './backend[test]'
       - run: npx playwright install --with-deps chromium
       - run: bash scripts/ci/run-with-backend.sh npm run test:core5:pr-e2e
-      - name: All public cash games - 10 hands on desktop and Android
+      - name: All public cash games - 10 hands on ${{ matrix.device }}
         env:
           MGX_ALL_LIVE_CASH_QA: "1"
           MGX_ALL_LIVE_CASH_HANDS: "10"
+          MGX_ALL_LIVE_CASH_DEVICES: ${{ matrix.device }}
         run: |
           bash scripts/ci/run-with-backend.sh npx playwright test \
             tests/e2e/all-live-core5-cash-production.spec.ts \
             --project=badugi-flow \
             --workers=1
-      - name: Enforce complete public-game QM evidence
-        env:
-          MGX_ALL_LIVE_CASH_HANDS: "10"
-        run: npm run qm:cash:summary
       - name: Upload public cash QM evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: public-cash-qm
-          path: |
-            test-results/
-            reports/all-live-cash/
+          name: public-cash-qm-${{ github.run_attempt }}-${{ matrix.device }}
+          path: reports/all-live-cash/
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Upload lifecycle and browser debug evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core5-debug-${{ github.run_attempt }}-${{ matrix.device }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  core5-qa:
+    needs: core5-device-qa
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require every device shard
+        env:
+          SHARD_RESULT: ${{ needs.core5-device-qa.result }}
+        run: test "$SHARD_RESULT" = success
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: public-cash-qm-${{ github.run_attempt }}-*
+          path: reports/core5-cash-shards
+          merge-multiple: true
+      - name: Enforce complete public-game QM evidence
+        env:
+          MGX_ALL_LIVE_CASH_HANDS: "10"
+        run: node scripts/quality/summarize-core5-cash-qm.mjs reports/core5-cash-shards
+      - name: Upload aggregate public cash QM evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-cash-qm-summary-${{ github.run_attempt }}
+          path: reports/core5-cash-shards/qm-summary.json
           if-no-files-found: ignore
           retention-days: 30
 
   cash-playability-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
@@ -273,7 +319,7 @@ jobs:
           retention-days: 30
 
   mobile-webkit-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
@@ -314,8 +360,8 @@ jobs:
           retention-days: 14
 
   release-candidate-browser-qa:
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -331,6 +377,26 @@ jobs:
       - run: python -m pip install -e './backend[test]'
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run build
+      - name: Badugi Beginner normal selection, model use, and timeout fallback
+        run: npx playwright test tests/e2e/d03-v2-beginner-production-runtime.spec.ts --project=badugi-flow --project=d03-v2-iphone-webkit
+      - name: Upload Badugi Beginner browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d03-beginner-browser-qa
+          path: test-results/d03-v2-beginner-production-*/
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Badugi Pro real cash and tournament model use, legal actions, chips, and timeout fallback
+        run: npx playwright test tests/e2e/d03-v2-pro-production-runtime.spec.ts --project=badugi-flow --project=d03-v2-iphone-webkit --workers=2
+      - name: Upload Badugi Pro browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d03-pro-browser-qa
+          path: test-results/d03-v2-pro-production-*/
+          if-no-files-found: ignore
+          retention-days: 30
       - name: Candidate MIX rotation and BET/DRAW mobile layout
         env:
           E2E_APP_URL: http://127.0.0.1:3000/
@@ -342,6 +408,8 @@ jobs:
             npx playwright test --config playwright.release-candidate.config.js &&
             npx playwright test --config playwright.release-candidate-phase.config.js
           '
+      - name: Decision First hand line and auto-next interruption
+        run: bash scripts/ci/run-with-backend.sh npx playwright test tests/e2e/decision-first-hand-line.spec.ts --project=badugi-flow --output=test-results/decision-first
       - name: Upload candidate browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -350,12 +418,14 @@ jobs:
           path: |
             test-results/release-candidate/
             test-results/release-candidate-phase/
+            test-results/decision-first/
+            reports/screenshots/decision-first-line/
             reports/release-candidate-mix/
           if-no-files-found: ignore
           retention-days: 30
 
   stud-razz-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # A cold browser install left too little time for the device matrix on 2026-10-27.
     timeout-minutes: 90
     steps:
@@ -369,7 +439,7 @@ jobs:
       - run: npm run test:qm:stud-razz-devices
 
   nlh-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v6
@@ -398,7 +468,7 @@ jobs:
           retention-days: 30
 
   dramaha-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The three-engine, six-variant matrix needs about 27 minutes after setup.
     # A cold browser install consumed the 60-minute job limit on 2026-10-27.
     timeout-minutes: 120
@@ -429,7 +499,7 @@ jobs:
           retention-days: 30
 
   omaha-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Browser dependency installation can consume >30 minutes on a cold runner;
     # keep the full desktop/Android/WebKit gameplay gate rather than truncating it.
     timeout-minutes: 90
@@ -463,7 +533,7 @@ jobs:
           retention-days: 30
 
   chinese-qa:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6

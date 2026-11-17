@@ -12,16 +12,16 @@ import {
 describe("onnxPolicyAdapter Badugi schema", () => {
   it("selects tier-specific Badugi models for Beginner, Standard, Pro, Iron, and WorldMaster", () => {
     expect(selectModelForVariant({ variantId: "D03", tierId: "beginner" })).toMatchObject({
-      id: "model-badugi-sixmax-standard-dqn-v2",
-      trainingMode: "sixmax-selfplay",
-      trainingEpisodes: 50000,
-      trainingStatus: "active-beginner-demoted",
-      onnx: "models/badugi_sixmax_standard_dqn_v2.onnx",
+      id: "model-badugi-beginner-controller-v2-20261104",
+      trainingMode: "real-controller-reference-anchor-dqn",
+      trainingEpisodes: 2000,
+      trainingStatus: "evaluated-beginner",
+      onnx: "models/badugi_beginner_controller_v2_20261104.onnx",
       inputShape: [96],
       outputShape: [6],
     });
     expect(selectModelForVariant({ variantId: "D03", tierId: "standard" })?.id).toBe(
-      "model-badugi-sixmax-standard-e11",
+      "model-badugi-standard-controller-v2-20261105",
     );
     expect(
       selectModelForVariant({
@@ -29,9 +29,9 @@ describe("onnxPolicyAdapter Badugi schema", () => {
         tierId: "standard",
         characterId: "badugi-sixmax-standard-ryo",
       })?.id,
-    ).toBe("model-badugi-sixmax-standard-e11");
+    ).toBe("model-badugi-standard-controller-v2-20261105");
     expect(selectModelForVariant({ variantId: "D03", tierId: "pro" })?.id).toBe(
-      "model-badugi-pro-v1",
+      "model-badugi-pro-controller-v2-20261105",
     );
     expect(selectModelForVariant({ variantId: "D03", tierId: "iron" })?.id).toBe(
       "model-badugi-iron-v1",
@@ -85,6 +85,13 @@ describe("onnxPolicyAdapter Badugi schema", () => {
     expect(buildBadugiOnnxFeatures(evEntry, payload)[54]).toBeGreaterThan(0);
     expect(buildBadugiOnnxFeatures(evEntry, payload)[58]).toBe(0);
     expect(buildBadugiOnnxFeatures(evRangeEntry, payload)[58]).toBeGreaterThan(0);
+  });
+
+  it("rejects an unimplemented six-max training schema before ONNX inference", () => {
+    expect(() => buildBadugiOnnxFeatures({
+      inputShape: [96],
+      featureSet: "badugi-sixmax-selfplay-20261024-v1",
+    }, { observation: new Array(96).fill(0) })).toThrow(/Unsupported Badugi ONNX feature set/);
   });
 
   it("builds exact-shape draw ONNX feature tensors and selects variant models", () => {

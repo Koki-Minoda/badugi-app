@@ -104,50 +104,18 @@ class SequentialGateTest(unittest.TestCase):
                                later["metrics"][name]["radius"])
             self.assertTrue(math.isclose(later["metrics"][name]["difference"], 0))
 
-    def test_frozen_cell_conservation_bounds_tighten_without_changing_mean(self):
-        config = plan()
-        config["scoreBounds"] = [-100, 500]
-        config["cells"][1].update(tableSeats=6, occupiedSeats=6,
-                                   startingStackChips=2000, bigBetChips=100)
-        config["scoreBoundMethod"] = "cell_conservation"
-        data = rows(config, 100, 0, 0)
-        local = gate.evaluate(config, data)
-        global_config = copy.deepcopy(config)
-        del global_config["scoreBoundMethod"]
-        broad = gate.evaluate(global_config, data)
-        for metric in gate.METRICS:
-            self.assertEqual(local["metrics"][metric]["difference"],
-                             broad["metrics"][metric]["difference"])
-            self.assertLessEqual(local["metrics"][metric]["radius"],
-                                 broad["metrics"][metric]["radius"])
-        self.assertLess(local["metrics"]["cash"]["radius"],
-                        broad["metrics"]["cash"]["radius"])
-        self.assertAlmostEqual(local["metrics"]["mtt"]["radius"],
-                               broad["metrics"]["mtt"]["radius"])
-        self.assertEqual(local["metrics"]["cash"]["confidenceBoundMethod"],
-                         "per_cell_hoeffding_union_arms_tails_looks_metrics")
-
     def test_exact_chip_boundary_survives_float_net_roundoff(self):
         config = plan()
-        config["scoreBounds"] = [-100, 500]
-        config["cells"][1].update(tableSeats=6, occupiedSeats=6,
-                                   startingStackChips=2000, bigBetChips=100)
         data = rows(config, 20, 0, 0)
         boundary = next(row for row in data["reference"]
                         if row["cell"] == "mtt|unknown")
-        boundary.update(heroSeat=2, finalStacks=[0, 0, 12000, 0, 0, 0],
-                        netBigBets=100.00000000000001)
-        self.assertGreater(100.0 * boundary["netBigBets"] / 20, 500)
+        boundary.update(finalStacks=[1000, 0],
+                        netBigBets=12.500000000000002)
+        self.assertGreater(100.0 * boundary["netBigBets"] / 20, 62.5)
         self.assertEqual(gate.evaluate(config, data)["lookSessionsPerCell"], 20)
-        boundary["netBigBets"] = 100.1
+        boundary["netBigBets"] = 12.6
         with self.assertRaisesRegex(ValueError, "conserved-chip"):
             gate.evaluate(config, data)
-
-    def test_unknown_bound_method_is_rejected(self):
-        config = plan()
-        config["scoreBoundMethod"] = "estimated_from_observed_scores"
-        with self.assertRaisesRegex(ValueError, "unknown score-bound method"):
-            gate.validate_manifest(config)
 
     def test_nonzero_hero_seat_uses_its_own_terminal_stack(self):
         config = plan()

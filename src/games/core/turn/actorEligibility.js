@@ -97,6 +97,11 @@ export function isSeatActiveForHand(player) {
   return true;
 }
 
+// An all-in player can still win the hand and counts as a contender.
+export function hasSingleShowdownContender(players) {
+  return Array.isArray(players) && players.filter(isSeatActiveForHand).length === 1;
+}
+
 export function isSeatEligibleForBetting(player, state = {}, options = {}) {
   if (!isSeatActiveForHand(player)) return false;
   if (isAllIn(player)) return false;

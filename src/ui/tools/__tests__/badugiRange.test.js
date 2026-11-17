@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PRACTICE_CARDS } from '../../practice/practiceSetup.js';
 import { compareBadugiDrawChoices, compareBadugiFinalBet, parseBadugiRange } from '../badugiEquity.js';
 
 const hero = ['AC', '2D', '3H', 'KH'];
@@ -68,5 +69,34 @@ describe('final betting EV', () => {
     expect(result.actions[0].ev).toBe(0);
     expect(result.actions.every(action => action.ev >= 0)).toBe(true);
     expect(compareBadugiFinalBet({ ...input, opponentCount: 2, settings })).toEqual({ error: 'betDrawCount' });
+  });
+});
+
+describe('second-draw betting rollout', () => {
+  const input = { hands: [['AS','2H','3D','8C'], ['AC','2D','3H','9S']], remainingDraws: 2, opponentCount: 0 };
+  const settings = { pot: 20, bet: 10, lead: 10, call: 12, heroCall: 11, heroBet: 10, middleBet: 10 };
+  const run = (overrides = {}, hands = input.hands) =>
+    compareBadugiFinalBet({ ...input, hands, settings: { ...settings, ...overrides } }).actions[0];
+
+  it('carries called bets through to the showdown and subtracts the hero contribution on each street', () => {
+    expect(run()).toMatchObject({ equity: 1, ev: 40, evSE: 0, samples: 10_000 });
+    expect(run({ middleBet: 0 })).toMatchObject({ equity: 1, ev: 30, evSE: 0 });
+    expect(run({}, [['AS','2H','3D','JC'], input.hands[1]])).toMatchObject({ equity: 0, ev: -20 });
+  });
+
+  it('handles a fold immediately and pays the original pot when the opponent folds', () => {
+    expect(run({ heroCall: 0 })).toMatchObject({ equity: 1, ev: 0 });
+    expect(run({ lead: 0, call: 0 })).toMatchObject({ equity: 1, ev: 20 });
+  });
+
+  it('matches independent enumeration of two draws and two betting rounds within sampling error', () => {
+    const hands = [['AS','3H','5D','10C'], ['2S','4H','6D','8C']];
+    const stock = ['2C','5C','7C','9C','7S','QH','KS','4D'];
+    const deadCards = PRACTICE_CARDS.filter(card => !hands.flat().includes(card) && !stock.includes(card));
+    const result = compareBadugiFinalBet({ ...input, hands, deadCards, opponentCount: 1,
+      settings: { ...settings, pot: 30, middleBet: 5 } });
+    const discard = result.actions.find(action => action.cards[0] === '10C');
+    expect(Math.abs(discard.ev - 755 / 42)).toBeLessThan(2 * discard.evSE);
+    expect(Math.abs(discard.equity - 509 / 840)).toBeLessThan(0.01);
   });
 });

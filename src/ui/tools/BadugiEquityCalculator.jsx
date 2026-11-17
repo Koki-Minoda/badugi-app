@@ -201,7 +201,7 @@ export default function BadugiEquityCalculator({ ja, spot = null }) {
       )}
       {error && <p role="status" className={`rounded-xl border p-4 text-sm ${error === 'handSize' ? 'border-white/20 text-slate-300' : 'border-amber-300/40 text-amber-100'}`}>{current?.data?.line && (ja ? `${current.data.line}行目 · ` : `Line ${current.data.line} · `)}{errors[error][ja ? 0 : 1]}</p>}
       {(result || columns.length > 0) && <BadugiEquityResults result={result} columns={columns} choices={choices} hero={hero} opponent={opponentChoice} onHero={id => update('heroDiscards', choices[id])} onOpponent={id => update('opponentChoice', id)} players={players} ja={ja} />}
-      {remainingDraws < 2 && <BadugiFinalBet base={request} opponentCount={opponentChoice} spot={reviewSpot} ja={ja} />}
+      {remainingDraws <= 2 && <BadugiFinalBet base={request} remainingDraws={remainingDraws} opponentCount={opponentChoice} spot={reviewSpot} ja={ja} />}
     </section>
   );
 }

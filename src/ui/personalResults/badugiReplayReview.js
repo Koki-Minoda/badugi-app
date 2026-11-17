@@ -1,5 +1,6 @@
 import { STORAGE_KEYS } from '../../storage/keys.js';
 import { PRACTICE_CARDS } from '../practice/practiceSetup.js';
+import { evaluateBadugi } from '../../games/badugi/utils/badugiEvaluator.js';
 
 const stock = new Set(PRACTICE_CARDS);
 
@@ -73,7 +74,14 @@ export function badugiReplaySpot(history, frames, index) {
     deadCards: [...priorDiscards],
     pot: previous.pot,
     effectiveStack: Math.min(hero.stack, opponent.stack),
+    ...(Number.isFinite(history.endedAt) ? { endedAt: history.endedAt } : {}),
   };
+}
+
+export function isSecondDrawReviewSpot(spot) {
+  return spot?.remainingDraws === 2 && spot.actionSeq != null && Number.isFinite(spot.endedAt) && spot.effectiveStack > 0
+    && spot.observedCount != null && Array.isArray(spot.actualDiscards) && spot.actualDiscards.length <= 1
+    && evaluateBadugi(spot.cards).count === 4;
 }
 
 export function getReviewUserId() {
@@ -99,7 +107,10 @@ export function saveBadugiReview(userId, spot, settings, actions, assumptions) {
   const best = actions.reduce((winner, action) => action.ev > winner.ev ? action : winner, actions[0]);
   const entry = {
     handId: spot.handId, actionSeq: spot.actionSeq, cards: actual.cards, best: best.cards,
-    at: Date.now(), loss: best.ev - actual.ev, bet: settings.bet, settings, ...assumptions,
+    at: Date.now(), loss: best.ev - actual.ev, bet: settings.bet, settings,
+    remainingDraws: spot.remainingDraws, endedAt: spot.endedAt,
+    samplingMargin: actual === best ? 0 : 1.96 * ((actual.evSE ?? 0) + (best.evSE ?? 0)),
+    ...assumptions,
   };
   const existing = readBadugiReviews(userId).filter(review => review.handId !== entry.handId || review.actionSeq !== entry.actionSeq);
   try {

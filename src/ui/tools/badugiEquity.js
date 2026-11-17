@@ -141,7 +141,7 @@ function makeDeals(available, draws, count = trials, initialSeed = 0x529b700d) {
   return { cards, width, count };
 }
 
-function simulate(kept, rounds, deals, cache, availableCards) {
+function simulate(kept, rounds, deals, cache, availableCards, observeRound) {
   let wins = 0;
   let ties = 0;
   let losses = 0;
@@ -155,7 +155,8 @@ function simulate(kept, rounds, deals, cache, availableCards) {
       while (handB.length < 4) handB.push(deals.cards[next++]);
       const a = rankHand(handA, cache);
       const b = rankHand(handB, cache);
-      if (round === rounds - 1 || (a.keep.length === 4 && b.keep.length === 4)) {
+      observeRound?.(a, b, round);
+      if (round === rounds - 1 || (!observeRound && a.keep.length === 4 && b.keep.length === 4)) {
         if (a.score < b.score) wins += 1;
         else if (a.score > b.score) losses += 1;
         else ties += 1;
@@ -168,7 +169,7 @@ function simulate(kept, rounds, deals, cache, availableCards) {
   return summarize(wins, ties, losses, availableCards, 'simulation');
 }
 
-function calculatePrepared(context, choices, observe) {
+function calculatePrepared(context, choices, observe, observeRound) {
   const { hands, remainingDraws, available, evaluations } = context;
   const kept = hands.map((hand, seat) => hand.filter(card => !choices[seat].includes(card)));
   const counts = choices.map(cards => cards.length);
@@ -176,12 +177,12 @@ function calculatePrepared(context, choices, observe) {
   // Keeping a best valid subset means later draw counts can only decrease.
   const maxFutureCards = futureDraws && kept.reduce((sum, hand) => sum + 4 - Math.max(1, evaluateIds(hand).count), 0);
   if (counts[0] + counts[1] + futureDraws * maxFutureCards > available.length) return { error: 'deckTooSmall' };
-  if ((!counts[0] && !counts[1] && !maxFutureCards) ||
-      (remainingDraws <= 1 && counts.every(count => count <= 1))) {
+  if (!observeRound && ((!counts[0] && !counts[1] && !maxFutureCards) ||
+      (remainingDraws <= 1 && counts.every(count => count <= 1)))) {
     return exactShowdown(hands, kept, counts, available, evaluations, observe);
   }
   context.deals ??= makeDeals(available, remainingDraws, context.trials, context.seed);
-  return simulate(kept, remainingDraws, context.deals, evaluations, available.length);
+  return simulate(kept, remainingDraws, context.deals, evaluations, available.length, observeRound);
 }
 
 function normalizeDiscards(discards, hand, remainingDraws) {
@@ -357,28 +358,82 @@ function actionValue(entries, choice, settings) {
   return { ev, terminal };
 }
 
-/** Fixed-limit last betting round, opponent acts first, one bet and no raises. */
+function modeledBet(hero, opponent, settings) {
+  if (opponent.size === 4 && opponent.high <= settings.lead) {
+    return hero.size === 4 && hero.high <= settings.heroCall ? 'called' : 'heroFold';
+  }
+  if (hero.size === 4 && hero.high <= settings.heroBet) {
+    return opponent.size === 4 && opponent.high <= settings.call ? 'called' : 'opponentFold';
+  }
+  return 'checked';
+}
+
+function secondDrawValue(entries, choice, settings) {
+  let ev = 0;
+  let equity = 0;
+  let variance = 0;
+  let samples = 0;
+  for (const { context, weight, discards } of entries) {
+    let earlyAction;
+    let sum = 0;
+    let squares = 0;
+    const result = calculatePrepared(context, [choice, discards], null, (hero, opponent, round) => {
+      if (round === 0) {
+        earlyAction = settings.middleBet > 0 ? modeledBet(hero, opponent, settings) : 'checked';
+        return;
+      }
+      let net;
+      if (earlyAction === 'heroFold') net = 0;
+      else if (earlyAction === 'opponentFold') net = settings.pot;
+      else {
+        const invested = earlyAction === 'called' ? settings.middleBet : 0;
+        const pot = settings.pot + 2 * invested;
+        const share = hero.score < opponent.score ? 1 : hero.score === opponent.score ? 0.5 : 0;
+        const lastAction = modeledBet(hero, opponent, settings);
+        if (lastAction === 'heroFold') net = -invested;
+        else if (lastAction === 'opponentFold') net = pot - invested;
+        else if (lastAction === 'called') net = calledBetValue(pot, settings.bet, share) - invested;
+        else net = share * pot - invested;
+      }
+      sum += net;
+      squares += net * net;
+    });
+    if (result.error) return result;
+    const n = result.outcomes;
+    const mean = sum / n;
+    ev += weight * mean;
+    equity += weight * result.players[0].equity;
+    variance += weight * weight * Math.max(0, squares / n - mean * mean) / (n - 1);
+    samples += n;
+  }
+  return { ev, equity, evSE: Math.sqrt(variance), samples };
+}
+
+/** Fixed-limit conditional model, opponent acts first, one bet per street. */
 export function compareBadugiFinalBet(input) {
   const resolved = resolveOpponent(input);
   if (resolved.error) return resolved;
   const { remainingDraws, opponentCount, settings } = input;
-  if (![0, 1].includes(remainingDraws) || !settings ||
+  const validRank = rank => Number.isInteger(rank) && rank >= 0 && rank <= 13;
+  if (![0, 1, 2].includes(remainingDraws) || !settings ||
       !(settings.pot > 0 && settings.pot <= 1e12 && settings.bet > 0 && settings.bet <= 1e12) ||
-      ![settings.lead, settings.call].every(rank => Number.isInteger(rank) && rank >= 0 && rank <= 13)) {
+      ![settings.lead, settings.call].every(validRank) || (remainingDraws === 2 && (
+        ![settings.heroCall, settings.heroBet].every(validRank) || !(settings.middleBet >= 0 && settings.middleBet <= 1e12)
+      ))) {
     return { error: 'betSettings' };
   }
   const entries = resolved.entries.map(entry => ({
     ...entry,
     discards: remainingDraws === 0 ? [] : input.opponentDiscards != null
       ? normalizeDiscards(input.opponentDiscards, entry.context.hands[1], remainingDraws)
-      : ([0, 1].includes(opponentCount) ? assumeDiscards(entry.context.hands[1], opponentCount) : null),
+      : ((remainingDraws === 2 ? [0, 1, 2, 3, 4] : [0, 1]).includes(opponentCount) ? assumeDiscards(entry.context.hands[1], opponentCount) : null),
   }));
-  if (entries.some(({ discards }) => !discards || discards.length > 1)) return { error: 'betDrawCount' };
+  if (entries.some(({ discards }) => !discards || (remainingDraws < 2 && discards.length > 1))) return { error: 'betDrawCount' };
 
   const hand = entries[0].context.hands[0];
   const actions = (remainingDraws === 0 ? [[]] : [[], ...hand.map(card => [card])]).map(choice => ({
     cards: choice.map(card => PRACTICE_CARDS[card]),
-    ...actionValue(entries, choice, settings),
+    ...(remainingDraws === 2 ? secondDrawValue(entries, choice, settings) : actionValue(entries, choice, settings)),
   }));
   return { actions, range: resolved.range };
 }

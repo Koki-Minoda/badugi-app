@@ -118,6 +118,9 @@ class IronPhase2TrainingGateTests(unittest.TestCase):
                     trainingSeedBase=300116001,
                     handoffSourceCodeSha=old_code,
                     handoffCheckpointSha256=sha(prior_path))
+        continuation_windows = trainer.validate_iron_seed_schedule(plan)
+        self.assertEqual(len(continuation_windows), 400)
+        self.assertLess(continuation_windows[-1][1], 1700116001)
         self.plan.write_text(json.dumps(plan))
         valid = dict(self.base, runIndex=21, priorCumulativeHands=100000,
                      initialModelSha256=sha(prior_path),

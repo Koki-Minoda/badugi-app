@@ -11,10 +11,17 @@ describe('candidate-only Badugi belief evidence', () => {
     let observedOpponentDraw = false;
     let decisions = 0;
     while (decision.type === 'decision') {
-      const { actorSeenCards, publicActions, showdownCardsIncluded } = decision.beliefEvidence;
+      const { actorSeenCards, publicActions, showdownCardsIncluded,
+        actorHandProgress, opponentPublicHistory } = decision.beliefEvidence;
       expect(actorSeenCards.length).toBeGreaterThanOrEqual(4);
       expect(new Set(actorSeenCards.map((card) => card.join(':'))).size).toBe(actorSeenCards.length);
       expect(showdownCardsIncluded).toBe(false);
+      expect(actorHandProgress.current.madeCards).toBeGreaterThanOrEqual(1);
+      expect(actorHandProgress.current.madeCards).toBeLessThanOrEqual(4);
+      expect(actorHandProgress.madeCardGain).toBe(
+        actorHandProgress.current.madeCards - actorHandProgress.initial.madeCards);
+      expect(opponentPublicHistory[decision.seat]).toBeNull();
+      expect(opponentPublicHistory[1 - decision.seat].handsObserved).toBe(0);
       for (const event of publicActions) {
         expect(Object.keys(event).sort()).toEqual(event.type === 'BET_ACTION'
           ? ['action', 'amountBb', 'drawRoundIndex', 'seat', 'type'].sort()
@@ -32,5 +39,10 @@ describe('candidate-only Badugi belief evidence', () => {
     expect(decision.type).toBe('hand_end');
     expect(observedOpponentDraw).toBe(true);
     expect(decision.ledger.accounted).toBe(decision.ledger.chipPool);
+    const next = session.nextHand();
+    expect(next.type).toBe('decision');
+    expect(next.beliefEvidence.opponentPublicHistory[1 - next.seat].handsObserved).toBe(1);
+    expect(next.beliefEvidence.actorHandProgress.madeCardGain).toBe(0);
+    expect(next.beliefEvidence.actorSeenCards).toHaveLength(4);
   });
 });

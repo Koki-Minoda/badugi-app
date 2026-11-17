@@ -188,6 +188,7 @@ jobs:
       - name: Exact cash and cross-variant history replay
         run: |
           bash scripts/ci/run-with-backend.sh npx playwright test \
+            tests/e2e/hand-result-auto-next.spec.ts \
             tests/e2e/hand-history-replay-fidelity.spec.ts \
             tests/e2e/cross-variant-history-replay-smoke.spec.ts \
             --project=badugi-flow

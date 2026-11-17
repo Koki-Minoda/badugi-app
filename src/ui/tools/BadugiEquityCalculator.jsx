@@ -1,5 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useBadugiCalculation } from './useBadugiCalculation.js';
+import BadugiRangeComparison, { RangePresetField } from './BadugiRangeComparison.jsx';
+import { BADUGI_RANGE_PRESETS } from './badugiRangePresets.js';
+import { getReviewUserId } from '../personalResults/badugiReplayReview.js';
+import { readBadugiRangeReviews } from '../personalResults/badugiRangeReviewStore.js';
 import BadugiFinalBet from './BadugiFinalBet.jsx';
 import BadugiEquityResults from './BadugiEquityResults.jsx';
 import CardPicker from './CardPicker.jsx';
@@ -8,9 +12,12 @@ import { cardText } from './cardText.js';
 
 const rangeExample = '9S 7C 5D 4H 3\n8S 6C 4D 2H 1';
 
+const emptyRange = { preset: null, text: '' };
+
 const example = {
   mode: 'fixed',
-  rangeText: '',
+  rangeA: emptyRange,
+  rangeB: emptyRange,
   hands: [['AC', '2D', '3H', 'KH'], ['9S', '7C', '5D', '4H']],
   remainingDraws: 1,
   heroDiscards: ['KH'],
@@ -22,7 +29,7 @@ const example = {
 const errors = {
   heroSize: ['自分の手札を4枚選んでください。', 'Choose four cards for your hand.'],
   handSize: ['自分と相手の手札を4枚ずつ選ぶと、ここに結果が表示されます。', 'Choose four cards for each player to see the result.'],
-  rangeEmpty: ['相手の候補手札を1組以上入力してください。', 'Enter at least one possible opponent hand.'],
+  rangeEmpty: ['相手レンジの候補を選ぶか、候補手札を1組以上入力してください。', 'Choose a range preset or enter at least one possible opponent hand.'],
   rangeLimit: ['レンジは24行まで入力できます。', 'The range can contain at most 24 lines.'],
   rangeLine: ['1行に異なる4枚と、正の重みを入力してください。', 'Enter four distinct cards and a positive weight on each line.'],
   rangeBlocked: ['自分の手札や除外カードと重ならない候補がありません。', 'Every candidate overlaps your hand or the dead cards.'],
@@ -59,16 +66,27 @@ function DiscardPicker({ hand, discards, onChange, ja }) {
 }
 
 export default function BadugiEquityCalculator({ ja, spot = null }) {
+  const [saved] = useState(() => spot ? readBadugiRangeReviews(getReviewUserId()).find(review =>
+    review.handId === spot.handId && review.actionSeq === spot.actionSeq && review.remainingDraws === spot.remainingDraws
+    && (spot.observedCount == null || spot.observedCount === review.count)) : null);
   const [scenario, setScenario] = useState(() => spot ? {
     ...example, mode: 'range', hands: [spot.cards, []], remainingDraws: spot.remainingDraws,
-    heroDiscards: spot.actualDiscards ?? [], opponentChoice: spot.observedCount ?? -1, deadCards: spot.deadCards,
+    heroDiscards: spot.actualDiscards ?? [], opponentChoice: spot.observedCount ?? saved?.count ?? -1,
+    deadCards: saved?.deadCards ?? spot.deadCards,
+    rangeA: saved?.assumptions[0] ?? emptyRange, rangeB: saved?.assumptions[1] ?? emptyRange,
   } : example);
-  const { hands, remainingDraws, heroDiscards, opponentChoice, opponentDiscards, deadCards, mode, rangeText } = scenario;
+  const { hands, remainingDraws, heroDiscards, opponentChoice, opponentDiscards, deadCards, mode, rangeA, rangeB } = scenario;
   const ranged = mode === 'range';
   const players = ja ? ['自分', '相手'] : ['You', 'Opponent'];
   const manual = !ranged && remainingDraws && opponentChoice === 5 ? opponentDiscards : null;
   const ready = hands[0].length === 4 && (ranged || hands[1].length === 4);
-  const activeRange = ranged ? rangeText : null;
+  const activeRange = ranged ? rangeA.text : null;
+  const presetsRequest = useMemo(() => ranged && hands[0].length === 4 ? { presets: { hero: hands[0], deadCards } } : null,
+    [ranged, hands, deadCards]);
+  const { current: generated, retry: retryPresets } = useBadugiCalculation(presetsRequest);
+  const presets = generated?.data?.presets;
+  const countForPresets = remainingDraws === 0 ? 0 : opponentChoice;
+  const defaults = BADUGI_RANGE_PRESETS.filter(({ id, draw }) => draw === countForPresets && presets?.[id]);
   const request = useMemo(() => ready ? { hands, remainingDraws, deadCards, opponentDiscards: manual, rangeText: activeRange } : null,
     [ready, hands, remainingDraws, deadCards, manual, activeRange]);
   const { current, retry } = useBadugiCalculation(request);
@@ -120,7 +138,7 @@ export default function BadugiEquityCalculator({ ja, spot = null }) {
           </select>
         </label>
         {!spot && <div className="flex flex-wrap gap-2 text-sm">
-          <button type="button" className="min-h-11 rounded-lg border border-white/20 px-3 text-emerald-200" onClick={() => setScenario({ ...example, remainingDraws, mode, rangeText: ranged ? rangeExample : '' })}>{ja ? '入力例を使う' : 'Load example'}</button>
+          <button type="button" className="min-h-11 rounded-lg border border-white/20 px-3 text-emerald-200" onClick={() => setScenario({ ...example, remainingDraws, mode, rangeA: ranged ? { preset: null, text: rangeExample } : emptyRange })}>{ja ? '入力例を使う' : 'Load example'}</button>
           <button type="button" className="min-h-11 rounded-lg border border-white/20 px-3" onClick={() => setScenario({ ...example, hands: [[], []], remainingDraws, heroDiscards: [], mode })}>{ja ? 'カードをクリア' : 'Clear cards'}</button>
         </div>}
       </div>
@@ -140,10 +158,30 @@ export default function BadugiEquityCalculator({ ja, spot = null }) {
             </select>
           </label>
           {ranged ? <div className="space-y-2">
+            <RangePresetField label={ja ? 'レンジAの候補' : 'Range A preset'} value={rangeA.preset} presets={presets}
+              count={countForPresets} onChange={value => update('rangeA', value)} ja={ja} />
+            {presetsRequest && !generated && <p role="status" className="text-xs text-slate-300">{ja ? '候補を作成中…' : 'Generating presets…'}</p>}
+            {generated?.failed && <button type="button" className="min-h-11 text-sm text-emerald-200 underline" onClick={retryPresets}>
+              {ja ? 'レンジ候補を再作成' : 'Regenerate presets'}
+            </button>}
+            {presets && !Object.values(presets).some(Boolean) && <p className="text-xs text-slate-300">
+              {ja ? 'いまの除外カードでは候補手札を作れません。' : 'No possible hands with these dead cards.'}
+            </p>}
+            <p className="text-xs text-slate-300">{ja
+              ? '既知カードを除いた代表例です。各グループ最大8組で、8以下と9〜Kを混ぜる場合は両グループを同じ重みにします。'
+              : 'Presets use up to eight representative hands per group after removing known cards. Mixed presets give equal weight to the low and high groups.'}</p>
+            {remainingDraws > 0 && defaults.length === 2 && !rangeA.text && !rangeB.text && <button type="button"
+              className="min-h-11 rounded-lg border border-emerald-300/40 px-3 text-sm font-semibold text-emerald-200"
+              onClick={() => setScenario(previous => ({ ...previous,
+                rangeA: { preset: defaults[0].id, text: presets[defaults[0].id].text },
+                rangeB: { preset: defaults[1].id, text: presets[defaults[1].id].text },
+              }))}>
+              {ja ? '交換枚数に合う2つの候補を入れる' : 'Load two presets for this draw count'}
+            </button>}
             <label className="grid gap-1 text-sm font-medium">{ja ? '相手のレンジ' : 'Opponent range'}
               <textarea className="min-h-28 w-full rounded-lg border border-white/20 bg-slate-800 p-3 font-mono text-base" spellCheck={false}
-                value={rangeText} maxLength={4000} placeholder={rangeExample} aria-describedby="equity-range-help"
-                onChange={event => update('rangeText', event.target.value)} />
+                value={rangeA.text} maxLength={4000} placeholder={rangeExample} aria-describedby="equity-range-help"
+                onChange={event => update('rangeA', { preset: null, text: event.target.value })} />
             </label>
             <p id="equity-range-help" className="text-xs text-slate-300">{ja
               ? '1行に4枚と重みを入力します（例 9S 7C 5D 4H 3）。重み省略は1。最大24行です。観測した交換枚数などを考慮した重みを入力してください。'
@@ -192,6 +230,8 @@ export default function BadugiEquityCalculator({ ja, spot = null }) {
           </div>
         </details>
       )}
+      {ranged && remainingDraws > 0 && <BadugiRangeComparison base={request} assumptions={[rangeA, rangeB]}
+        onAlternate={value => update('rangeB', value)} count={opponentChoice} presets={presets} spot={reviewSpot} saved={saved} errors={errors} ja={ja} />}
       {ready && !current && <p role="status" className="rounded-xl border border-white/20 p-4 text-sm text-slate-300">{ja ? 'エクイティを計算中…' : 'Calculating equity…'}</p>}
       {current?.failed && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300/40 p-4 text-sm text-amber-100">

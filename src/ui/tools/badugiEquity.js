@@ -1,5 +1,6 @@
 import { compareBadugiEvaluations, evaluateBadugi } from '../../games/badugi/utils/badugiEvaluator.js';
 import { calledBetValue } from '../personalResults/finalBetValue.js';
+import { analyzeRangeSensitivity } from './badugiRangeSensitivity.js';
 import { PRACTICE_CARDS } from '../practice/practiceSetup.js';
 
 const deck = new Map(PRACTICE_CARDS.map((card, index) => [card, index]));
@@ -303,6 +304,34 @@ function mixRange(entries, choose) {
   return { ...summarize(...probabilities, availableCards, method), outcomes, range: true };
 }
 
+function fixedCountMatchups(entries, count) {
+  return entries.map(entry => ({ ...entry, discards: assumeDiscards(entry.context.hands[1], count) }));
+}
+
+export function compareBadugiRangePair(base, rangeTexts, count) {
+  if (![0, 1, 2, 3, 4].includes(count) || ![1, 2, 3].includes(base.remainingDraws)) return { error: 'drawRounds' };
+  if (!Array.isArray(rangeTexts) || rangeTexts.length !== 2 || rangeTexts.some(text => typeof text !== 'string')) return { error: 'rangeEmpty' };
+  const profiles = rangeTexts.map(rangeText => {
+    const resolved = resolveOpponent({ ...base, rangeText });
+    if (resolved.error) return resolved;
+    const matchups = fixedCountMatchups(resolved.entries, count);
+    const hand = resolved.entries[0].context.hands[0];
+    const results = [[], ...hand.map(card => [card])].map(choice =>
+      mixRange(matchups, discards => [choice, discards]));
+    return { range: resolved.range, results };
+  });
+  const invalidProfile = profiles.findIndex(profile => profile.error);
+  if (invalidProfile >= 0) return { error: profiles[invalidProfile].error, profile: invalidProfile, line: profiles[invalidProfile].line };
+  if (profiles.some(profile => profile.results.some(result => result.error))) return { error: 'deckTooSmall' };
+  const actions = ['pat', ...base.hands[0]].map((id, index) => ({
+    id,
+    a: profiles[0].results[index].players[0].equity,
+    b: profiles[1].results[index].players[0].equity,
+    approximate: profiles.some(profile => profile.results[index].method === 'simulation'),
+  }));
+  return { ...analyzeRangeSensitivity(actions), actions, ranges: profiles.map(profile => profile.range) };
+}
+
 export function compareBadugiRange(input) {
   const resolved = resolveOpponent(input);
   if (resolved.error) return resolved;
@@ -313,7 +342,7 @@ export function compareBadugiRange(input) {
   return {
     range,
     columns: Array.from({ length: 5 }, (_, count) => {
-      const matchups = entries.map(entry => ({ ...entry, discards: assumeDiscards(entry.context.hands[1], count) }));
+      const matchups = fixedCountMatchups(entries, count);
       return { cards: null, results: options.map(choice => mixRange(matchups, discards => [choice, discards])) };
     }),
   };

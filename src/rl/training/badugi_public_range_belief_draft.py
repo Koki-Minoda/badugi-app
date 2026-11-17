@@ -151,7 +151,8 @@ class RangeEstimate:
 
 def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
                           particles=2048, opponent_public_history=None,
-                          style_weight=0.0, action_model=None):
+                          style_weight=0.0, action_model=None,
+                          profiled_action_model=None):
     """Particle posterior for a single opponent, with no private-opponent input.
 
     Rebuild from all actor-visible cards and chronological public events. This
@@ -168,6 +169,8 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
         estimate_public_style(opponent_public_history)  # Validate public-only history.
     if style_weight != 0:
         raise ValueError("uncalibrated style mixture is disabled")
+    if action_model is not None and profiled_action_model is not None:
+        raise ValueError("choose one candidate action model")
     unseen = tuple(card for card in DECK if card not in seen)
     if len(unseen) < 8:
         raise ValueError("insufficient unseen cards")
@@ -185,6 +188,11 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
             from rl.training.badugi_conditional_action_model_draft import conditional_action_probability
             modeled_buckets = tuple(conditional_action_probability(action_model, event, bucket)
                                     for bucket in range(4))
+        elif profiled_action_model is not None and event["type"] == "BET_ACTION":
+            from rl.training.badugi_profiled_action_model_draft import profiled_action_probability
+            modeled_buckets = tuple(profiled_action_probability(
+                profiled_action_model, event, bucket, opponent_public_history)
+                for bucket in range(4))
         next_weights = []
         for hand, weight in zip(hands, weights):
             made = evaluate_badugi(hand)[0]

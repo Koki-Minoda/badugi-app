@@ -19,7 +19,8 @@ from rl.training.export_badugi_controller_v2_candidate import (
 )
 from rl.training.export_badugi_controller_v2_phase_candidate import PhaseEnsemble
 from rl.training.validate_badugi_controller_v2_draft import (
-    FirstStreetKPatRaiseAgent, FoldGuardedPhaseAgent, OnnxAgent,
+    FirstStreetKPatRaiseAgent, FirstStreetNineOrBetterPatRaiseAgent,
+    FoldGuardedPhaseAgent, OnnxAgent,
     PhaseRoutedAgent, opening_context,
 )
 from rl.env.badugi_env import evaluate_badugi
@@ -49,6 +50,27 @@ class BootstrapPolicyTests(unittest.TestCase):
         observation[9] = 1 / 3
         self.assertEqual(agent.act(observation, 0.0, mask), 2)
         observation[9] = 0
+        mask[4] = 0
+        self.assertEqual(agent.act(observation, 0.0, mask), 2)
+        self.assertEqual(agent.overrides, 1)
+
+    def test_first_street_nine_pat_raise_uses_card_quality_and_legal_mask(self):
+        class Calls:
+            def act(self, obs, epsilon, action_mask):
+                return 2
+
+        agent = FirstStreetNineOrBetterPatRaiseAgent(Calls())
+        observation = np.zeros(96, dtype=np.float32)
+        observation[24] = 1.0
+        observation[25] = np.float32(8 / 12)
+        mask = np.asarray([1, 0, 1, 0, 1, 0], dtype=np.float32)
+        self.assertEqual(agent.act(observation, 0.0, mask), 4)
+        observation[25] = np.float32(9 / 12)
+        self.assertEqual(agent.act(observation, 0.0, mask), 2)
+        observation[25] = np.float32(8 / 12)
+        observation[24] = 0.75
+        self.assertEqual(agent.act(observation, 0.0, mask), 2)
+        observation[24] = 1.0
         mask[4] = 0
         self.assertEqual(agent.act(observation, 0.0, mask), 2)
         self.assertEqual(agent.overrides, 1)

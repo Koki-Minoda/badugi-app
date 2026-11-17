@@ -131,6 +131,19 @@ class FirstStreetKPatRaiseAgent:
         return action
 
 
+class FirstStreetNineOrBetterPatRaiseAgent(FirstStreetKPatRaiseAgent):
+    """Development-only first-street value raise for a nine-low or better Badugi."""
+
+    def act(self, obs, epsilon, action_mask):
+        action = self.base_agent.act(obs, epsilon=epsilon, action_mask=action_mask)
+        if (action == 2 and float(obs[8]) == 0.0 and float(obs[9]) == 0.0 and
+                round(float(obs[24]) * 4) == 4 and
+                round(float(obs[25]) * 12) <= 8 and action_mask[4] == 1):
+            self.overrides += 1
+            return 4
+        return action
+
+
 def phase_model_sha(bet_path, draw_path, fold_guardian=False):
     bet_sha = hashlib.sha256(bet_path.read_bytes()).hexdigest()
     draw_sha = hashlib.sha256(draw_path.read_bytes()).hexdigest()
@@ -149,6 +162,8 @@ def main():
                         help='Exploratory phase pair only: keep published Standard BET FOLD')
     parser.add_argument('--first-street-k-pat-raise', action='store_true',
                         help='Exploratory only: change K-high four-card Badugi CALL to legal RAISE before draw one')
+    parser.add_argument('--first-street-nine-pat-raise', action='store_true',
+                        help='Exploratory only: change nine-low or better four-card Badugi CALL to legal RAISE before draw one')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--sessions-per-profile', type=int, default=6)
     parser.add_argument('--session-start-index', type=int, default=0,
@@ -183,10 +198,12 @@ def main():
         raise ValueError('frozen product evaluations cannot filter groups or profiles')
     if args.evaluation_manifest and args.capture_opening:
         raise ValueError('opening capture is diagnostic only; do not change a frozen evaluation')
-    if args.evaluation_manifest and args.first_street_k_pat_raise:
-        raise ValueError('K-high first-street raise is exploratory and cannot be a frozen product evaluation')
-    if args.reference and args.first_street_k_pat_raise:
-        raise ValueError('K-high first-street raise requires an ONNX or checkpoint base agent')
+    if args.first_street_k_pat_raise and args.first_street_nine_pat_raise:
+        raise ValueError('choose only one first-street raise diagnostic')
+    if args.evaluation_manifest and (args.first_street_k_pat_raise or args.first_street_nine_pat_raise):
+        raise ValueError('first-street raise diagnostics cannot be a frozen product evaluation')
+    if args.reference and (args.first_street_k_pat_raise or args.first_street_nine_pat_raise):
+        raise ValueError('first-street raise diagnostics require an ONNX or checkpoint base agent')
     phase_pair = args.bet_onnx is not None and args.draw_onnx is not None
     if args.fold_guardian and not phase_pair:
         raise ValueError('fold guardian requires a BET candidate and published Standard DRAW ONNX')
@@ -204,6 +221,8 @@ def main():
         raise ValueError('candidate observation/action contract mismatch')
     if args.first_street_k_pat_raise:
         agent = FirstStreetKPatRaiseAgent(agent)
+    elif args.first_street_nine_pat_raise:
+        agent = FirstStreetNineOrBetterPatRaiseAgent(agent)
     candidate_path = args.model or args.onnx_model
     model_sha = (REFERENCE_POLICY_ID if args.reference else
                  phase_model_sha(args.bet_onnx, args.draw_onnx, args.fold_guardian) if phase_pair else
@@ -372,8 +391,12 @@ def main():
                'foldGuardian': args.fold_guardian,
                'firstStreetKPatRaise': args.first_street_k_pat_raise,
                'firstStreetKPatRaiseCount': agent.overrides if args.first_street_k_pat_raise else 0,
+               'firstStreetNinePatRaise': args.first_street_nine_pat_raise,
+               'firstStreetNinePatRaiseCount': agent.overrides if args.first_street_nine_pat_raise else 0,
                'policySha256': (hashlib.sha256((model_sha + ':first-street-k-pat-raise-v1').encode()).hexdigest()
-                                if args.first_street_k_pat_raise else model_sha),
+                                if args.first_street_k_pat_raise else
+                                hashlib.sha256((model_sha + ':first-street-nine-pat-raise-v1').encode()).hexdigest()
+                                if args.first_street_nine_pat_raise else model_sha),
                'decisionLedgerIncluded': args.decision_ledger,
                'captureOpening': args.capture_opening,
                'seedBase': args.seed_base, 'sessionStartIndex': args.session_start_index,

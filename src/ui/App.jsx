@@ -4553,7 +4553,7 @@ export default function App() {
               (seatSnapshot?.allIn ?? playerState?.allIn) !== true,
           };
       const historyMetadata = normalizedDrawInfo
-        ? { drawInfo: normalizedDrawInfo, ...decisionProvenanceForHistory(persistedMeta) }
+        ? { drawInfo: normalizedDrawInfo, drawRound: resolvedDrawRound, ...decisionProvenanceForHistory(persistedMeta) }
         : { betInfo, ...decisionProvenanceForHistory(persistedMeta) };
       canonicalActionMetadata = historyMetadata;
       historyAction = appendHandHistoryAction({

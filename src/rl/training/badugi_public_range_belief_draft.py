@@ -105,10 +105,19 @@ def _public_action_likelihood(event, bucket, made):
     Legacy events without a menu retain their frozen diagnostic likelihood.
     No uncalibrated style mixing is allowed to change the posterior here.
     """
-    baseline = _likelihood(event, bucket, made)
     if event["type"] != "BET_ACTION" or "legalActions" not in event:
-        return baseline
-    total = sum(_likelihood({**event, "action": BET_ACTIONS[index]}, bucket, made)
+        return _likelihood(event, bucket, made)
+    # In fixed limit, each alternative has its own public contribution. Using
+    # the observed raise amount for CHECK or CALL would make the probabilities
+    # depend on which alternative happened to be observed.
+    unit = 2 if event.get("drawRoundIndex", 0) >= 2 else 1
+    def candidate(index):
+        action = BET_ACTIONS[index]
+        amount = (0 if index <= 1 else event["toCallBb"] if index == 2 else
+                  unit if index == 3 else event["toCallBb"] + unit)
+        return _likelihood({**event, "action": action, "amountBb": amount}, bucket, made)
+    baseline = candidate(BET_ACTIONS.index(event["action"]))
+    total = sum(candidate(index)
                 for index in event["legalActions"])
     return baseline / total
 
@@ -142,7 +151,7 @@ class RangeEstimate:
 
 def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
                           particles=2048, opponent_public_history=None,
-                          style_weight=0.0):
+                          style_weight=0.0, action_model=None):
     """Particle posterior for a single opponent, with no private-opponent input.
 
     Rebuild from all actor-visible cards and chronological public events. This
@@ -171,10 +180,18 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
         if not _event(event, target_seat):
             continue
         used += 1
+        modeled_buckets = None
+        if action_model is not None and event["type"] == "BET_ACTION":
+            from rl.training.badugi_conditional_action_model_draft import conditional_action_probability
+            modeled_buckets = tuple(conditional_action_probability(action_model, event, bucket)
+                                    for bucket in range(4))
         next_weights = []
         for hand, weight in zip(hands, weights):
             made = evaluate_badugi(hand)[0]
-            next_weights.append(weight * _public_action_likelihood(event, _bucket(hand), made))
+            bucket = _bucket(hand)
+            likelihood = (modeled_buckets[bucket] if modeled_buckets is not None else
+                          _public_action_likelihood(event, bucket, made))
+            next_weights.append(weight * likelihood)
         total = sum(next_weights)
         if total <= 0 or not math.isfinite(total):
             raise ValueError("range weights collapsed")

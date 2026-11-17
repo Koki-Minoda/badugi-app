@@ -1,3 +1,5 @@
+import PersonalResults from "../personalResults/PersonalResults.jsx";
+import { readPersistedHandHistory } from "../utils/persistedHandHistory.js";
 import ReviewBookmarkButton from "../review/ReviewBookmarkButton.jsx";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -149,6 +151,7 @@ export default function HandHistoryScreen({
   language = "ja",
   embedded = false,
 }) {
+  const [personalResultsHands, setPersonalResultsHands] = useState(null);
   const [filterMode, setFilterMode] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [liveHandSnapshot, setLiveHandSnapshot] = useState(null);
@@ -323,6 +326,13 @@ export default function HandHistoryScreen({
     );
   }
 
+  if (personalResultsHands) return (
+    <PersonalResults hands={personalResultsHands} language={language}
+      onBack={() => setPersonalResultsHands(null)}
+      onReplay={(id, target) => { setPersonalResultsHands(null); onReplay(id, target); }}
+    />
+  );
+
   return (
     <div className={`${embedded ? "bg-transparent" : "min-h-screen bg-slate-950"} px-4 py-6 text-slate-100`}>
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -399,6 +409,11 @@ export default function HandHistoryScreen({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="font-semibold text-white">{copy.feedbackTitle}</h2>
+              {hasStoredFeedbackAuth() && (
+                <button type="button" className="mt-2 rounded-full border border-emerald-400/40 px-4 py-2 font-semibold text-emerald-200 hover:bg-emerald-400/10"
+                  onClick={() => setPersonalResultsHands([...completedSnapshotList, ...readPersistedHandHistory({ limit: 2000 })])}
+                >{language === "ja" ? "マイ結果を見る" : "View my results"}</button>
+              )}
               <p className="mt-1 text-slate-300/80">{copy.feedbackBody}</p>
               <p className="mt-2 text-xs text-slate-400">
                 Hands: {feedbackPayloadResult.handCount} / Minimum: {MIN_FEEDBACK_HANDS}

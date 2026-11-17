@@ -151,14 +151,45 @@ test("a real Badugi hand replays the same actions, chips, pot, and draw cards", 
     const preview = page.getByTestId("badugi-replay-decision-preview");
     await preview.getByRole("button", { name: "最初の判断へ" }).click();
     const cards = record.seats.find((seat: any) => seat.isHero).initialHand;
-    await expect(preview.getByTestId("badugi-replay-before-cards").locator(":scope > div"))
+    await expect(preview.getByTestId("game-table-surface")).toBeVisible();
+    await expect(preview.getByTestId("badugi-replay-before-cards").locator(".mgx-table-card"))
       .toHaveCount(cards.length);
     await expect(preview.getByText("EV差 — 採点保留")).toBeVisible();
     await preview.screenshot({ path: info.outputPath("badugi-replay-decision-preview.png") });
     const practice = preview.getByRole("link", { name: "この開始手札で練習" });
     const href = await practice.getAttribute("href");
     expect(new URL(href!, page.url()).searchParams.get("cards")).toBe(cards.join(","));
+    await page.evaluate(() =>
+      localStorage.setItem("mgx.practice.options", JSON.stringify({ cpuDelay: 150, neverFold: true })),
+    );
     await practice.click();
     await expect(page).toHaveURL(/\/learn\/practice\?/);
+    const start = page.getByRole("button", { name: "この手札で練習する", exact: true });
+    await expect(start).toBeInViewport();
+    await start.click();
+    const table = page.getByTestId("badugi-practice-game-preview");
+    await expect(table.getByTestId("game-table-surface")).toBeVisible();
+    await expect(table.getByTestId("practice-hero-hand").locator(".mgx-table-card")).toHaveCount(4);
+    await expect(table.getByRole("button", { name: "フォールド", exact: true })).toBeVisible();
+    await expect(table.getByTestId("practice-turn")).toContainText("あなたの番");
+    await expect(table.getByRole("button", { name: "フォールド", exact: true })).toBeInViewport();
+    await table.screenshot({ path: info.outputPath("badugi-practice-game-preview.png") });
+    const standPat = table.getByRole("button", { name: "交換しない" });
+    const betDecision = table.getByRole("button", { name: /^(チェック|コール [0-9]+)$/ });
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await expect(standPat.or(betDecision)).toBeEnabled({ timeout: 15_000 });
+      if (await standPat.isVisible()) break;
+      await betDecision.click();
+    }
+    await expect(standPat).toBeEnabled();
+    const drawCard = table.getByTestId("practice-hero-hand").locator("button.mgx-table-card").first();
+    const previousCard = await drawCard.getAttribute("aria-label");
+    await drawCard.click();
+    await expect(drawCard).toHaveAttribute("aria-pressed", "true");
+    const exchange = table.getByRole("button", { name: "1枚交換" });
+    await expect(exchange).toBeInViewport();
+    await table.screenshot({ path: info.outputPath("badugi-practice-draw-preview.png") });
+    await exchange.click();
+    await expect(table.getByTestId("practice-hero-hand").getByLabel(previousCard!, { exact: true })).toHaveCount(0);
   }
 });

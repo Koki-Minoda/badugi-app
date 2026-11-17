@@ -1,5 +1,5 @@
 import React from "react";
-import Card from "../components/Card.jsx";
+import BadugiTrainingTable from "./BadugiTrainingTable.jsx";
 import ReviewPracticeLink from "../practice/ReviewPracticeLink.jsx";
 import { validatePracticeSetup } from "../practice/practiceSetup.js";
 import { reviewVariant } from "../review/reviewStore.js";
@@ -91,6 +91,15 @@ export default function BadugiReplayDecisionPreview({ hand, frames, frameIndex, 
   const previousFrames = atDecision ? frames.slice(0, frameIndex) : [];
   const cards = atDecision ? cardsAtDecision(hero, before, previousFrames) : null;
   const pot = atDecision ? recordedPotBefore(before, previousFrames) : null;
+  const blinds = previousFrames.find(({ event }) => event?.type === "BLINDS_POSTED")?.event;
+  const dealer = hand.buttonSeat ?? hand.dealerSeat ?? blinds?.buttonSeat;
+  const tablePlayers = before?.players.map(({ seat, name, stack, folded, allIn, betThisRound }) => ({
+    seat, name, stack, folded, allIn, betThisRound,
+    hand: seat === hero.seat ? (cards ?? []) : Array(4).fill(null),
+    position: seat === dealer ? "BTN" : seat === blinds?.sbSeat ? "SB" : seat === blinds?.bbSeat ? "BB" : undefined,
+  }));
+  const drawing = selected?.type === "DRAW_ACTION";
+  const phaseLabel = drawing ? (ja ? "交換" : "Draw") : (ja ? "ベット" : "Betting");
   const otherActions = previousFrames
     .filter(({ event }) => isDecision(event) && Number.isInteger(event.seat) && event.seat !== hero.seat)
     .slice(-4);
@@ -107,30 +116,23 @@ export default function BadugiReplayDecisionPreview({ hand, frames, frameIndex, 
       <h2 className="text-lg font-semibold">{title}</h2>
       {atDecision ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-sky-100">{ja ? "操作前の自分の手札" : "Your cards before acting"}</h3>
-              {cards ? (
-                <div className="flex flex-wrap gap-2" data-testid="badugi-replay-before-cards">
-                  {cards.map((value) => <Card key={value} value={value} style={{ width: 40, height: 54, fontSize: 17 }} />)}
-                </div>
-              ) : <p className="text-sm text-slate-300">{ja ? "手札の記録なし" : "Cards unavailable"}</p>}
-              <p className="text-sm text-slate-300">
-                {ja ? "操作前のポット" : "Pot before acting"} {pot === null
-                  ? (ja ? "記録なし" : "Unavailable")
-                  : number.format(pot)}
-              </p>
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-sky-100">{ja ? "それまでの相手の操作" : "Recent opponent actions"}</h3>
-              {otherActions.length ? (
-                <ol className="space-y-1 text-sm text-slate-300" data-testid="badugi-replay-public-actions">
-                  {otherActions.map(({ event, index }) => (
-                    <li key={index}>{ja ? "席" : "Seat "}{event.seat + 1} · {describeAction(event, ja, number)}</li>
-                  ))}
-                </ol>
-              ) : <p className="text-sm text-slate-300">{ja ? "記録された操作なし" : "No recorded actions yet"}</p>}
-            </div>
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-sky-100">{ja ? "操作前の卓" : "Table before your action"}</h3>
+            <BadugiTrainingTable players={tablePlayers ?? []} heroSeat={hero.seat} actor={hero.seat}
+              dealer={dealer} phase={drawing ? "DRAW" : "BET"} phaseLabel={phaseLabel} pot={pot}
+              potLabel={ja ? "操作前のポット" : "Pot before acting"}
+              heroTestId="badugi-replay-before-cards" language={language} />
+            {!cards && <p className="text-sm text-slate-300">{ja ? "手札の記録なし" : "Cards unavailable"}</p>}
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-sky-100">{ja ? "それまでの相手の操作" : "Recent opponent actions"}</h3>
+            {otherActions.length ? (
+              <ol className="space-y-1 text-sm text-slate-300" data-testid="badugi-replay-public-actions">
+                {otherActions.map(({ event, index }) => (
+                  <li key={index}>{ja ? "席" : "Seat "}{event.seat + 1} · {describeAction(event, ja, number)}</li>
+                ))}
+              </ol>
+            ) : <p className="text-sm text-slate-300">{ja ? "記録された操作なし" : "No recorded actions yet"}</p>}
           </div>
           <div className="space-y-1 rounded-xl bg-slate-800/75 p-3 text-sm">
             <p>{ja ? "選んだ操作" : "Your action"} <strong>{describeAction(selected, ja, number)}</strong></p>
@@ -138,7 +140,7 @@ export default function BadugiReplayDecisionPreview({ hand, frames, frameIndex, 
             <p className="text-amber-100"><strong>{ja ? "EV差 — 採点保留" : "EV difference — unscored"}</strong></p>
             <p className="text-slate-300">{ja ? "この局面の行動別EVは品質確認を終えていません。" : "Action EV for this decision is awaiting validation."}</p>
           </div>
-          <ReviewPracticeLink hand={{ variantId: "badugi", seats: [hero] }} language={language} />
+          <ReviewPracticeLink hand={{ variantId: "badugi", seats: [hero] }} language={language} replayPreview />
         </>
       ) : (
         <button type="button" onClick={() => onJump(firstDecision)}

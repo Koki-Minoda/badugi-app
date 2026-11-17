@@ -38,6 +38,17 @@ describe('weighted opponent ranges', () => {
 });
 
 describe('final betting EV', () => {
+  it('includes T-high but excludes J-high at the displayed rank limit 10', () => {
+    const value = (highest, lead, call) => compareBadugiFinalBet({
+      hands: [['AS', '2H', '3D', '4C'], ['5S', '6H', '7D', highest + 'C']],
+      remainingDraws: 0, settings: { pot: 20, bet: 10, lead, call },
+    }).actions[0];
+    expect(value('10', 10, 0).terminal.leadWeight).toBe(1);
+    expect(value('J', 10, 0).terminal.leadWeight).toBe(0);
+    expect(value('10', 0, 10).ev).toBe(30);
+    expect(value('J', 0, 10).ev).toBe(20);
+  });
+
   it('chooses a response to a bet across the entire observation, before knowing the opponent hand', () => {
     const { actions: [action] } = compareBadugiFinalBet({
       hands: [['AS', '2H', '3D', '8C'], []],

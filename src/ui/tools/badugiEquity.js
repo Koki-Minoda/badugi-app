@@ -80,7 +80,8 @@ function rankHand(cards, cache) {
     // Smaller scores win: compare hand size, then highest ranks first.
     const score = evaluation.ranks.reduceRight((value, rank) => value * 16 + rank, 0)
       + (4 - evaluation.count) * 65_536;
-    hand = { key, score, size: evaluation.count, high: evaluation.kicker, keep: evaluation.activeCards.map(card => deck.get(card)) };
+    // The betting form uses rank numbers (Ace=1, T=10).
+    hand = { key, score, size: evaluation.count, high: evaluation.kicker + 1, keep: evaluation.activeCards.map(card => deck.get(card)) };
     cache.set(key, hand);
   }
   return hand;

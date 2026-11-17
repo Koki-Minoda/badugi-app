@@ -130,6 +130,21 @@ class FrozenBadugiRunnerTest(unittest.TestCase):
             self.assertEqual(runner.audit_seed_history(root, scheduled, set())["status"],
                              "FAIL_RECORDED_SEED_COLLISION")
 
+    def test_history_scan_catches_training_trace_stage_offset(self):
+        scheduled = runner.validate_preflight(*inputs(), look=2)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            segment = root / "d03-prior" / "segment-11"
+            segment.mkdir(parents=True)
+            trace = segment / "hand-trace.jsonl"
+            trace.write_text(json.dumps({"seed": scheduled["candidate"][0] + 2 ** 32}) + "\n")
+            result = runner.audit_seed_history(root, scheduled, set())
+            self.assertEqual(result["status"], "FAIL_RECORDED_SEED_COLLISION")
+            self.assertEqual(result["priorTrainingTraceFilesScanned"], 1)
+            self.assertEqual(result["priorTrainingHandRowsScanned"], 1)
+            self.assertEqual(result["actualCollisions"][0]["path"],
+                             "d03-prior/segment-11/hand-trace.jsonl")
+
     def test_audited_rows_must_follow_frozen_seed_and_rotating_seat(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "audited.jsonl"

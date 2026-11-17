@@ -18,7 +18,9 @@ import {
   waitForE2EDriver,
 } from "./helpers/gameProgressHelper.js";
 
-const REPORT_DIR = path.resolve(process.env.MGX_ALL_LIVE_CASH_REPORT_DIR ?? "reports/all-live-cash");
+const BUST_REJOIN = process.env.MGX_CASH_BUST_REJOIN === "1";
+const REPORT_DIR = path.resolve(process.env.MGX_ALL_LIVE_CASH_REPORT_DIR
+  ?? (BUST_REJOIN ? "reports/cash-bankroll-rejoin" : "reports/all-live-cash"));
 const SEED = process.env.MGX_ALL_LIVE_CASH_SEED == null ? null : Number(process.env.MGX_ALL_LIVE_CASH_SEED);
 if (SEED !== null && (!Number.isInteger(SEED) || SEED < 0 || SEED > 0xffffffff)) {
   throw new Error("MGX_ALL_LIVE_CASH_SEED must be an unsigned 32-bit integer");
@@ -441,6 +443,37 @@ async function createDevicePage(browser: Browser, device: DeviceName) {
   return { context, page: await context.newPage() };
 }
 
+async function verifyBankrollRejoin(page: Page, hand: number, handId: string, maxDiscard: number | null) {
+  // A bust must remain a settled, visible result until the player chooses what to do.
+  const overlay = page.getByTestId("hand-result-overlay");
+  await expect(overlay).toHaveAttribute("data-hand-id", handId);
+  await expect(page.getByTestId("hand-result-auto-next")).toHaveCount(0);
+  await page.getByTestId("hand-result-cash-out").click();
+  const cashOut = page.getByRole("dialog", { name: "Cash out result" });
+  await expect(cashOut.getByText("Cash out stack", {exact: true}).locator(".."))
+    .toHaveText(/Cash out stack\s*0$/);
+  await expect(cashOut.getByTestId("cash-out-hands")).toHaveText(String(hand));
+  const buyIn = Number((await cashOut.getByText("Buy-in", {exact: true}).locator("..").innerText()).replace(/Buy-in\s*/, ""));
+  expect(buyIn).toBeGreaterThan(0);
+  await expect(cashOut.getByText("Net", {exact: true}).locator("..")).toHaveText(new RegExp(`Net\\s*-${buyIn}$`));
+  await cashOut.getByRole("button", {name: "新しい卓", exact: true}).click();
+  await expect(cashOut).toHaveCount(0);
+  await expect(overlay).toBeHidden();
+  const snapshot = () => page.evaluate(() => {
+    const state = window.__BADUGI_E2E__.getStateSnapshot();
+    return {handId: state.handId, handCount: state.handCount, heroStack: state.players[0]?.stack};
+  });
+  await expect.poll(snapshot).toMatchObject({handCount: 1, heroStack: expect.any(Number)});
+  const restarted = await snapshot();
+  expect(restarted.handId).toBeTruthy();
+  expect(restarted.handId).not.toBe(handId);
+  expect(restarted.heroStack).toBeGreaterThan(0);
+  const firstHand = await playOneRealButtonHand(page, 1, maxDiscard, true);
+  expect(firstHand.heroButtonClicks).toBeGreaterThan(0);
+  return {tableOne: {hands: hand, lastHandId: handId, buyIn, stack: 0, net: -buyIn},
+    tableTwo: {...restarted, firstHandHeroActions: firstHand.heroButtonClicks}};
+}
+
 async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[number], device: DeviceName) {
   const { context, page } = await createDevicePage(browser, device);
   if (SEED !== null) {
@@ -564,6 +597,22 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
         ...result,
       });
       mark("hand-complete", { hand, finalizedHandId });
+      if (BUST_REJOIN) {
+        const heroStack = await page.evaluate(() => window.__BADUGI_E2E__.getStateSnapshot().players[0]?.stack);
+        const saved = finalizedHistory.find((record: any) => record.handId === finalizedHandId);
+        const settledHeroStack = saved?.seats?.find((seat: any) => seat.seat === 0)?.endStack;
+        expect(Number.isFinite(settledHeroStack), "bankroll must come from a settled history record").toBe(true);
+        mark("settled-bankroll", {hand, finalizedHandId, heroStack, settledHeroStack});
+        if (settledHeroStack === 0) {
+          expect(heroStack, "settled history and cash-out roster report the same bankroll").toBe(0);
+          mark("bankroll-empty", {hand, finalizedHandId});
+          const rejoin = await verifyBankrollRejoin(page, hand, finalizedHandId, "maxDiscard" in variant ? variant.maxDiscard : null);
+          expect(browserErrors).toEqual([]);
+          expect(failedResponses.filter(message => /^(5\d\d):/.test(message))).toEqual([]);
+          return {status: "PASS", sourceCommit: SOURCE_COMMIT, mode: "separate-bankroll-rejoin",
+            variant: variant.variant, device, seed: SEED, ...rejoin, heroActionsBeforeBust: totalHeroButtonClicks};
+        }
+      }
       if (hand < HANDS) {
         const next = page.getByTestId("hand-result-next-hand");
         await expect(next).toBeVisible({ timeout: 10_000 });
@@ -623,6 +672,7 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
         }
       }
     }
+    if (BUST_REJOIN) throw new Error(`No natural bankroll exhaustion after ${HANDS} hands; rejoin untested.`);
     expect(
       totalHeroButtonClicks,
       `${variant.displayName} must exercise real Hero buttons across the session`,
@@ -711,10 +761,11 @@ test.describe("public games and explicit release candidates cash production gate
   for (const variant of selectedVariants) {
     for (const device of ["desktop", "android", "iphone"] as const) {
       if (!deviceFilter.has(device)) continue;
-      test(`${variant.displayName} ${device} completes ${HANDS} real-button hands`, async ({ browser }) => {
+      const scenario = BUST_REJOIN ? `rejoins after natural bankroll exhaustion within ${HANDS} hands` : `completes ${HANDS} real-button hands`;
+      test(`${variant.displayName} ${device} ${scenario}`, async ({ browser }) => {
         try {
           const report = await runVariant(browser, variant, device);
-          writeReport(`${variant.variant.toLowerCase()}-${device}-${HANDS}-hands.json`, report);
+          writeReport(`${variant.variant.toLowerCase()}-${device}-${BUST_REJOIN ? "bust-rejoin" : `${HANDS}-hands`}.json`, report);
         } catch (error) {
           writeReport(`${variant.variant.toLowerCase()}-${device}-failure.json`, {
             generatedAt: new Date().toISOString(),

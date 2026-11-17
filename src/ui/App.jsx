@@ -469,6 +469,7 @@ export default function App() {
   const [hubActiveSnapshot, setHubActiveSnapshot] = useState(null);
   const [gameUtilityModal, setGameUtilityModal] = useState(null);
   const pendingRingStartRef = useRef(false);
+  const [ringStartRequest, setRingStartRequest] = useState(0);
   const [debugScale, setDebugScale] = useState(null);
   const [authIsAuthenticated, setAuthIsAuthenticated] = useState(null);
   const [replayHandId, setReplayHandId] = useState(null);
@@ -7274,6 +7275,8 @@ export default function App() {
     modeRef.current = "cash";
     setMode("cash");
     pendingRingStartRef.current = true;
+    // Cash-out → New Table can keep both the screen and variant unchanged.
+    setRingStartRequest(request => request + 1);
     resetTableStateToSafeDefaults({
       reason: "menu-ring-start",
       preserveHandCount: false,
@@ -8496,7 +8499,7 @@ export default function App() {
     if (currentScreen !== "gameRing") return;
     pendingRingStartRef.current = false;
     startNextHandRef.current({ dealerOverride: 0 });
-  }, [currentScreen, gameVariant]);
+  }, [currentScreen, gameVariant, ringStartRequest]);
 
   const runTournamentBackgroundSimulation = useCallback(
     (iterations = 1) => {

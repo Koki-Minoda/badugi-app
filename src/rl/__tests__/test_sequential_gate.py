@@ -136,6 +136,22 @@ class SequentialGateTest(unittest.TestCase):
         self.assertEqual(local["metrics"]["cash"]["confidenceBoundMethod"],
                          "per_cell_hoeffding_union_arms_tails_looks_metrics")
 
+    def test_exact_chip_boundary_survives_float_net_roundoff(self):
+        config = plan()
+        config["scoreBounds"] = [-100, 500]
+        config["cells"][1].update(tableSeats=6, occupiedSeats=6,
+                                   startingStackChips=2000, bigBetChips=100)
+        data = rows(config, 20, 0, 0)
+        boundary = next(row for row in data["reference"]
+                        if row["cell"] == "mtt|unknown")
+        boundary.update(heroSeat=2, finalStacks=[0, 0, 12000, 0, 0, 0],
+                        netBigBets=100.00000000000001)
+        self.assertGreater(100.0 * boundary["netBigBets"] / 20, 500)
+        self.assertEqual(gate.evaluate(config, data)["lookSessionsPerCell"], 20)
+        boundary["netBigBets"] = 100.1
+        with self.assertRaisesRegex(ValueError, "conserved-chip"):
+            gate.evaluate(config, data)
+
     def test_unknown_bound_method_is_rejected(self):
         config = plan()
         config["scoreBoundMethod"] = "estimated_from_observed_scores"

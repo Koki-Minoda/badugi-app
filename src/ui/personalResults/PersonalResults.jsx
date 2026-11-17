@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { getReviewUserId, readBadugiReviews } from "./badugiReplayReview.js";
+import BadugiRangeHistory from "./BadugiRangeHistory.jsx";
+import { readBadugiRangeReviews } from "./badugiRangeReviewStore.js";
 import SecondDrawLearning from "./SecondDrawLearning.jsx";
 import FinalDrawPractice from "./FinalDrawPractice.jsx";
 import { findFinalDrawReview } from "./badugiFinalDraw.js";
@@ -161,6 +163,7 @@ function Impressions({ game, ja, userId }) {
 export default function PersonalResults({ hands, onBack, onReplay, language }) {
   const ja = language === "ja";
   const userId = getReviewUserId();
+  const rangeReviews = useMemo(() => readBadugiRangeReviews(userId), [userId]);
   const decisionReviews = useMemo(() => readBadugiReviews(userId), [userId]);
   const thirdDrawReviews = decisionReviews.filter(review => review.remainingDraws == null || review.remainingDraws === 1);
   const games = useMemo(() => getPersonalResults(hands, userId), [hands, userId]);
@@ -173,7 +176,7 @@ export default function PersonalResults({ hands, onBack, onReplay, language }) {
         <div><p className="text-xs tracking-[0.4em] text-emerald-300">MGX</p><h1 className="text-2xl font-semibold">{ja ? "マイ結果" : "My results"}</h1></div>
         <button type="button" className={control} onClick={onBack}>{ja ? "ハンド履歴へ戻る" : "Back to hand history"}</button>
       </header>
-      {!game ? <><p className={panel}>{ja ? "完了した対局が記録されると、ここに表示されます。" : "Completed hands will appear here."}</p><SecondDrawLearning userId={userId} hands={hands} reviews={decisionReviews} ja={ja} onReplay={onReplay} /><FinalDrawPractice userId={userId} ja={ja} decisionReviews={thirdDrawReviews} onReplay={onReplay} /></> : <div className="grid gap-4 md:grid-cols-2">
+      {!game ? <><BadugiRangeHistory entries={rangeReviews} ja={ja} onReplay={onReplay} /><p className={panel}>{ja ? "完了した対局が記録されると、ここに表示されます。" : "Completed hands will appear here."}</p><SecondDrawLearning userId={userId} hands={hands} reviews={decisionReviews} ja={ja} onReplay={onReplay} /><FinalDrawPractice userId={userId} ja={ja} decisionReviews={thirdDrawReviews} onReplay={onReplay} /></> : <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-4">
           <Scatter games={games} selected={game.id} choose={setSelected} ja={ja} />
           <Impressions key={game.id} game={game} ja={ja} userId={userId} />
@@ -196,6 +199,7 @@ export default function PersonalResults({ hands, onBack, onReplay, language }) {
             <button type="button" className={control} onClick={() => onReplay(game.review.handId, { handId: game.review.handId, actionSeqStart: game.review.seq, actionSeqEnd: game.review.seq })}>{ja ? "この対局を見返す" : "Review this hand"}</button>
           </section>}
           {game.id === "badugi" && <>
+            <BadugiRangeHistory entries={rangeReviews} ja={ja} onReplay={onReplay} />
             <SecondDrawLearning userId={userId} hands={hands} reviews={decisionReviews} ja={ja} onReplay={onReplay} />
             <FinalDrawPractice userId={userId} ja={ja} review={finalDrawReview} decisionReviews={thirdDrawReviews} onReplay={onReplay} />
           </>}

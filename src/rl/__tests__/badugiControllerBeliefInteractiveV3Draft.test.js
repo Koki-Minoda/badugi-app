@@ -20,6 +20,7 @@ describe('candidate-only Badugi belief evidence', () => {
       potBb: snapshot.players.reduce((sum, player) => sum + player.totalInvested, 0) /
         before.activeBigBlind,
     };
+    expect(before.beliefEvidence.currentPublicBetContext).toMatchObject(expected);
     const action = expected.legalActions.includes(2) ? 2 : expected.legalActions[0];
     const after = session.step(action);
     expect(after.type).toBe('decision');

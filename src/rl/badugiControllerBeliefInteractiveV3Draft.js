@@ -27,6 +27,20 @@ function emptyHistory() {
 }
 
 export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerInteractiveV2Draft {
+  publicBetContext(decision, snapshot) {
+    const { currentBet } = deriveBadugiControllerPublicChipStateV2Draft(this.controller, snapshot);
+    const actor = snapshot.players[decision.seat];
+    return {
+      legalActions: decision.legalMask.flatMap((legal, index) => legal && index < 5 ? [index] : []),
+      toCallBb: Math.max(0, currentBet - actor.betThisRound) / decision.activeBigBlind,
+      potBb: snapshot.players.reduce((total, player) => total + player.totalInvested, 0) /
+        decision.activeBigBlind,
+      activePlayers: snapshot.players.filter((player) =>
+        player.stack > 0 && !player.folded && !player.hasFolded &&
+        !player.seatOut && !player.sittingOut && !player.isBusted && !player.busted).length,
+    };
+  }
+
   nextHand() {
     this.publicHistory ??= Array.from({ length: this.seatCount }, emptyHistory);
     if (this.handIndex >= 0 && this.complete) {
@@ -71,17 +85,7 @@ export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerIn
   step(actionIndex) {
     const before = this.currentDecision();
     const snapshot = this.controller.getUiSnapshot(this.state);
-    const { currentBet } = deriveBadugiControllerPublicChipStateV2Draft(this.controller, snapshot);
-    const actor = snapshot.players[before.seat];
-    const publicContext = before.phase === 'BET' ? {
-      legalActions: before.legalMask.flatMap((legal, index) => legal && index < 5 ? [index] : []),
-      toCallBb: Math.max(0, currentBet - actor.betThisRound) / before.activeBigBlind,
-      potBb: snapshot.players.reduce((total, player) => total + player.totalInvested, 0) /
-        before.activeBigBlind,
-      activePlayers: snapshot.players.filter((player) =>
-        player.stack > 0 && !player.folded && !player.hasFolded &&
-        !player.seatOut && !player.sittingOut && !player.isBusted && !player.busted).length,
-    } : null;
+    const publicContext = before.phase === 'BET' ? this.publicBetContext(before, snapshot) : null;
     const result = super.step(actionIndex);
     this.currentHandDecisionRecords.push({ seat: before.seat, phase: before.phase,
       drawRoundIndex: before.drawRoundIndex, legalMask: before.legalMask,
@@ -132,6 +136,8 @@ export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerIn
     });
     return { ...decision, beliefEvidence: {
       actorSeenCards: [...seen.values()], publicActions,
+      currentPublicBetContext: decision.phase === 'BET'
+        ? this.publicBetContext(decision, snapshot) : null,
       actorHandProgress: { initial, current,
         madeCardGain: current.madeCards - initial.madeCards,
         highRankChange: current.highRank - initial.highRank },

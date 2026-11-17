@@ -103,6 +103,7 @@ import {
   isBetRoundComplete,
   needsActionForBet,
 } from "../games/badugi/flow/betRoundUtils.js";
+import { hasSingleShowdownContender } from "../games/core/turn/actorEligibility.js";
 import { GAME_VARIANTS } from "../games/core/variants.js";
 import { GAME_VARIANTS as VARIANT_CATALOG } from "../games/config/variantCatalog.js";
 import { canLaunchVariant } from "../games/config/canLaunchVariant.js";
@@ -469,6 +470,7 @@ export default function App() {
   const [hubActiveSnapshot, setHubActiveSnapshot] = useState(null);
   const [gameUtilityModal, setGameUtilityModal] = useState(null);
   const pendingRingStartRef = useRef(false);
+  const [ringStartRequest, setRingStartRequest] = useState(0);
   const [debugScale, setDebugScale] = useState(null);
   const [authIsAuthenticated, setAuthIsAuthenticated] = useState(null);
   const [replayHandId, setReplayHandId] = useState(null);
@@ -6631,20 +6633,13 @@ export default function App() {
   }
   goShowdownNowRef.current = goShowdownNow;
 
-  // ANALYSIS: (B) 行動可能者がいないケースでは active.length===1 判定で
-  //           goShowdownNow() を直接呼び出し、BET/DRAW を飛ばして強制ショーダウン。
-  //           all-in プレイヤーは active フィルタから外れるため、
-  //           「全員 all-in」の場合はここを通らず scheduleFinish が DRAW→SHOWDOWN を選択する。
   const checkIfOneLeftThenEnd = useCallback(
     (snapOpt) => {
       const base =
         Array.isArray(snapOpt) && snapOpt.length > 0
           ? snapOpt
           : (playersRef.current ?? players);
-      if (!base || base.length === 0) return false;
-
-      const active = base.filter((p) => !isFoldedOrOut(p) && !p.allIn);
-      if (active.length === 1) {
+      if (hasSingleShowdownContender(base)) {
         const showdownSnap = base.map(clonePlayerState).filter(Boolean);
         // A fold-to-one result has no showdown decision left for the engine.
         // Resolve it directly so a stale variant engine cannot re-award the pot.
@@ -7274,6 +7269,8 @@ export default function App() {
     modeRef.current = "cash";
     setMode("cash");
     pendingRingStartRef.current = true;
+    // Cash-out → New Table can keep both the screen and variant unchanged.
+    setRingStartRequest(request => request + 1);
     resetTableStateToSafeDefaults({
       reason: "menu-ring-start",
       preserveHandCount: false,
@@ -8496,7 +8493,7 @@ export default function App() {
     if (currentScreen !== "gameRing") return;
     pendingRingStartRef.current = false;
     startNextHandRef.current({ dealerOverride: 0 });
-  }, [currentScreen, gameVariant]);
+  }, [currentScreen, gameVariant, ringStartRequest]);
 
   const runTournamentBackgroundSimulation = useCallback(
     (iterations = 1) => {

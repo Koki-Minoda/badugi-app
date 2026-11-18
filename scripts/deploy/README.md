@@ -1,5 +1,16 @@
 # MGX Deployment Scripts
 
+## GitHub Actions production CI/CD
+
+`Deploy mgx-prod-01` runs QA on pull requests targeting `main`. Each push to
+`main` runs QA and, after all required jobs pass, deploys the tested commit
+in the same workflow run. The production preflight checks that `main` still
+points to that commit.
+
+Rerun failed jobs in Actions to retry a failed production run. If a fresh run is
+needed, `gh workflow run deploy-mgx-prod-01.yml --ref main` runs the same QA
+and deployment checks for the current head of `main`.
+
 ## mgx-prod-01.sh
 
 Helper used on the `mgx-prod-01` VPS to deploy both the Vite frontend and the FastAPI backend.
@@ -34,7 +45,7 @@ chmod +x scripts/deploy/mgx-prod-01.sh   # one-time
 
 `rollback_mgx_prod_01.sh` restores only a previously archived frontend `dist` tree. It does not roll back Git, Python packages, the backend process, or database migrations. Before every production deployment, operators must create and verify both frontend and database backups, record the deployed Git SHA and Alembic revision, and prepare a migration-specific downgrade or forward-fix. Never treat a frontend-only restore as a complete backend rollback.
 
-The `workflow_dispatch` deploy gate runs `create_verified_backup.py` on the server
+The production deploy job runs `create_verified_backup.py` on the server
 before checking out the target commit. It writes a verified frontend archive,
 compressed MySQL dump, and SHA/Alembic manifest under
 `/home/mgx/mgx-backups/releases/`; any incomplete backup stops deployment.

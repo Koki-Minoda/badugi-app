@@ -1,0 +1,35 @@
+{
+  "package": "picomatch",
+  "version": "2.3.2",
+  "advisory": "GHSA-fc5q-39xc-vjpf",
+  "files": {
+    "index.js": {
+      "original": "5695ff5dfcd5a338a40630bd506056f2950bcb08fe1cc068519cbbfe60add480",
+      "patched": "5695ff5dfcd5a338a40630bd506056f2950bcb08fe1cc068519cbbfe60add480"
+    },
+    "lib/constants.js": {
+      "original": "980225ab847a88a784f6d315557b8434f7742b2551ce20e354455c61b938c0a5",
+      "patched": "980225ab847a88a784f6d315557b8434f7742b2551ce20e354455c61b938c0a5"
+    },
+    "lib/parse.js": {
+      "original": "3a91656f440069aa8f8e15c9d695b9f6b2209df1eab2be8127c72cbcca45ff5f",
+      "patched": "2a930a31d5434175e3cfaca5c8c52b4c9abe561f3e4b4442ccb21bb184f410e9"
+    },
+    "lib/picomatch.js": {
+      "original": "2cb169cbe17d356036c5f62a377318b85e30817877e59797842aec9d8b15f54b",
+      "patched": "2cb169cbe17d356036c5f62a377318b85e30817877e59797842aec9d8b15f54b"
+    },
+    "lib/scan.js": {
+      "original": "227fcc994a477ea95c5a0435d32783566334c6bd0dcc4a103029735ad8c9c535",
+      "patched": "227fcc994a477ea95c5a0435d32783566334c6bd0dcc4a103029735ad8c9c535"
+    },
+    "lib/utils.js": {
+      "original": "809fc29cf35ab0aa76b99cad29182f62c0ae598902481d10f9868eaef71981ee",
+      "patched": "809fc29cf35ab0aa76b99cad29182f62c0ae598902481d10f9868eaef71981ee"
+    },
+    "package.json": {
+      "original": "63264d817e856a4bff57d4304f2b38d2964a4f6df520eb169e7bcdb619f13e9a",
+      "patched": "63264d817e856a4bff57d4304f2b38d2964a4f6df520eb169e7bcdb619f13e9a"
+    }
+  }
+}

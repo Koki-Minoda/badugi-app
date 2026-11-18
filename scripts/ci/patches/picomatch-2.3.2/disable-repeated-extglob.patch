@@ -1,0 +1,9 @@
+--- a/lib/parse.js
++++ b/lib/parse.js
+@@ -494,2 +494,6 @@
+   const extglobOpen = (type, value) => {
++    // MGX: disable repeating extglobs until the upstream security fix ships.
++    if (type === 'plus' || type === 'star') {
++      throw new SyntaxError('Repeated extglobs are disabled in this build of picomatch');
++    }
+     const token = { ...EXTGLOB_CHARS[value], conditions: 1, inner: '' };

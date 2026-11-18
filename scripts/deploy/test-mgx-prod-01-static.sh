@@ -43,6 +43,11 @@ grep -q 'friend-match deep link did not return the current SPA asset' "$script"
 grep -q 'npm run test:build:onnx' "$script"
 test "$(grep -c -- '-o ServerAliveInterval=30 -o ServerAliveCountMax=20' "$workflow")" -eq 3
 grep -q 'scripts/deploy/create_verified_backup.py' "$workflow"
+deploy_condition="$(awk '/^  deploy:/{in_deploy=1;next} in_deploy && /^  [a-z][a-z0-9-]*:/{exit} in_deploy && /^    if: /{sub(/^    if: /, "");print;exit}' "$workflow")"
+if [[ "$deploy_condition" != "success() && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')" ]]; then
+  echo "deploy must require successful QA on a main push or a manual run on main" >&2
+  exit 1
+fi
 browser_qa_timeout="$(awk '/^  release-candidate-browser-qa:/{in_job=1;next} in_job && /^  [a-z][a-z0-9-]*:/{exit} in_job && /timeout-minutes:/{print $2;exit}' "$workflow")"
 if [[ ! "$browser_qa_timeout" =~ ^[0-9]+$ ]] || (( browser_qa_timeout < 180 )); then
   echo "release-candidate-browser-qa must allow 180 minutes for cold browser setup and full QA" >&2

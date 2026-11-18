@@ -19,13 +19,15 @@ import onnxruntime as ort
 
 if __package__:
     from .train_badugi_controller_v2_draft import (
-        ControllerBridge, DQNAgent, PROFILES, SCHEMA, check_decision, contract_hash,
-        opponent_action, observable_reference_action,
+        ControllerBridge, DQNAgent, HAND_AWARE_TRAINING_PROFILES, PROFILES, SCHEMA,
+        check_decision, contract_hash, opponent_action, observable_reference_action,
+        training_opponent_action,
     )
 else:
     from train_badugi_controller_v2_draft import (
-        ControllerBridge, DQNAgent, PROFILES, SCHEMA, check_decision, contract_hash,
-        opponent_action, observable_reference_action,
+        ControllerBridge, DQNAgent, HAND_AWARE_TRAINING_PROFILES, PROFILES, SCHEMA,
+        check_decision, contract_hash, opponent_action, observable_reference_action,
+        training_opponent_action,
     )
 from rl.env.badugi_env import evaluate_badugi
 from rl.training.unknown_badugi_opponents import UNKNOWN_PROFILES, unknown_opponent_action
@@ -171,18 +173,20 @@ def main():
     parser.add_argument('--hands-per-session', type=int, default=20)
     parser.add_argument('--seed-base', type=int, default=410040001)
     parser.add_argument('--evaluation-manifest', type=Path)
-    parser.add_argument('--opponent-suite', choices=('known', 'unknown-v1'), default='known',
-                        help='Use evaluation-only opponents never present in the training profile set')
+    parser.add_argument('--opponent-suite', choices=('known', 'unknown-v1', 'hand-aware-v1'),
+                        default='known', help='Select a frozen controller opponent distribution')
     parser.add_argument('--decision-ledger', action='store_true',
                         help='Record every controller decision and terminal all-seat chip ledger')
     parser.add_argument('--only-group', choices=GROUP_NAMES,
                         help='Exploratory diagnosis only; frozen product evaluations require all groups')
-    parser.add_argument('--only-profile', choices=PROFILES + UNKNOWN_PROFILES,
+    parser.add_argument('--only-profile', choices=PROFILES + UNKNOWN_PROFILES + HAND_AWARE_TRAINING_PROFILES,
                         help='Exploratory diagnosis only; frozen product evaluations require all profiles')
     parser.add_argument('--capture-opening', action='store_true',
                         help='Exploratory replay only: save hero first pre-draw BET cards/context')
     args = parser.parse_args()
-    profiles = PROFILES if args.opponent_suite == 'known' else UNKNOWN_PROFILES
+    profiles = (PROFILES if args.opponent_suite == 'known' else
+                UNKNOWN_PROFILES if args.opponent_suite == 'unknown-v1' else
+                HAND_AWARE_TRAINING_PROFILES)
     if args.only_profile and args.only_profile not in profiles:
         raise ValueError('profile does not belong to selected opponent suite')
     if (args.output.exists() or not 1 <= args.sessions_per_profile <= 5000 or
@@ -313,6 +317,9 @@ def main():
                             else:
                                 action = (unknown_opponent_action(response, profile, rng)
                                           if args.opponent_suite == 'unknown-v1' else
+                                          training_opponent_action(response, profile, rng,
+                                                                   'hand-aware-v1')
+                                          if args.opponent_suite == 'hand-aware-v1' else
                                           opponent_action(response, profile, rng))
                             decision_trace.append({'seat': response['seat'],
                                                    'phase': response['phase'],

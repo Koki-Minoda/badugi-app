@@ -4,6 +4,7 @@ import hashlib
 import json
 import tempfile
 import unittest
+import random
 from pathlib import Path
 from unittest.mock import patch
 
@@ -142,6 +143,41 @@ class IronPhase2TrainingGateTests(unittest.TestCase):
         candidate['bootstrapHands'] = 200
         candidate['tierPlanSha256'] = sha(self.plan)
         self.assertEqual(self.check(candidate)['runIndex'], 1)
+
+    def test_hand_aware_suite_balances_fifty_cells_and_requires_matching_go(self):
+        plan = json.loads(self.plan.read_text())
+        plan.update(opponentSuite='hand-aware-v1', bootstrapHands=0,
+                    imitationSteps=0, referenceAnchorEvery=0,
+                    opponentProfiles=list(trainer.HAND_AWARE_TRAINING_PROFILES))
+        self.plan.write_text(json.dumps(plan))
+        valid = dict(self.base, opponentSuite='hand-aware-v1', bootstrapHands=0,
+                     imitationSteps=0, referenceAnchorEvery=0,
+                     tierPlanSha256=sha(self.plan))
+        self.assertEqual(trainer.validate_iron_cell_balance(plan), 100)
+        self.assertEqual(self.check(valid)['opponentSuite'], 'hand-aware-v1')
+        with self.assertRaisesRegex(ValueError, 'suite differs'):
+            self.check(dict(valid, opponentSuite='legacy-v1'))
+        plan['opponentProfiles'] = list(trainer.PROFILES)
+        self.plan.write_text(json.dumps(plan))
+        with self.assertRaisesRegex(ValueError, 'all 50 cells'):
+            self.check(dict(valid, tierPlanSha256=sha(self.plan)))
+
+    def test_hand_aware_dispatch_is_opt_in_and_rejects_unknown_profile(self):
+        decision = {'phase': 'BET', 'drawRoundIndex': 0,
+                    'observation': [0.0] * 96,
+                    'legalMask': [1, 1, 1, 1, 1, 1]}
+        decision['observation'][24] = 1.0
+        decision['observation'][25] = 0.25
+        rng = random.Random(3)
+        self.assertEqual(trainer.training_opponent_action(
+            decision, 'legacy_passive', rng, 'hand-aware-v1'),
+            trainer.opponent_action(decision, 'passive', random.Random(3)))
+        self.assertIn(trainer.training_opponent_action(
+            decision, 'balanced_range', rng, 'hand-aware-v1'), range(6))
+        with self.assertRaisesRegex(ValueError, 'unknown frozen'):
+            trainer.training_opponent_action(decision, 'unreviewed', rng, 'hand-aware-v1')
+        with self.assertRaisesRegex(ValueError, 'unknown frozen opponent suite'):
+            trainer.training_opponent_action(decision, 'passive', rng, 'other')
 
     def test_exact_cross_commit_handoff_only_at_frozen_segment(self):
         old_code = "a" * 40

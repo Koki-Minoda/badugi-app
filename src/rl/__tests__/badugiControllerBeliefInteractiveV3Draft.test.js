@@ -74,6 +74,18 @@ describe('candidate-only Badugi belief evidence', () => {
         actorHandProgress.current.madeCards - actorHandProgress.initial.madeCards);
       expect(opponentPublicHistory[decision.seat]).toBeNull();
       expect(opponentPublicHistory[1 - decision.seat].handsObserved).toBe(0);
+      if (decision.phase === 'DRAW') {
+        const snapshot = session.controller.getUiSnapshot(session.state);
+        const activePlayers = snapshot.players.filter((player) =>
+          player.stack > 0 && !player.folded && !player.hasFolded &&
+          !player.seatOut && !player.sittingOut && !player.isBusted && !player.busted).length;
+        expect(decision.beliefEvidence.currentPublicDrawContext).toEqual({ activePlayers });
+        expect(decision.beliefEvidence.currentPublicBetContext).toBeNull();
+        expect(JSON.stringify(decision.beliefEvidence.currentPublicDrawContext))
+          .not.toMatch(/hand|private|cards/i);
+      } else {
+        expect(decision.beliefEvidence.currentPublicDrawContext).toBeNull();
+      }
       for (const event of publicActions) {
         expect(Object.keys(event).sort()).toEqual(event.type === 'BET_ACTION'
           ? ['action', 'amountBb', 'drawRoundIndex', 'seat', 'type',
@@ -128,6 +140,13 @@ describe('candidate-only Badugi belief evidence', () => {
           const evidence = state.beliefEvidence;
           expect(evidence.actorSeenCards.length).toBeGreaterThanOrEqual(4);
           expect(evidence.opponentPublicHistory[state.seat]).toBeNull();
+          if (state.phase === 'DRAW') {
+            const snapshot = session.controller.getUiSnapshot(session.state);
+            expect(evidence.currentPublicDrawContext.activePlayers).toBe(
+              snapshot.players.filter((player) => player.stack > 0 && !player.folded &&
+                !player.hasFolded && !player.seatOut && !player.sittingOut &&
+                !player.isBusted && !player.busted).length);
+          }
           if (hand === 0) {
             for (const history of evidence.opponentPublicHistory) {
               if (history) expect(history.handsObserved).toBe(0);

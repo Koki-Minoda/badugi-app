@@ -26,6 +26,12 @@ function emptyHistory() {
     raisedFacingBet: 0, freeBetOpportunities: 0, betWhenFree: 0 };
 }
 
+function publicActivePlayerCount(snapshot) {
+  return snapshot.players.filter((player) =>
+    player.stack > 0 && !player.folded && !player.hasFolded &&
+    !player.seatOut && !player.sittingOut && !player.isBusted && !player.busted).length;
+}
+
 export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerInteractiveV2Draft {
   publicBetContext(decision, snapshot) {
     const { currentBet } = deriveBadugiControllerPublicChipStateV2Draft(this.controller, snapshot);
@@ -35,9 +41,7 @@ export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerIn
       toCallBb: Math.max(0, currentBet - actor.betThisRound) / decision.activeBigBlind,
       potBb: snapshot.players.reduce((total, player) => total + player.totalInvested, 0) /
         decision.activeBigBlind,
-      activePlayers: snapshot.players.filter((player) =>
-        player.stack > 0 && !player.folded && !player.hasFolded &&
-        !player.seatOut && !player.sittingOut && !player.isBusted && !player.busted).length,
+      activePlayers: publicActivePlayerCount(snapshot),
     };
   }
 
@@ -138,6 +142,8 @@ export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerIn
       actorSeenCards: [...seen.values()], publicActions,
       currentPublicBetContext: decision.phase === 'BET'
         ? this.publicBetContext(decision, snapshot) : null,
+      currentPublicDrawContext: decision.phase === 'DRAW'
+        ? { activePlayers: publicActivePlayerCount(snapshot) } : null,
       actorHandProgress: { initial, current,
         madeCardGain: current.madeCards - initial.madeCards,
         highRankChange: current.highRank - initial.highRank },

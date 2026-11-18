@@ -26,10 +26,43 @@ function emptyHistory() {
     raisedFacingBet: 0, freeBetOpportunities: 0, betWhenFree: 0 };
 }
 
-function publicActivePlayerCount(snapshot) {
-  return snapshot.players.filter((player) =>
+function emptyPatResponseCounts() {
+  return { opportunities: 0, fold: 0, call: 0, raise: 0 };
+}
+
+function emptyPatResponseHistory() {
+  return { byStreet: Array.from({ length: 3 }, () => ({
+    pat: emptyPatResponseCounts(), draw: emptyPatResponseCounts(),
+  })) };
+}
+
+function publicActiveSeats(snapshot) {
+  return snapshot.players.flatMap((player, seat) =>
     player.stack > 0 && !player.folded && !player.hasFolded &&
-    !player.seatOut && !player.sittingOut && !player.isBusted && !player.busted).length;
+    !player.seatOut && !player.sittingOut && !player.isBusted && !player.busted
+      ? [seat] : []);
+}
+
+function publicActivePlayerCount(snapshot) {
+  return publicActiveSeats(snapshot).length;
+}
+
+// A response is counted only after a public opponent draw and a legal facing-bet
+// decision with exactly two players able to act. The current hand is buffered
+// until nextHand(), so these counts cannot reveal a future action.
+export function classifyPublicPatResponseOpportunity(decision, snapshot, publicEvents) {
+  if (decision.phase !== 'BET' || decision.drawRoundIndex < 1 ||
+      decision.drawRoundIndex > 3 || decision.legalMask[0] !== 1 ||
+      decision.legalMask[2] !== 1) return null;
+  const active = publicActiveSeats(snapshot);
+  if (active.length !== 2 || !active.includes(decision.seat)) return null;
+  const opponent = active.find((seat) => seat !== decision.seat);
+  const draws = publicEvents.filter((event) => event.type === 'DRAW_ACTION' &&
+    event.seat === opponent && event.drawRoundIndex === decision.drawRoundIndex - 1);
+  if (draws.length !== 1 || !Number.isInteger(draws[0].drawCount) ||
+      draws[0].drawCount < 0 || draws[0].drawCount > 4) return null;
+  return { seat: decision.seat, street: decision.drawRoundIndex,
+    signal: draws[0].drawCount === 0 ? 'pat' : 'draw' };
 }
 
 export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerInteractiveV2Draft {
@@ -47,6 +80,7 @@ export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerIn
 
   nextHand() {
     this.publicHistory ??= Array.from({ length: this.seatCount }, emptyHistory);
+    this.publicPatResponseHistory ??= Array.from({ length: this.seatCount }, emptyPatResponseHistory);
     if (this.handIndex >= 0 && this.complete) {
       const acted = new Set();
       for (const event of this.publicEvents) {
@@ -79,9 +113,16 @@ export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerIn
           if (record.actionIndex === 3) history.betWhenFree += 1;
         }
       }
+      for (const response of this.currentHandPatResponseRecords) {
+        const counts = this.publicPatResponseHistory[response.seat]
+          .byStreet[response.street - 1][response.signal];
+        counts.opportunities += 1;
+        counts[response.action] += 1;
+      }
     }
     this.initialActorHands = new Map();
     this.currentHandDecisionRecords = [];
+    this.currentHandPatResponseRecords = [];
     this.currentHandBigBlind = null;
     return super.nextHand();
   }
@@ -90,10 +131,16 @@ export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerIn
     const before = this.currentDecision();
     const snapshot = this.controller.getUiSnapshot(this.state);
     const publicContext = before.phase === 'BET' ? this.publicBetContext(before, snapshot) : null;
+    const patResponse = classifyPublicPatResponseOpportunity(before, snapshot, this.publicEvents);
     const result = super.step(actionIndex);
     this.currentHandDecisionRecords.push({ seat: before.seat, phase: before.phase,
       drawRoundIndex: before.drawRoundIndex, legalMask: before.legalMask,
       actionIndex, publicContext });
+    if (patResponse) {
+      const action = ({ 0: 'fold', 2: 'call', 4: 'raise' })[actionIndex];
+      if (!action) throw new TypeError('pat response requires fold, call or raise');
+      this.currentHandPatResponseRecords.push({ ...patResponse, action });
+    }
     // V2 computes its return decision before this subclass records the previous
     // action. Rebuild it so the external actor sees the complete public context.
     return result.type === 'decision' ? this.currentDecision() : result;
@@ -149,6 +196,10 @@ export class BadugiControllerBeliefInteractiveV3Draft extends BadugiControllerIn
         highRankChange: current.highRank - initial.highRank },
       opponentPublicHistory: this.publicHistory.map((history, index) =>
         index === seat ? null : { ...history, drawCounts: [...history.drawCounts] }),
+      opponentPatResponseHistory: this.publicPatResponseHistory.map((history, index) =>
+        index === seat ? null : { byStreet: history.byStreet.map((street) => ({
+          pat: { ...street.pat }, draw: { ...street.draw },
+        })) }),
       // Showdown identities are omitted until a separately audited public reveal exists.
       showdownCardsIncluded: false,
     } };

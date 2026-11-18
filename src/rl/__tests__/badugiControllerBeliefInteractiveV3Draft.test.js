@@ -1,8 +1,69 @@
 import { describe, expect, it } from 'vitest';
-import { BadugiControllerBeliefInteractiveV3Draft } from '../badugiControllerBeliefInteractiveV3Draft.js';
+import { BadugiControllerBeliefInteractiveV3Draft,
+  classifyPublicPatResponseOpportunity } from '../badugiControllerBeliefInteractiveV3Draft.js';
 import { deriveBadugiControllerPublicChipStateV2Draft } from '../badugiControllerPublicChipStateV2Draft.js';
 
 describe('candidate-only Badugi belief evidence', () => {
+  it('counts only a public prior-draw signal at a heads-up facing-bet opportunity', () => {
+    const players = [0, 1, 2].map(() => ({ stack: 100, folded: false,
+      hand: ['private cards must not appear'] }));
+    players[2].folded = true;
+    const snapshot = { players };
+    const decision = { phase: 'BET', seat: 1, drawRoundIndex: 2,
+      legalMask: [1, 0, 1, 0, 1, 0] };
+    const events = [{ type: 'DRAW_ACTION', seat: 0, drawRoundIndex: 1, drawCount: 0 }];
+    expect(classifyPublicPatResponseOpportunity(decision, snapshot, events)).toEqual({
+      seat: 1, street: 2, signal: 'pat',
+    });
+    expect(JSON.stringify(classifyPublicPatResponseOpportunity(decision, snapshot, events)))
+      .not.toMatch(/hand|private|cards/i);
+    events[0].drawCount = 2;
+    expect(classifyPublicPatResponseOpportunity(decision, snapshot, events).signal).toBe('draw');
+    players[2].folded = false;
+    expect(classifyPublicPatResponseOpportunity(decision, snapshot, events)).toBeNull();
+    players[2].folded = true;
+    decision.legalMask[0] = 0;
+    expect(classifyPublicPatResponseOpportunity(decision, snapshot, events)).toBeNull();
+  });
+
+  it('buffers public PAT responses until the following hand', () => {
+    const session = new BadugiControllerBeliefInteractiveV3Draft({
+      seatCount: 2, occupiedSeatCount: 2, isTournament: false, seed: 66118,
+      includeLedger: true,
+    });
+    let state = session.nextHand();
+    let decisions = 0;
+    let counted = 0;
+    while (state.type === 'decision') {
+      for (const history of state.beliefEvidence.opponentPatResponseHistory) {
+        if (history) expect(history.byStreet.reduce((sum, street) =>
+          sum + street.pat.opportunities + street.draw.opportunities, 0)).toBe(0);
+      }
+      const action = state.phase === 'DRAW' ? 0
+        : [3, 2, 1, 4, 0].find((index) => state.legalMask[index] === 1);
+      state = session.step(action);
+      decisions += 1;
+      expect(decisions).toBeLessThan(201);
+    }
+    expect(state.ledger.accounted).toBe(state.ledger.chipPool);
+    counted = session.currentHandPatResponseRecords.length;
+    expect(counted).toBeGreaterThan(0);
+    const next = session.nextHand();
+    expect(next.type).toBe('decision');
+    const total = session.publicPatResponseHistory.reduce((sum, history) =>
+      sum + history.byStreet.reduce((streetSum, street) =>
+        streetSum + street.pat.opportunities + street.draw.opportunities, 0), 0);
+    expect(total).toBe(counted);
+    for (const history of session.publicPatResponseHistory) {
+      for (const street of history.byStreet) {
+        for (const signal of ['pat', 'draw']) {
+          const counts = street[signal];
+          expect(counts.opportunities).toBe(counts.fold + counts.call + counts.raise);
+        }
+      }
+    }
+  });
+
   it('records the opponent public legal menu and exact price at decision time', () => {
     const session = new BadugiControllerBeliefInteractiveV3Draft({
       seatCount: 3, occupiedSeatCount: 3, isTournament: false, seed: 78031,

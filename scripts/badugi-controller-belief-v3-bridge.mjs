@@ -33,8 +33,13 @@ for await (const line of input) {
       response = session.step(request.actionIndex);
     } else if (request.command === 'next_hand' && session) {
       response = session.nextHand();
+    } else if (request.command === 'public_pat_response_history' && session) {
+      // Diagnostic read of completed hands only; the active hand is still buffered.
+      response = { type: 'public_pat_response_history',
+        bySeat: session.publicPatResponseHistory.map((row) => ({ byStreet: row.byStreet.map(
+          (street) => ({ pat: { ...street.pat }, draw: { ...street.draw } })) })) };
     } else {
-      throw new TypeError('bridge expects reset, step or next_hand in an active session');
+      throw new TypeError('bridge expects reset, step, next_hand or public history in an active session');
     }
     process.stdout.write(`${JSON.stringify(response)}\n`);
   } catch (error) {

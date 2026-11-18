@@ -18,6 +18,8 @@ _FORBIDDEN_KEYS = {"opponenthand", "opponentcards", "opponentprivatecards",
 _DIMENSIONS = ("street", "madeCards", "madeCardGain", "activePlayers",
                "highRank", "price", "mode", "profile",
                "opponentLastDraw", "publicBetActions")
+_STREET_NAMES = ("before_first_draw", "after_first_draw",
+                 "after_second_draw", "after_third_draw")
 
 
 def _reject_hidden(value):
@@ -94,6 +96,8 @@ def discover_badugi_decision_leaks(rows, *, minimum_branch_sessions=30,
     if not _integer(minimum_branch_sessions, 2) or not _integer(max_ranked_hypotheses, 1):
         raise ValueError("invalid discovery display limits")
     opportunities = defaultdict(Counter)
+    street_hands = defaultdict(set)
+    street_target_hands = defaultdict(set)
     branches = defaultdict(list)
     branch_members = defaultdict(set)
     seen_pairs = set()
@@ -145,6 +149,12 @@ def discover_badugi_decision_leaks(rows, *, minimum_branch_sessions=30,
                 continue
             if decision["activePlayers"] < 2 or not mask[2]:
                 raise ValueError("facing-bet opportunity has no legal call or opponent")
+            street_hands[decision["street"]].add(row["pairIndex"])
+            if (decision["street"] >= 1 and
+                    decision["madeCards"] == 3 and decision["madeCardGain"] == 0 and
+                    decision["activePlayers"] >= 3 and action == 2 and
+                    decision["toCallBb"] >= (1 if decision["street"] <= 1 else 2)):
+                street_target_hands[decision["street"]].add(row["pairIndex"])
             features = _features(row, decision, progress=decision["madeCardGain"])
             for dimensions in (("street",), ("street", "activePlayers"),
                                ("street", "madeCards"),
@@ -215,6 +225,13 @@ def discover_badugi_decision_leaks(rows, *, minimum_branch_sessions=30,
             break
     return {"status": "DISCOVERY_ONLY", "hands": hand_count,
             "pairedBranchSessions": branch_count,
+            "streetOpportunitySummary": [
+                {"street": street, "label": _STREET_NAMES[street],
+                 "facingBetDecisions": opportunities.get(f"street={street}", {}).get("facingBet", 0),
+                 "handsWithFacingBet": len(street_hands[street]),
+                 "threeCardUnchangedMultiwayNaturalCallHands":
+                     len(street_target_hands[street]) if street >= 1 else None}
+                for street in range(4)],
             "opportunityCells": {name: dict(counts)
                                  for name, counts in sorted(opportunities.items())},
             "rankedHypotheses": unique_cells,
@@ -223,4 +240,4 @@ def discover_badugi_decision_leaks(rows, *, minimum_branch_sessions=30,
             "actionOverrideAllowed": False, "modelPromotionAllowed": False,
             "requiresFreshSeedConfirmation": True,
             "requiresNaturalMultiHandPolicyEv": True,
-            "uncertaintyNote": "Descriptive intervals are unadjusted across many discovered slices. Multiple decisions per hand are counts, not independent samples. No final holdout or action authorization."}
+            "uncertaintyNote": "Descriptive intervals are unadjusted across many discovered slices. Multiple decisions per hand are counts, not independent samples. This source contains paired FOLD/CALL returns only after the second draw; first and third draw branch EV and natural multi-hand policy EV are unmeasured. No final holdout or action authorization."}

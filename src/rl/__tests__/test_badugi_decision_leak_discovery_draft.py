@@ -35,6 +35,12 @@ class LeakDiscoveryTests(unittest.TestCase):
         street = report['opportunityCells']['street=2']
         self.assertEqual(street, {'facingBet': 2, 'call': 1, 'raise': 1})
         self.assertEqual(report['pairedBranchSessions'], 1)
+        self.assertEqual(report['streetOpportunitySummary'][2]['facingBetDecisions'], 2)
+        self.assertEqual(report['streetOpportunitySummary'][2]['handsWithFacingBet'], 2)
+        self.assertEqual(report['streetOpportunitySummary'][2][
+            'threeCardUnchangedMultiwayNaturalCallHands'], 1)
+        self.assertIsNone(report['streetOpportunitySummary'][0][
+            'threeCardUnchangedMultiwayNaturalCallHands'])
         self.assertFalse(report['actionOverrideAllowed'])
         self.assertFalse(report['modelPromotionAllowed'])
 

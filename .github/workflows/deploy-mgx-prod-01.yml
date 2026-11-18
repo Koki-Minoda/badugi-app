@@ -85,8 +85,8 @@ jobs:
         run: |
           # Query OSV with the exact package-lock versions. npm's retiring
           # quick-audit endpoint rejects otherwise valid legacy-peer trees.
-          # Any unremediated advisory fails. The temporary braces source patch
-          # requires exact installed-source hashes and adversarial tests.
+          # Any unremediated advisory fails. Temporary source patches require
+          # exact installed-source hashes and regression tests.
           node scripts/ci/audit-package-lock.mjs --omit-dev
           node scripts/ci/audit-package-lock.mjs
           node --test scripts/ci/css-dependency-security.test.mjs

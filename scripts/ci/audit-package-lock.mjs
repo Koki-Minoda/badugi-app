@@ -3,7 +3,9 @@
 import { readFile } from 'node:fs/promises'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { patchedAdvisory, verifyBracesPatch } from './braces-depth-patch.mjs'
+import { bracesPatch } from './braces-depth-patch.mjs'
+import { picomatchPatches } from './picomatch-extglob-patch.mjs'
+import { isPackagePath, verifySourcePatch } from './verified-source-patch.mjs'
 
 const OSV_BATCH_URL = 'https://api.osv.dev/v1/querybatch'
 
@@ -68,24 +70,35 @@ const advisories = response.results.flatMap((result, index) =>
   })),
 )
 
-// A source patch is required while upstream has no fixed release. This is not
-// a version allowlist: every installed copy must match the reviewed full-source
-// hashes and pass adversarial tests. Skipped install scripts or any new advisory
-// still fail this gate. Keep reporting the original advisory for visibility.
+// Only recognize an advisory as remediated after verifying every installed
+// copy against the patched source hashes and running its regression tests.
+// Keep reporting the original advisory for visibility.
+const sourcePatches = [bracesPatch, ...picomatchPatches]
 const unresolved = []
+const testFiles = new Set()
+const verified = []
 for (const advisory of advisories) {
-  if (advisory.id !== patchedAdvisory || advisory.package !== 'braces' || advisory.version !== '3.0.3') {
+  const patch = sourcePatches.find(({ manifest }) =>
+    manifest.advisory === advisory.id &&
+    manifest.package === advisory.package &&
+    manifest.version === advisory.version
+  )
+  if (!patch) {
     unresolved.push(advisory)
     continue
   }
   for (const [packagePath, metadata] of Object.entries(lockfile.packages)) {
-    if (!packagePath.endsWith('node_modules/braces') || metadata.version !== '3.0.3') continue
-    await verifyBracesPatch(fileURLToPath(new URL(`../../${packagePath}/`, import.meta.url)))
+    if (!isPackagePath(packagePath, advisory.package) || metadata.version !== advisory.version) continue
+    await verifySourcePatch(patch, fileURLToPath(new URL(`../../${packagePath}/`, import.meta.url)))
   }
-  execFileSync(process.execPath, ['--test', fileURLToPath(new URL('./braces-depth-patch.test.mjs', import.meta.url))], {
-    stdio: 'inherit',
-  })
-  console.log(`${advisory.id} braces@3.0.3: verified source remediation (upstream release pending).`)
+  testFiles.add(patch.testFile)
+  verified.push(advisory)
+}
+if (testFiles.size) {
+  execFileSync(process.execPath, ['--test', ...testFiles], { stdio: 'inherit' })
+}
+for (const advisory of verified) {
+  console.log(`${advisory.id} ${advisory.package}@${advisory.version}: verified source remediation (upstream release pending).`)
 }
 
 console.log(

@@ -221,6 +221,7 @@ export function buildHumanBenchmarkLog(record, options = {}) {
 }
 
 export function saveHumanBenchmarkLog(record, options = {}) {
+  if (import.meta.env.PROD && import.meta.env.VITE_COLLECT_TRAINING_LOGS !== "1") return null;
   try {
     const humanLog = buildHumanBenchmarkLog(record, options);
     if (!humanLog) return null;
@@ -240,6 +241,7 @@ export function saveHumanBenchmarkLog(record, options = {}) {
 }
 
 export function saveRLHandHistory(record) {
+  if (import.meta.env.PROD && import.meta.env.VITE_COLLECT_TRAINING_LOGS !== "1") return;
   try {
     appendJsonlStorage(STORAGE_KEY, record);
     saveHumanBenchmarkLog(record);

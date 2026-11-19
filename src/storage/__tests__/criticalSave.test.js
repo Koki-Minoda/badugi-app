@@ -4,13 +4,19 @@ const key = 'mgx.tournament.mtt.active';
 afterEach(() => clearSaveFailure(key));
 function boundedStorage(entries, limit) {
  const data = new Map(Object.entries(entries));
- return { getItem: key => data.get(key) ?? null, setItem: (key, value) => {
+ return { getItem: key => data.get(key) ?? null, removeItem: key => data.delete(key), setItem: (key, value) => {
   const next = new Map(data); next.set(key, value);
   if ([...next.values()].reduce((n, v) => n + v.length, 0) > limit) throw new DOMException('Full', 'QuotaExceededError');
   data.set(key, value);
  }};
 }
 describe('critical tournament saves', () => {
+ it('reclaims even a single oversized diagnostic record before failing a critical save', () => {
+  const storage = boundedStorage({rl_hand_histories_v1: 'x'.repeat(100), 'badugi.history.hands': '["keep"]'}, 115);
+  expect(saveCriticalJson(key, {payload: 'y'.repeat(40)}, {storage})).toBe(true);
+  expect(storage.getItem('rl_hand_histories_v1')).toBeNull();
+  expect(storage.getItem('badugi.history.hands')).toBe('["keep"]');
+ });
  it('reclaims oldest diagnostic lines while preserving histories, identity and progress', () => {
   const logs = ['oldest'.repeat(10), 'older'.repeat(10), 'recent'.repeat(10), 'newest'.repeat(10)].join('\n');
   const initial = {rl_hand_histories_v1: logs, 'badugi.history.hands': '["replay"]', mgx_auth: 'identity', 'mgx.tournament.v2': 'progress'};

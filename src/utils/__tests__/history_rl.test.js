@@ -13,7 +13,24 @@ describe("human benchmark hand logs", () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
+  });
+
+  it("does not persist training diagnostics in ordinary production play", () => {
+    vi.stubEnv("PROD", true);
+    vi.stubEnv("VITE_COLLECT_TRAINING_LOGS", "0");
+    saveRLHandHistory({handId: "production-hand", variantId: "badugi", heroNet: 10});
+    expect(localStorage.getItem("rl_hand_histories_v1")).toBeNull();
+    expect(getHumanBenchmarkLogs()).toEqual([]);
+  });
+
+  it("permits explicitly enabled production evaluation logging", () => {
+    vi.stubEnv("PROD", true);
+    vi.stubEnv("VITE_COLLECT_TRAINING_LOGS", "1");
+    saveRLHandHistory({handId: "evaluation-hand", variantId: "badugi", heroNet: 10});
+    expect(localStorage.getItem("rl_hand_histories_v1")).toContain("evaluation-hand");
+    expect(getHumanBenchmarkLogs()).toHaveLength(1);
   });
 
   it("builds a Badugi human benchmark record with hero result and CPU model metadata", () => {

@@ -5,8 +5,14 @@ import { isQuotaExceededError } from './quota.js';
 const DIAGNOSTIC_KEYS = ['rl_hand_histories_v1', 'badugi_human_benchmark_logs_v1'];
 const failures = new Set();
 const listeners = new Set();
+let noticeDismissed = false;
 export const subscribeSaveFailures = listener => { listeners.add(listener); return () => listeners.delete(listener); };
 export const hasSaveFailure = () => failures.size > 0;
+export const shouldShowSaveFailure = () => hasSaveFailure() && !noticeDismissed;
+export function dismissSaveFailure() {
+  noticeDismissed = true;
+  for (const listener of listeners) listener();
+}
 function publish(key, failed) {
   const before = hasSaveFailure();
   if (failed) failures.add(key); else failures.delete(key);
@@ -30,6 +36,8 @@ export function saveCriticalJson(key, value, { storage } = {}) {
         storage.setItem(cacheKey, lines.join('\n'));
         try { return write(); } catch (error) { if (!isQuotaExceededError(error)) throw error; }
       }
+      storage.removeItem(cacheKey);
+      try { return write(); } catch (error) { if (!isQuotaExceededError(error)) throw error; }
     }
   } catch { /* Keep the previous snapshot intact and surface failure to the UI. */ }
   publish(key, true);

@@ -1,0 +1,280 @@
+{
+  "verifiedAt": "2026-11-19T23:45:44.708Z",
+  "publishedCommit": "45c7a36627be2d632884b426accb546b16a8bc10",
+  "origin": "https://mgx-poker.com",
+  "status": "PASS",
+  "cases": 12,
+  "completedHands": 30,
+  "retries": 0,
+  "physicalDevices": false,
+  "tournamentSetup": "Cash to MTT uses the normal Store Tournament hub. Other cases initialize a 12-player practice MTT via the existing E2E setup hook; all subsequent navigation, suspension, Cash actions and resume use normal UI.",
+  "initialHarnessCorrection": "Normalize D04 and badeucey_triple_draw with the application variant alias map before asserting isolation.",
+  "results": [
+    {
+      "case": "mobile-cash-mtt-crosscheck-1be27-resume-across-variants-draw-android-chromium",
+      "status": "PASS",
+      "completedHands": 2,
+      "tableAudits": [
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        },
+        {
+          "variant": "badugi",
+          "mode": "cash",
+          "status": "PASS"
+        },
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        }
+      ],
+      "pageErrors": 0
+    },
+    {
+      "case": "mobile-cash-mtt-crosscheck-1be27-resume-across-variants-draw-iphone-webkit",
+      "status": "PASS",
+      "completedHands": 2,
+      "tableAudits": [
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        },
+        {
+          "variant": "badugi",
+          "mode": "cash",
+          "status": "PASS"
+        },
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        }
+      ],
+      "pageErrors": 0
+    },
+    {
+      "case": "mobile-cash-mtt-crosscheck-2f2a1-me-across-variants-boundary-android-chromium",
+      "status": "PASS",
+      "completedHands": 3,
+      "tableAudits": [
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        },
+        {
+          "variant": "badugi",
+          "mode": "cash",
+          "status": "PASS"
+        },
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        }
+      ],
+      "pageErrors": 0
+    },
+    {
+      "case": "mobile-cash-mtt-crosscheck-2f2a1-me-across-variants-boundary-iphone-webkit",
+      "status": "PASS",
+      "completedHands": 3,
+      "tableAudits": [
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        },
+        {
+          "variant": "badugi",
+          "mode": "cash",
+          "status": "PASS"
+        },
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        }
+      ],
+      "pageErrors": 0
+    },
+    {
+      "case": "mobile-cash-mtt-crosscheck-513a6-ume-across-variants-reverse-android-chromium",
+      "status": "PASS",
+      "completedHands": 3,
+      "tableAudits": [
+        {
+          "variant": "badugi",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        },
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "cash",
+          "status": "PASS"
+        },
+        {
+          "variant": "badugi",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        }
+      ],
+      "pageErrors": 0
+    },
+    {
+      "case": "mobile-cash-mtt-crosscheck-513a6-ume-across-variants-reverse-iphone-webkit",
+      "status": "PASS",
+      "completedHands": 3,
+      "tableAudits": [
+        {
+          "variant": "badugi",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        },
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "cash",
+          "status": "PASS"
+        },
+        {
+          "variant": "badugi",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        }
+      ],
+      "pageErrors": 0
+    },
+    {
+      "case": "mobile-cash-mtt-crosscheck-5fa56--through-the-tournament-hub-android-chromium",
+      "status": "PASS",
+      "completedHands": 2,
+      "tableAudits": [
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "cash",
+          "status": "PASS"
+        },
+        {
+          "variant": "badugi",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        }
+      ],
+      "pageErrors": 0
+    },
+    {
+      "case": "mobile-cash-mtt-crosscheck-5fa56--through-the-tournament-hub-iphone-webkit",
+      "status": "PASS",
+      "completedHands": 2,
+      "tableAudits": [
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "cash",
+          "status": "PASS"
+        },
+        {
+          "variant": "badugi",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        }
+      ],
+      "pageErrors": 0
+    },
+    {
+      "case": "mobile-cash-mtt-crosscheck-7c5ae--resume-across-variants-bet-android-chromium",
+      "status": "PASS",
+      "completedHands": 2,
+      "tableAudits": [
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        },
+        {
+          "variant": "badugi",
+          "mode": "cash",
+          "status": "PASS"
+        },
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        }
+      ],
+      "pageErrors": 0
+    },
+    {
+      "case": "mobile-cash-mtt-crosscheck-7c5ae--resume-across-variants-bet-iphone-webkit",
+      "status": "PASS",
+      "completedHands": 2,
+      "tableAudits": [
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        },
+        {
+          "variant": "badugi",
+          "mode": "cash",
+          "status": "PASS"
+        },
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        }
+      ],
+      "pageErrors": 0
+    },
+    {
+      "case": "mobile-cash-mtt-crosscheck-a2654-sume-across-variants-reload-android-chromium",
+      "status": "PASS",
+      "completedHands": 3,
+      "tableAudits": [
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        },
+        {
+          "variant": "badugi",
+          "mode": "cash",
+          "status": "PASS"
+        },
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        }
+      ],
+      "pageErrors": 0
+    },
+    {
+      "case": "mobile-cash-mtt-crosscheck-a2654-sume-across-variants-reload-iphone-webkit",
+      "status": "PASS",
+      "completedHands": 3,
+      "tableAudits": [
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        },
+        {
+          "variant": "badugi",
+          "mode": "cash",
+          "status": "PASS"
+        },
+        {
+          "variant": "badeucey_triple_draw",
+          "mode": "tournament-mtt",
+          "status": "PASS"
+        }
+      ],
+      "pageErrors": 0
+    }
+  ]
+}

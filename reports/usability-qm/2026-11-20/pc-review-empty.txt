@@ -1,0 +1,51 @@
+Window: "MGX - Mixed Game eXperience", App: Safari.
+0 標準ウインドウ MGX - Mixed Game eXperience, ID: SafariWindow?IsSecure=true&UUID=FB47E7E7-F6FE-4CEE-8727-1766F311F77B, Secondary Actions: Raise
+	1 グループを分割
+		2 タブグループ
+			3 スクロール領域
+				4 HTMLコンテンツ Description: MGX - Mixed Game eXperience, URL: mgx-poker.com/learn/review
+					5 container
+						6 見出し 復習一覧, Value: 1
+							7 テキスト 復習一覧
+						8 link 学習に戻る, Value: mgx-poker.com/learn
+						9 link ハンド履歴, Value: mgx-poker.com/history
+						10 text あとで振り返りたいハンドとメモを、この端末に保存します。最大200件。通常の履歴から消えたハンドも残ります。 復習状況
+						11 ポップアップボタン 復習状況, Value: すべて
+						12 テキスト 種目
+						13 ポップアップボタン 種目, Value: すべての種目
+						14 テキスト タグ
+						15 ポップアップボタン タグ, Value: すべてのタグ
+						16 テキスト メモ・ハンドを検索
+						17 検索テキストフィールド (settable) メモ・ハンドを検索
+						18 text 0  /  0 件 復習したいハンドを、対局結果や履歴の「あとで復習に保存」から追加してください。
+	19 イメージ WindowControlShadowView._shadowImageView
+	20 ツールバー
+		21 container Secondary Actions: 次に移動, ツールバーから削除
+			22 ボタン Description: サイドバーを表示, Help: サイドバーを表示します, ID: SidebarButton
+			23 メニューボタン Description: タブグループピッカー, ID: TabGroupPickerButton?TabGroup=
+		24 container BackForwardSegmentedControl
+			25 ボタン Description: 戻る, Help: 前のページを表示します, ID: BackButton
+			26 ボタン (disabled) Description: 進む, Help: 次のページを表示します, ID: ForwardButton
+		27 container Secondary Actions: 前に移動, 次に移動, ツールバーから削除
+			28 ボタン ページメニュー, ID: AssistantButton
+			29 ボタン (disabled) ページをリーディングリストに追加します, ID: OneStepBookmarkingButton
+			30 テキストフィールド (settable) Description: スマート検索フィールド, Value: https://mgx-poker.com/learn/review, ID: WEB_BROWSER_ADDRESS_AND_SEARCH_FIELD
+			31 ボタン このページを再読み込み, ID: ReloadButton
+		32 ボタン Description: 共有, ID: ShareButton, Secondary Actions: 前に移動, 次に移動, ツールバーから削除
+		33 ボタン Description: 新規タブ, ID: NewTabButton, Secondary Actions: 前に移動, 次に移動, ツールバーから削除
+		34 ボタン Description: タブの概要, ID: TabOverviewButton, Secondary Actions: 前に移動, ツールバーから削除
+	35 閉じるボタン
+	36 フルスクリーンボタン Help: このボタンにはウインドウを拡大する操作もあります, Secondary Actions: ウインドウを拡大
+	37 しまうボタン
+38 menu bar
+	39 Safari
+	40 ファイル
+	41 編集
+	42 表示, ID: SafariViewMenu
+	43 履歴
+	44 ブックマーク, ID: SafariBookmarksMenu
+	45 開発
+	46 ウインドウ, ID: SafariWindowMenu
+	47 ヘルプ, ID: SafariHelpMenu
+
+The focused UI element is 4 HTMLコンテンツ Description: MGX - Mixed Game eXperience, URL: mgx-poker.com/learn/review

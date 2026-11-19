@@ -1,0 +1,24 @@
+Window: "iPhone 17", App: Device Hub.
+0 standard window iPhone 17 – iOS 26.5, ID: deviceWindow-AppWindow-2, Secondary Actions: Raise
+	1 container
+		2 text iPhone 17 iOS 26.5
+		3 text field Description: アドレス, Value: ‎mgx-poker.com, ID: TabBarItemTitle, Secondary Actions: Cancel, 前のタブ、MGX - Mixed Game eXperience, 次のタブ、Error 400 (Bad Request)!!1, コンテクストメニューを表示
+		4 button Description: Home, ID: app.grid.3x3
+		5 button Description: Screenshot, ID: camera.viewfinder
+		6 button Description: Record, Help: Record Screen, ID: record.circle
+		7 button Rotate Left
+	8 toolbar
+		9 button Description: Show in Device Hub, Secondary Actions: Increment, Decrement, Delete, Cancel, Move previous, Move next, Remove from toolbar
+		10 menu button More, Help: View options, ID: ellipsis
+	11 close button
+	12 zoom button
+	13 minimize button
+14 menu bar
+	15 Device Hub
+	16 File
+	17 Edit
+	18 View
+	19 Device
+	20 Controls
+	21 Window
+	22 Help

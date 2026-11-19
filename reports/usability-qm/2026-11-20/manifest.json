@@ -1,0 +1,298 @@
+{
+  "date": "2026-11-20",
+  "timezone": "Asia/Tokyo",
+  "issue": 421,
+  "publishedCommit": "45c7a36627be2d632884b426accb546b16a8bc10",
+  "publishedBuildTime": "2026-11-19T17:39:31.873Z",
+  "environments": [
+    "macOS Safari, logged-in temporary QA account",
+    "Xcode Device Hub, iPhone 17, iOS 26.5, Safari, portrait, same QA account"
+  ],
+  "method": "Native UI operations through CUA. Screenshots are unmodified window captures. Findings are heuristic assessments, without a human participant study.",
+  "report": "../../../docs/testing/MGX_USABILITY_QM_20261120.md",
+  "findings": {
+    "P1": 4,
+    "P2": 16,
+    "P3": 4
+  },
+  "artifacts": [
+    {
+      "file": "iphone-equity.jpg",
+      "bytes": 176405,
+      "sha256": "afb7e7941a7cbd12e710e5610ae426a2804ab2d7e79a65dad3081c40dfa446da",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "iphone-learn.jpg",
+      "bytes": 177992,
+      "sha256": "46f646aa0d60d7180157943702fc8168908abb1889a2fd654757833e39218932",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "iphone-login.jpg",
+      "bytes": 106790,
+      "sha256": "a4db1b25458b14faaaa55c99a14a142befe85f54e53e57b3a363c901f50045ac",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "iphone-menu.jpg",
+      "bytes": 217147,
+      "sha256": "b6314c4fbd4ad06ebf4e1d249cdc7b7252dec02cd77af27a660c928aab188271",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "iphone-practice-action-area.jpg",
+      "bytes": 159184,
+      "sha256": "f47d9913ac4e9e7cf693e7caa5181b18b4ebef66ce87e7ef4f82c55e44cc6e8c",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "iphone-practice-controls.jpg",
+      "bytes": 174191,
+      "sha256": "f544e25ed4402292d5acd9ff0cdaa37723cb84201147f11d9f17e4be1789535f",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "iphone-practice-ended.jpg",
+      "bytes": 164883,
+      "sha256": "64d975c7cf693fae9cbffaa0ad919f87d665a6bb124fdc9e4bffc94fd2c03195",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "iphone-practice-playing.jpg",
+      "bytes": 174191,
+      "sha256": "2dc97bf6dfb459908fe16a86683b71aaa0c1895cc5c824b5b25a310e0f3f4bce",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "iphone-practice-result.jpg",
+      "bytes": 152233,
+      "sha256": "0008655d2584e767be1764900dfdcd0ed1817ce5c7d2a9ada06b0418808821df",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "iphone-practice-saved.jpg",
+      "bytes": 154500,
+      "sha256": "1d35e92ca813f0dc9623df9215e3d2c84a2b275728eb520d802311038cf86386",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "iphone-practice-setup.jpg",
+      "bytes": 172562,
+      "sha256": "4ecd69481b3f32bdf562729a3aa3b2df67c56d6d3e5c514beaec0844b1a38025",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "iphone-practice-start.jpg",
+      "bytes": 166096,
+      "sha256": "6ddb9eb5fb260fa9595eecbf6d344570b69a6c6719a835ffdd09a44dc18b1e5e",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "iphone-review-detail.jpg",
+      "bytes": 153935,
+      "sha256": "4a53a873ff9eb84a3410b990c86e48df099bc64d9c622e3600b75b18eb67d297",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "iphone-review-detail.txt",
+      "bytes": 982,
+      "sha256": "fe39c47ea13f503ea49f3da31b9e85b659f11b33ee284cc2bfee2b8230604e55"
+    },
+    {
+      "file": "iphone-review-one.jpg",
+      "bytes": 150246,
+      "sha256": "e0cc9fda1eba3ad47992084035384b88549b5e259605c524957ae5d34af7135d",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "iphone-tournament.jpg",
+      "bytes": 162793,
+      "sha256": "96287e84233d6b87eec9fc6d37d90483f9ecce4d69b4c383cc70fc9f16b73df9",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "observations.json",
+      "bytes": 1540,
+      "sha256": "647f5479ecb3db892ede5573a9a8da258c2931c23844387b465ddbc26a4d6f1f"
+    },
+    {
+      "file": "pc-2nd-drill.jpg",
+      "bytes": 349545,
+      "sha256": "0ead36c7ca6f4b636bac1535625df10c2a2d72171e732da489a69dbc2a20860b",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-3rd-drill.jpg",
+      "bytes": 333921,
+      "sha256": "07c6141003d77c0e090581e7d19e7815d7cbfeb8c9b3f6614228409241b50986",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-career.jpg",
+      "bytes": 289273,
+      "sha256": "5d7b5dc4373dee1a3b81ff173a036610e28c7e4d861819ea48b56a401c509a0e",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-cash-hud.jpg",
+      "bytes": 581972,
+      "sha256": "23b09270a380db450cdbb369679f0aae8ed92ab38d0500b56715d51c4d7943fe",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-cash-out.jpg",
+      "bytes": 281385,
+      "sha256": "4ddb4ed4b8be3ecb570cb0b6ae36157991d07b290bf8a4473aac089325ae5d7c",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-equity.jpg",
+      "bytes": 353316,
+      "sha256": "41c3cd8a661b6037c3740c6feb532db18e1be7a8496c732d3493027f454ea070",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-friend-match.jpg",
+      "bytes": 297837,
+      "sha256": "2a70b0017e18033f9959c94a3e3740c0d00641725720941e4b2a0d964dd91395",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-games.jpg",
+      "bytes": 416154,
+      "sha256": "e759992eb31f89ade4795aac799503f40724ce73b27270c96afe0b3b6abf865b",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-history-empty.jpg",
+      "bytes": 314122,
+      "sha256": "c3b04fa0434833536bfe06cb690e3c092f19df6e27f1ac8baaab6677f33c768e",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-history-in-game.jpg",
+      "bytes": 365273,
+      "sha256": "97a1ce7bfb321d101a51ba2e2156fda810981bccc429c2309e1077fcc5ac03bb",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-learn.jpg",
+      "bytes": 402392,
+      "sha256": "0768ff58bb84656ed5272c6596447495a0587bbf6ee75a7684e2fe6d72dea433",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-menu.jpg",
+      "bytes": 639210,
+      "sha256": "5bc6eddf5d206da85eff8af30a365e7110e9857e11966caa373d5cf68d36bbbb",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-mix-builder.jpg",
+      "bytes": 420717,
+      "sha256": "2c92fd6cace919cec6a6fed81c5e7d35da5c15d598ce4d5b6721c97848cd661f",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-my-results-empty.jpg",
+      "bytes": 315455,
+      "sha256": "8cc808562796631ad4071038a2c21b5e51282cd7caf9a473401c765fc0660ba3",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-practice-setup.jpg",
+      "bytes": 359649,
+      "sha256": "c328b7379cd9f2571b2967d658a0048f0954ef41329ce4d1823c096d8850d9e9",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-profile.jpg",
+      "bytes": 267961,
+      "sha256": "a4d299ddefd6e758e28aa4ec0b0a848c56751544265fdc29ef4692894faae32b",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-quiz-feedback.jpg",
+      "bytes": 277735,
+      "sha256": "20de07d1e13f36cfc185850c92a27c25f8bdda442262cdf7d229ac4be0670b97",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-range-results.jpg",
+      "bytes": 370047,
+      "sha256": "84762190089cf45de797215059bc9b48a82814ba07f1af0ca7f5e1bdc4c99b2e",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-review-empty.jpg",
+      "bytes": 228046,
+      "sha256": "c403e219468dcbea434442969d00baeffc494ce2327ce3a8669076567c11f1ab",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-review-empty.txt",
+      "bytes": 3391,
+      "sha256": "7d54fa9888d682c29592fdd919af5ba7c13808dd3b3e52d61fee64452ffd0e96"
+    },
+    {
+      "file": "pc-seat-settings.jpg",
+      "bytes": 377211,
+      "sha256": "3667f88da8de8eb6485f20970dc1e42435ffcedf8e90b9ec8865981978070c99",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-selected-game-returned-menu.jpg",
+      "bytes": 639807,
+      "sha256": "e9b312d6ca67d5ac25359e4841d6c8d636491c04ff1e9561386bb662589aa11f",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-settings-developer.jpg",
+      "bytes": 402303,
+      "sha256": "9aa4bfe25f94235fcdd59eed4e65851538b9689644687ab9ca4d5cdac3d8fc54",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-settings.jpg",
+      "bytes": 400889,
+      "sha256": "8a3006c07e68fec633e15d29399cd16546ca8001b342b6d6190b11344e938627",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-tools-clock-paused.jpg",
+      "bytes": 362569,
+      "sha256": "4e39b9499a5cf9a8b271b503f5f217d7c16b2a5cd0c6186413f6332bf3fa946b",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-tools-clock.jpg",
+      "bytes": 362569,
+      "sha256": "4e39b9499a5cf9a8b271b503f5f217d7c16b2a5cd0c6186413f6332bf3fa946b",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-tools-clock.txt",
+      "bytes": 8139,
+      "sha256": "ce41d436a623aef5d8919ff8b02ac9e4b605058ef97eaf2f0c4d6c3ea9bdffb1"
+    },
+    {
+      "file": "pc-tools-compare.jpg",
+      "bytes": 331422,
+      "sha256": "98aab6f38162734ca4cdcef05f8e55735cba13e9a51803778a166e1dd78b0a28",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-tools-recommend.jpg",
+      "bytes": 310088,
+      "sha256": "7cebf4deadeb656702dbf320584064d1bd086678a7fa753257b2015925cd5b3b",
+      "mimeType": "image/jpeg"
+    },
+    {
+      "file": "pc-tournament.jpg",
+      "bytes": 423886,
+      "sha256": "dc64d29a696eeef4503e44cf4643654535a82735c4852f445746a303f92d1160",
+      "mimeType": "image/jpeg"
+    }
+  ]
+}

@@ -65,14 +65,15 @@ function Model({ question, ja }) {
 }
 
 function Spot({ question, ja }) {
+  const pot = Number(question.pot.toFixed(2));
   return <>
     <p className="mt-2 text-sm text-slate-300">
       {ja ? "ヘッズアップ · 3rdドロー · あなたは後手" : "Heads-up · Third draw · You act last"}
     </p>
     <p className="mt-2 text-sm">
       {ja
-        ? `相手は${question.opponentDraw === 0 ? "パット" : "1枚交換"}。ポット ${Number(question.pot.toFixed(2))} BBet。想定レンジは「${RANGE_MODELS[question.range].ja}」。`
-        : `Opponent ${question.opponentDraw === 0 ? "stood pat" : "drew one"}. Pot ${Number(question.pot.toFixed(2))} BBet. ${RANGE_MODELS[question.range].en}.`}
+        ? `相手は${question.opponentDraw === 0 ? "パット" : "1枚交換"}。ポット ${pot} BBet（最終ベット額の${pot}倍）。想定レンジは「${RANGE_MODELS[question.range].ja}」。`
+        : `Opponent ${question.opponentDraw === 0 ? "stood pat" : "drew one"}. Pot ${pot} BBet (${pot} × the final-street bet). ${RANGE_MODELS[question.range].en}.`}
     </p>
     <p className="mt-3 flex flex-wrap gap-2" aria-label={ja ? "あなたの手札" : "Your cards"}>
       {question.cards.map((card) => <span key={card} className="rounded-md bg-slate-100 px-2 py-1 text-sm font-semibold text-slate-950">{cardLabel(card)}</span>)}

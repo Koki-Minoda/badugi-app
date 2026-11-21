@@ -163,6 +163,7 @@ def audit_seed_history(root: Path, scheduled: dict[str, list[int]],
         if collision:
             base_collisions.append(base)
     session_files = session_rows = 0
+    training_trace_files = training_hand_rows = 0
     actual_collisions = []
     for pattern in ("d03*/**/sessions.jsonl", "mgx-phase1*/**/sessions.jsonl"):
         for path in root.glob(pattern):
@@ -178,6 +179,25 @@ def audit_seed_history(root: Path, scheduled: dict[str, list[int]],
                         if seed % gate.SEED_PERIOD in residues:
                             actual_collisions.append({"path": str(path.relative_to(root)),
                                                       "seed": seed})
+    # Training stages add a large offset to the base seed. A base-window scan
+    # cannot establish disjointness from their actual controller hand seeds.
+    for path in root.glob("d03*/segment-*/hand-trace.jsonl"):
+        if path.resolve() in excluded_paths:
+            continue
+        training_trace_files += 1
+        colliding_session_seeds = set()
+        with path.open() as source:
+            for line in source:
+                row = json.loads(line)
+                seed = row.get("seed")
+                if type(seed) is not int:
+                    raise ValueError(f"training hand trace is missing an integer seed: {path}")
+                training_hand_rows += 1
+                if (seed % gate.SEED_PERIOD in residues and
+                        seed not in colliding_session_seeds):
+                    colliding_session_seeds.add(seed)
+                    actual_collisions.append({"path": str(path.relative_to(root)),
+                                              "seed": seed})
     return {
         "status": "PASS_NO_RECORDED_SEED_COLLISION" if not base_collisions and
                   not actual_collisions else "FAIL_RECORDED_SEED_COLLISION",
@@ -186,6 +206,8 @@ def audit_seed_history(root: Path, scheduled: dict[str, list[int]],
         "priorBaseSchedulesScanned": len(old_bases),
         "priorSessionFilesScanned": session_files,
         "priorSessionRowsScanned": session_rows,
+        "priorTrainingTraceFilesScanned": training_trace_files,
+        "priorTrainingHandRowsScanned": training_hand_rows,
         "baseCollisions": base_collisions,
         "actualCollisions": actual_collisions,
         "scopeLimit": "Recorded local D03 and MGX Phase 1 artifacts only; external or missing originals are outside this scan.",

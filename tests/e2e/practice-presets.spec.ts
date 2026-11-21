@@ -22,7 +22,8 @@ for (const game of games) test(`${game.id}: review to practice, named setup pers
   await expect(page.getByRole('combobox', { name: '種目', exact: true })).toHaveValue(game.id);
   await expect(page.getByTestId('practice-table')).toHaveCount(0);
   await page.reload();
-  for (const card of game.labels) await expect(page.getByRole('button', { name: card, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('選んだ手札')).toHaveText(game.labels.join(''));
+  await expect(page.getByTestId('practice-card-picker')).not.toHaveAttribute('open', '');
   const longName = '交換の判断を繰り返し練習する条件'.repeat(3);
   await page.getByLabel('練習条件の名前').fill(longName);
   await page.getByRole('button', { name: '現在の条件を保存' }).click();
@@ -44,7 +45,8 @@ for (const game of games) test(`${game.id}: review to practice, named setup pers
   await page.getByLabel('保存した練習条件').selectOption(first.id);
   await page.getByRole('button', { name: 'この条件を呼び出す' }).click();
   await expect(page.getByRole('combobox', { name: '種目', exact: true })).toHaveValue(game.id);
-  for (const card of game.labels) await expect(page.getByRole('button', { name: card, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('選んだ手札')).toHaveText(game.labels.join(''));
+  await expect(page.getByTestId('practice-card-picker')).not.toHaveAttribute('open', '');
   await expect(page.getByTestId('practice-table')).toHaveCount(0);
   await page.screenshot({ path: info.outputPath('loaded-practice-setup.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);

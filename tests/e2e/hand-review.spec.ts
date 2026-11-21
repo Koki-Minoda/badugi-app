@@ -52,6 +52,7 @@ test('save a real hand result, annotate, reload, retain after history removal, a
   await expect(item.getByRole('textbox', { name: 'メモ', exact: true })).toHaveValue('最初のベット判断を復習する。');
   await expect(item.getByLabel('タグ（カンマ区切り）')).toHaveValue('ベット判断, A-5');
   await expect(item.getByRole('heading', { name: 'アクション記録' })).toBeVisible();
+  await page.getByTestId('review-filters').locator('summary').click();
   await page.getByRole('combobox', { name: '種目', exact: true }).selectOption('ace_to_five_triple_draw');
   await page.getByRole('combobox', { name: 'タグ', exact: true }).selectOption('A-5');
   await page.getByLabel('メモ・ハンドを検索').fill('見つからない');
@@ -64,7 +65,7 @@ test('save a real hand result, annotate, reload, retain after history removal, a
   const hero = saved[0].hand.seats.find(seat => seat.isHero) ?? saved[0].hand.seats.find(seat => seat.seat === 0);
   for (const card of hero.initialHand) {
     const label = card.replace(/S$/, '♠').replace(/H$/, '♥').replace(/D$/, '♦').replace(/C$/, '♣');
-    await expect(page.getByRole('button', { name: label, exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByLabel('選んだ手札')).toContainText(label);
   }
   await expect(page.getByTestId('practice-table')).toHaveCount(0);
 });
@@ -86,6 +87,7 @@ test('save different game histories with reused IDs, edit in English, and remove
   await page.getByRole('combobox', { name: 'Language' }).selectOption('en');
   await page.locator('a[href="/learn/review"]').filter({ hasText: 'Review saved hands' }).click();
   await expect(page.getByRole('heading', { name: 'Saved hands' })).toBeVisible();
+  await page.getByTestId('review-filters').locator('summary').click();
   await page.getByRole('combobox', { name: 'Game', exact: true }).selectOption('stud');
   const item = page.getByTestId('saved-hand');
   await expect(item).toHaveCount(1);

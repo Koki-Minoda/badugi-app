@@ -25,7 +25,7 @@ test('menu opens the learning hub, with no horizontal overflow', async ({ page }
 
 test('compare rules, save once, reload and review an unchanged template', async ({ page }, info) => {
   await page.goto('/learn?plan=learn-lowball');
-  await page.getByRole('button', { name: '2. 2-7 Triple Draw' }).click();
+  await page.getByRole('combobox', { name: '学習する種目' }).selectOption('deuce_to_seven_triple_draw');
   await expect(page.getByRole('heading', { name: 'A-5 Triple Draw → 2-7 Triple Draw' })).toBeVisible();
   await expect(page.getByText('変更点 · 勝敗とAの扱い')).toBeVisible();
   await page.getByRole('button', { name: 'テンプレートを保存' }).click();

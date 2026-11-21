@@ -9,7 +9,11 @@ async function setup(page: Page, games: string[], handsPerGame = 1, hardBans = '
     localStorage.setItem('mixedGameProfiles', JSON.stringify([{ id: 'qa-mix', name: 'QA Mix', selectedGameIds: games, handsPerGame, selectionMode: 'FIXED', allowDuplicates: true }]));
   }, { games, handsPerGame });
   await page.goto('/mixed?preset=qa-mix');
-  if (hardBans) await page.getByRole('textbox', { name: '必ず除外する種目' }).fill(hardBans);
+  if (hardBans) {
+    await page.locator('summary').filter({ hasText: '必ず除外する種目' }).click();
+    const names = { st1: 'Stud', b05: 'Pot-Limit Omaha' };
+    for (const id of hardBans.split(' ')) await page.getByRole('group', { name: '必ず除外する種目', exact: true }).getByRole('checkbox', { name: names[id], exact: true }).check();
+  }
   await page.getByRole('button', { name: 'Mixed Game 開始', exact: true }).click();
   await expect(page.getByTestId('mixed-rotation-status')).toBeVisible();
 }
@@ -64,13 +68,13 @@ test('Stud MIX keeps all six desktop seats separate at 1280×720', async ({ page
   } else {
     for (const width of [1280, 1440]) {
       await page.setViewportSize({ width, height: width === 1280 ? 720 : 900 });
-      await page.getByTestId('seat-5').hover();
+      await page.getByTestId('seat-5').getByRole('button', { name: /の詳細$/ }).click();
       const hud = page.getByTestId('seat-5-detail');
       await expect(hud).toBeVisible();
       const hudBox = (await hud.boundingBox())!;
       const actionPanelLeft = (await page.getByTestId('decision-panel').boundingBox())!.x;
       expect(hudBox.x + hudBox.width).toBeLessThan(actionPanelLeft);
-      await page.mouse.move(0, 0);
+      await hud.getByRole('button', { name: '閉じる', exact: true }).click();
       await expect(hud).toHaveCount(0);
     }
   }
@@ -93,7 +97,7 @@ test('cash MIX crosses draw, stud and board families with chips, seats and butto
     if (i === 3) {
       await expect(page.getByTestId('mixed-rotation-status')).toBeVisible();
       const mobile = await page.getByTestId('mobile-play-layout').count();
-      const phase = page.getByTestId(mobile ? 'table-phase-badge' : 'phase-compact-strip');
+      const phase = page.getByTestId('table-phase-badge');
       await expect(phase).toContainText(mobile ? '3番街' : '3rd Street');
       await expect(phase).not.toContainText('D1');
       for (let seat = 1; seat < 6; seat++) {

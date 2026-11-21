@@ -33,9 +33,9 @@
 
 各項目のコミットはIssueとGit履歴で追跡する。本番反映後の再QMは別途記録する。
 
-U03の確認画像: [iPhone](../../reports/usability-fixes/2026-11-21/u03-iphone-controls.png)、[PC](../../reports/usability-fixes/2026-11-21/u03-desktop-controls.png)。ブラウザー検証画像であり、iOSシミュレーターでの再確認は未実施。
+U03の確認画像: [iPhone](../../reports/usability-fixes/2026-11-21/u03-iphone-controls.png)、[PC](../../reports/usability-fixes/2026-11-21/u03-desktop-controls.png)。これらはブラウザー検証画像。後日追加した[iOSシミュレーター再QM](MGX_IOS_RE_QM_20261122.md)は別途記録する。
 
-## 最終の統合確認
+## 2026-11-21の統合確認（iOS再QM前）
 
 実装の検証対象は `37e3fec251fe701da05d8c617adba32e191c78c9`。元の24件と追補2件について、作業ツリーに未コミットの製品変更がない状態で確認した。
 
@@ -53,7 +53,7 @@ U03の確認画像: [iPhone](../../reports/usability-fixes/2026-11-21/u03-iphone
 
 [検証結果と画像ハッシュ](../../reports/usability-fixes/2026-11-21/final/verification.json)、[スマホメニュー](../../reports/usability-fixes/2026-11-21/final/menu-mobile.png)、[iPhoneサイズの練習](../../reports/usability-fixes/2026-11-21/final/practice-iphone.png)、[手札設定](../../reports/usability-fixes/2026-11-21/final/practice-setup-mobile.png)、[エクイティ](../../reports/usability-fixes/2026-11-21/final/equity-mobile.png)、[設定](../../reports/usability-fixes/2026-11-21/final/settings-mobile-en.png)。
 
-修正後のiOSシミュレーターでの再QM、本番反映後の再QMは未実施。元のQMで追加確認に挙げた通常キャッシュの待機、履歴が不足していたグラフ状態は、この修正だけで解決・確認済みとは扱わない。
+この時点では修正後のiOSシミュレーター・本番反映後の再QMは未実施。2026-11-22に[iOSでの主要操作と追加修正](MGX_IOS_RE_QM_20261122.md)を確認した。通常キャッシュのCPU待機から自分の番への進行も確認できた。大量履歴のグラフ状態は今回のネイティブ再QMでは未確認。
 
 ## iOSシミュレーター再QMの追補
 
@@ -64,3 +64,5 @@ U03の確認画像: [iPhone](../../reports/usability-fixes/2026-11-21/u03-iphone
 - #464: 統合検証で見つかったMIX開始の回帰を修正。通常キャッシュURLより、学習・MIX・大会の明示した開始情報を優先。開始条件13件、PC・Android・iPhoneのMIX開始とモデル帰属の統合3件、既知不具合50件、RL安全性66件、build通過。
 
 - #465: MIX画面の見出し・戻り操作がスマホで圧迫される問題を修正。見出しと操作を適切に折り返し、MIXと日本語の種目一覧に統一。320・390・852pxの日英WebKit6件、既知不具合50件、RL安全性66件、build通過。[iOS修正後](../../reports/usability-fixes/2026-11-21/ios-simulator/35-mix-header-fixed.jpg)。
+
+- #466: 折りたたみ・種目プルダウン・種目名チェック・明示したHUD開閉に統合テストを追従。学習QAはPC・Android・iPhoneで78件通過、実認証のHUD検証1件通過。保存・再読込・削除・チップ保存・種目切替・正誤判定を維持し、おすすめが一つになる優先順も確認。最終Tier1は394ファイル3011件通過・既存1件skip、既知不具合50件・RL安全性66件・lintエラー0件。

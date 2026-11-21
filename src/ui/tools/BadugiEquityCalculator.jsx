@@ -6,6 +6,7 @@ import { getReviewUserId } from '../personalResults/badugiReplayReview.js';
 import { readBadugiRangeReviews } from '../personalResults/badugiRangeReviewStore.js';
 import BadugiFinalBet from './BadugiFinalBet.jsx';
 import BadugiEquityResults from './BadugiEquityResults.jsx';
+import RangeHandsEditor from './RangeHandsEditor.jsx';
 import CardPicker from './CardPicker.jsx';
 import { badugiDiscardOptions } from './badugiEquity.js';
 import { cardText } from './cardText.js';
@@ -179,14 +180,7 @@ export default function BadugiEquityCalculator({ ja, spot = null }) {
               }))}>
               {ja ? '交換枚数に合う2つの候補を入れる' : 'Load two presets for this draw count'}
             </button>}
-            <label className="grid gap-1 text-sm font-medium">{ja ? '相手のレンジ' : 'Opponent range'}
-              <textarea className="min-h-28 w-full rounded-lg border border-white/20 bg-slate-800 p-3 font-mono text-base" spellCheck={false}
-                value={rangeA.text} maxLength={4000} placeholder={rangeExample} aria-describedby="equity-range-help"
-                onChange={event => update('rangeA', { preset: null, text: event.target.value })} />
-            </label>
-            <p id="equity-range-help" className="text-xs text-slate-300">{ja
-              ? '1行に4枚と重みを入力します（例 9S 7C 5D 4H 3）。重み省略は1。最大24行です。観測した交換枚数などを考慮した重みを入力してください。'
-              : 'Use one line per candidate with four cards and a weight, e.g. 9S 7C 5D 4H 3. Weight defaults to 1. Up to 24 lines. Enter weights that account for observed actions.'}</p>
+            <RangeHandsEditor name="A" text={rangeA.text} onChange={value => update('rangeA', value)} ja={ja} />
             {range && <p className="text-xs text-emerald-200">{ja
               ? `有効な候補 ${range.hands}組 · 既知カードと重なる行 ${range.excluded}件を除外。残りの重みで再計算しています。`
               : `${range.hands} valid hands · ${range.excluded} blocked rows removed. Remaining weights are normalized.`}</p>}

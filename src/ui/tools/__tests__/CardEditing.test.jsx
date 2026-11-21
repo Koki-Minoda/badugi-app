@@ -32,3 +32,17 @@ it('selects discards without deleting cards from the starting hand', () => {
   expect(screen.getByRole('group', { name: '自分 · 4/4' })).toBeTruthy();
   expect(hero.getByText('手札を編集')).toBeTruthy();
 });
+
+it('offers matching collapsed range editors and preserves both assumptions independently', () => {
+  render(<BadugiEquityCalculator ja />);
+  fireEvent.change(screen.getByRole('combobox', { name: '相手の手札の入力方法' }), { target: { value: 'range' } });
+  for (const name of ['A', 'B']) {
+    const editor = screen.getByTestId(`range-${name}-editor`);
+    expect(editor.open).toBe(false);
+    fireEvent.click(editor.querySelector('summary'));
+    fireEvent.change(screen.getByLabelText(`レンジ${name}の手札と重み`), { target: { value: name === 'A' ? '9S 7C 5D 4H 3' : '8S 6C 4D 2H 1' } });
+    expect(editor.querySelector('summary').textContent).toContain('入力1行');
+  }
+  expect(screen.getByLabelText('レンジAの手札と重み').value).toBe('9S 7C 5D 4H 3');
+  expect(screen.getByLabelText('レンジBの手札と重み').value).toBe('8S 6C 4D 2H 1');
+});

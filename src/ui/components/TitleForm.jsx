@@ -1,3 +1,4 @@
+import { useLanguage } from "../preferences/language.js";
 import React, { useEffect, useState } from "react";
 import { getDefaultTitleSettings, isEmailPlayerName } from "../utils/titleSettings";
 
@@ -12,12 +13,12 @@ const avatarChoices = [
 ];
 
 export default function TitleForm({ initialValues, onSave, onReset }) {
+  const ja = useLanguage() === "ja";
   const [formState, setFormState] = useState(() => initialValues ?? getDefaultTitleSettings());
   const [status, setStatus] = useState("");
 
   useEffect(() => {
     setFormState(initialValues ?? getDefaultTitleSettings());
-    setStatus("");
   }, [initialValues]);
 
   function handleChange(e) {
@@ -31,11 +32,11 @@ export default function TitleForm({ initialValues, onSave, onReset }) {
   function handleSubmit(e) {
     e.preventDefault();
     if (isEmailPlayerName(formState.playerName)) {
-      setStatus("メールアドレスではなく、対局で使う名前を入力してください。");
+      setStatus("invalidName");
       return;
     }
     onSave?.(formState);
-    setStatus("保存しました");
+    setStatus("saved");
     setTimeout(() => setStatus(""), 2000);
   }
 
@@ -43,15 +44,20 @@ export default function TitleForm({ initialValues, onSave, onReset }) {
     const defaults = getDefaultTitleSettings();
     onReset?.(defaults);
     setFormState(defaults);
-    setStatus("初期化しました");
+    setStatus("reset");
     setTimeout(() => setStatus(""), 2000);
   }
 
+  const statusCopy = {
+    invalidName: ja ? "メールアドレスではなく、対局で使う名前を入力してください。" : "Use a player name instead of an email address.",
+    saved: ja ? "保存しました" : "Saved",
+    reset: ja ? "初期化しました" : "Reset to defaults",
+  };
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div>
         <label htmlFor="title-player-name" className="block text-sm font-semibold text-slate-700 mb-1">
-          プレイヤー名
+          {ja ? "プレイヤー名" : "Player name"}
         </label>
         <input
           id="title-player-name"
@@ -61,16 +67,16 @@ export default function TitleForm({ initialValues, onSave, onReset }) {
           onChange={handleChange}
           maxLength={16}
           className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          placeholder="例: ミッドナイト・バドゥーギ"
+          placeholder={ja ? "例: ミッドナイト・バドゥーギ" : "e.g. Midnight Badugi"}
         />
         <p id="player-name-help" className="mt-2 text-sm text-slate-600">
-          対局中と優勝・順位画面に表示する名前です。16文字まで。このブラウザに保存されます。未設定時はYouと表示します。
+          {ja ? "対局中と優勝・順位画面に表示する名前です。16文字まで。このブラウザに保存されます。未設定時はYouと表示します。" : "Shown at the table and in results. Up to 16 characters, saved in this browser. Defaults to You."}
         </p>
       </div>
 
       <div>
         <label htmlFor="title-player-title" className="block text-sm font-semibold text-slate-700 mb-1">
-          タイトル / バッジ
+          {ja ? "タイトル / バッジ" : "Title / badge"}
         </label>
         <input
           id="title-player-title"
@@ -79,13 +85,13 @@ export default function TitleForm({ initialValues, onSave, onReset }) {
           onChange={handleChange}
           maxLength={24}
           className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          placeholder="例: Emerald Hunter"
+          placeholder={ja ? "例: Emerald Hunter" : "e.g. Emerald Hunter"}
         />
       </div>
 
       <div>
         <label htmlFor="title-avatar" className="block text-sm font-semibold text-slate-700 mb-1">
-          アバター
+          {ja ? "アバター" : "Avatar"}
         </label>
         <select
           id="title-avatar"
@@ -96,27 +102,27 @@ export default function TitleForm({ initialValues, onSave, onReset }) {
         >
           {avatarChoices.map((choice) => (
             <option key={choice.value} value={choice.value}>
-              {choice.label}
+              {choice.value === "/characters/hero.png" && !ja ? "Hero" : choice.label}
             </option>
           ))}
         </select>
       </div>
 
-      {status && <p className="text-sm text-emerald-600">{status}</p>}
+      {status && <p className="text-sm text-emerald-600">{statusCopy[status]}</p>}
 
       <div className="flex gap-3">
         <button
           type="submit"
           className="flex-1 rounded-lg bg-emerald-600 text-white font-semibold py-2 hover:bg-emerald-500 transition"
         >
-          保存する
+          {ja ? "保存する" : "Save"}
         </button>
         <button
           type="button"
           onClick={handleReset}
           className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition"
         >
-          デフォルト
+          {ja ? "デフォルト" : "Defaults"}
         </button>
       </div>
     </form>

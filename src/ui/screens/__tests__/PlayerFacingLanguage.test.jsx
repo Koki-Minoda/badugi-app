@@ -39,12 +39,14 @@ it('submits login using the Japanese controls and keeps the auth contract', asyn
   expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ email: 'local@example.test', password: 'password-123' });
   expect(loginSuccess).toHaveBeenCalledWith(expect.objectContaining({ accessToken: 'local-token' }));
 });
-it('switches profile headings, navigation and modal close controls', () => {
+it('switches profile headings, navigation and modal close controls', async () => {
   setLanguage('en');
   const onClose = vi.fn();
   render(<MemoryRouter><TitleSettingsScreen /><Modal open onClose={onClose} title="Test" /></MemoryRouter>);
   expect(screen.getByRole('heading', { name: 'Title & Avatar' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Back to menu' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Save', exact: true }));
+  expect(await screen.findByText('Saved')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Close' }));
   expect(onClose).toHaveBeenCalledTimes(1);
   fireEvent.change(screen.getByLabelText('言語 / Language'), { target: { value: 'ja' } });

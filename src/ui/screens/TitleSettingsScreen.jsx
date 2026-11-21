@@ -1,7 +1,7 @@
 import { BUILD_INFO } from "../../config/buildInfo.js";
 import LanguageSelect from '../preferences/LanguageSelect.jsx';
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import TitleForm from "../components/TitleForm";
 import { loadTitleSettings, resetTitleSettings, saveTitleSettings } from "../utils/titleSettings";
 import { usePlayerProgress } from "../hooks/usePlayerProgress.js";
@@ -31,6 +31,8 @@ function formatPercent(value, digits = 1) {
 
 export default function TitleSettingsScreen({ embedded = false, onClose = null } = {}) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const showDeveloperSettings = import.meta.env.DEV && new URLSearchParams(location.search).get("debug") === "1";
   const [settings, setSettings] = useState(() => loadTitleSettings());
   const [devTierOverride, setDevTierOverride] = useState(() => loadAiTierOverride());
   const [kpiSnapshot, setKpiSnapshot] = useState(() => loadLastAiKpiSnapshot());
@@ -210,7 +212,7 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
         </section>
       </main>
 
-      <section className="max-w-6xl mx-auto px-6 pb-16" data-testid="dev-tier-panel">
+      {showDeveloperSettings && <section className="max-w-6xl mx-auto px-6 pb-16" data-testid="dev-tier-panel">
         <div className="rounded-3xl border border-red-400/30 bg-slate-950/80 p-6 text-white space-y-4">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -326,7 +328,7 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
             </div>
           </div>
         </div>
-      </section>
+      </section>}
     </div>
   );
 }

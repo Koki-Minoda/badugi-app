@@ -457,13 +457,13 @@ async function verifyBankrollRejoin(page: Page, hand: number, handId: string, ma
   await expect(overlay).toHaveAttribute("data-hand-id", handId);
   await expect(page.getByTestId("hand-result-auto-next")).toHaveCount(0);
   await page.getByTestId("hand-result-cash-out").click();
-  const cashOut = page.getByRole("dialog", { name: "Cash out result" });
-  await expect(cashOut.getByText("Cash out stack", {exact: true}).locator(".."))
-    .toHaveText(/Cash out stack\s*0$/);
+  const cashOut = page.getByRole("dialog", { name: /^(精算結果|Cash out result)$/i });
+  await expect(cashOut.getByText(/^(精算時の持ち点|Cash out stack)$/).locator(".."))
+    .toHaveText(/(?:精算時の持ち点|Cash out stack)\s*0$/);
   await expect(cashOut.getByTestId("cash-out-hands")).toHaveText(String(hand));
-  const buyIn = Number((await cashOut.getByText("Buy-in", {exact: true}).locator("..").innerText()).replace(/Buy-in\s*/, ""));
+  const buyIn = Number((await cashOut.getByText(/^(参加時の持ち点|Buy-in)$/).locator("..").innerText()).replace(/(?:参加時の持ち点|Buy-in)\s*/, ""));
   expect(buyIn).toBeGreaterThan(0);
-  await expect(cashOut.getByText("Net", {exact: true}).locator("..")).toHaveText(new RegExp(`Net\\s*-${buyIn}$`));
+  await expect(cashOut.getByText(/^(収支|Net)$/).locator("..")).toHaveText(new RegExp(`(?:収支|Net)\\s*-${buyIn}$`));
   await cashOut.getByRole("button", {name: "新しい卓", exact: true}).click();
   await expect(cashOut).toHaveCount(0);
   await expect(overlay).toBeHidden();
@@ -727,15 +727,11 @@ async function runVariant(browser: Browser, variant: (typeof CORE5_VARIANTS)[num
 
     mark("cash-out-start");
     await page.getByTestId("hand-result-cash-out").click();
-    const cashOut = page.getByRole("dialog", { name: /Cash out result/i });
+    const cashOut = page.getByRole("dialog", { name: /^(精算結果|Cash out result)$/i });
     await expect(cashOut).toBeVisible({ timeout: 15_000 });
-    const handsValue = cashOut
-      .getByText("Hands", { exact: true })
-      .locator("..")
-      .getByText(String(HANDS), { exact: true });
-    await expect(handsValue).toBeVisible();
-    await cashOut.getByRole("button", { name: /ゲーム選択|Game Select/i }).click();
-    await expect(page.getByText(/Select Your Variant|ゲームを選択/i)).toBeVisible({ timeout: 20_000 });
+    await expect(cashOut.getByTestId("cash-out-hands")).toHaveText(String(HANDS));
+    await cashOut.getByRole("button", { name: /ゲーム選択|Game Select|Select Game/i }).click();
+    await expect(page.getByTestId("menu-ring")).toBeVisible({ timeout: 20_000 });
     mark("cash-out-complete");
 
     requireCleanBrowser();

@@ -1,5 +1,5 @@
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import TournamentHubScreen from "../TournamentHubScreen.jsx";
 import { saveActiveMTTSnapshot } from "../../tournament/tournamentManager.js";
@@ -23,17 +23,26 @@ describe("TournamentHubScreen", () => {
     expect(screen.getAllByText(/national championship/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/world championship/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Beginner Circuit").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Regional Series").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("AI: Standard").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("AI: Pro").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("AI: Iron").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("AI: WorldMaster").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Standard").length).toBeGreaterThan(0);
     expect(screen.getByTestId("variant-unlock-badugi").textContent).toContain(
       "遊べます",
     );
     expect(screen.getByTestId("variant-unlock-2-7td").textContent).toContain(
       "参加条件あり",
     );
+  });
+
+  it("keeps list cards concise and shows full information for the selected stage", () => {
+    render(<TournamentHubScreen />);
+    for (const [id, tier] of [['store', 'Standard'], ['local', 'Pro'], ['national', 'Iron'], ['world', 'WorldMaster']]) {
+      const card = screen.getByTestId(`tournament-stage-${id}`);
+      expect(within(card).queryByText(/^AI:/)).toBeNull();
+      expect(within(card).queryByText('参加条件あり')).toBeNull();
+      expect(within(card).getByText(/参加人数:/)).toBeTruthy();
+      fireEvent.click(card);
+      const detail = within(screen.getByTestId('tournament-stage-detail'));
+      expect(detail.getByText(tier)).toBeTruthy();
+    }
   });
 
   it("shows Store detail and starts Store config", () => {

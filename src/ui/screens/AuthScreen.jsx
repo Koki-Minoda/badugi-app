@@ -1,4 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
+import { useLanguage } from "../preferences/language.js";
+import LanguageSelect from "../preferences/LanguageSelect.jsx";
 import { useAuth } from "../state/useAuth.js";
 import { normalizeTokenType } from "../utils/auth.js";
 
@@ -55,6 +57,7 @@ async function fetchCurrentUser(token, tokenType) {
 
 export default function AuthScreen({ onAuthenticated }) {
   const { loginSuccess } = useAuth();
+  const ja = useLanguage() === "ja";
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -64,8 +67,8 @@ export default function AuthScreen({ onAuthenticated }) {
   const [info, setInfo] = useState(null);
 
   const title = useMemo(() => {
-    return mode === "signup" ? "Create an Account" : "Welcome Back";
-  }, [mode]);
+    return mode === "signup" ? (ja ? "アカウント作成" : "Create an Account") : (ja ? "ログイン" : "Welcome Back");
+  }, [mode, ja]);
 
   const handleSubmit = useCallback(
     async (event) => {
@@ -76,13 +79,13 @@ export default function AuthScreen({ onAuthenticated }) {
 
       const trimmedEmail = email.trim().toLowerCase();
       if (!trimmedEmail || !password) {
-        setErrorMessage("Email and password are required.");
+        setErrorMessage(ja ? "メールアドレスとパスワードを入力してください。" : "Email and password are required.");
         return;
       }
 
       if (mode === "signup") {
         if (password !== confirmPassword) {
-          setErrorMessage("Passwords do not match.");
+          setErrorMessage(ja ? "パスワードが一致しません。" : "Passwords do not match.");
           return;
         }
         setLoading(true);
@@ -91,11 +94,11 @@ export default function AuthScreen({ onAuthenticated }) {
             email: trimmedEmail,
             password,
           });
-          setInfo("Signup successful. Please login.");
+          setInfo(ja ? "登録が完了しました。ログインしてください。" : "Signup successful. Please login.");
           // TODO: automatically sign in once email verification is implemented.
           setMode("login");
         } catch (err) {
-          setErrorMessage(err.message || "Signup failed.");
+          setErrorMessage(err.message || (ja ? "登録できませんでした。" : "Signup failed."));
         } finally {
           setLoading(false);
         }
@@ -124,12 +127,13 @@ export default function AuthScreen({ onAuthenticated }) {
           onAuthenticated(user);
         }
       } catch (err) {
-        setErrorMessage(err.message || "Login failed.");
+        setErrorMessage(err.message || (ja ? "ログインできませんでした。" : "Login failed."));
       } finally {
         setLoading(false);
       }
     },
     [
+      ja,
       confirmPassword,
       email,
       loading,
@@ -143,7 +147,8 @@ export default function AuthScreen({ onAuthenticated }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-12 text-slate-100">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-black/70 p-8 shadow-2xl backdrop-blur">
-        <div className="mb-6 flex items-center justify-between">
+        <LanguageSelect />
+        <div className="mb-6 mt-4 flex items-center justify-between">
           <h2 className="text-2xl font-semibold text-white">{title}</h2>
           <div className="flex gap-2 text-xs uppercase tracking-[0.3em]">
             <button
@@ -156,7 +161,7 @@ export default function AuthScreen({ onAuthenticated }) {
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              Login
+              {ja ? "ログイン" : (ja ? "ログイン" : "Login")}
             </button>
             <button
               type="button"
@@ -168,7 +173,7 @@ export default function AuthScreen({ onAuthenticated }) {
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              Signup
+              {ja ? "新規登録" : "Signup"}
             </button>
           </div>
         </div>
@@ -179,7 +184,7 @@ export default function AuthScreen({ onAuthenticated }) {
               htmlFor="auth-email"
               className="text-xs uppercase tracking-[0.3em] text-slate-400"
             >
-              Email
+              {ja ? "メールアドレス" : "Email"}
             </label>
             <input
               id="auth-email"
@@ -197,7 +202,7 @@ export default function AuthScreen({ onAuthenticated }) {
               htmlFor="auth-password"
               className="text-xs uppercase tracking-[0.3em] text-slate-400"
             >
-              Password
+              {ja ? "パスワード" : "Password"}
             </label>
             <input
               id="auth-password"
@@ -216,7 +221,7 @@ export default function AuthScreen({ onAuthenticated }) {
                 htmlFor="auth-confirm-password"
                 className="text-xs uppercase tracking-[0.3em] text-slate-400"
               >
-                Confirm Password
+                {ja ? "パスワード（確認）" : "Confirm Password"}
               </label>
               <input
                 id="auth-confirm-password"
@@ -247,21 +252,21 @@ export default function AuthScreen({ onAuthenticated }) {
             className="w-full rounded-2xl border border-emerald-400/60 bg-emerald-500/20 px-4 py-3 text-sm font-semibold uppercase tracking-[0.4em] text-emerald-200 transition hover:bg-emerald-500/30 disabled:opacity-50"
           >
             {loading
-              ? "Processing..."
+              ? (ja ? "処理中…" : "Processing...")
               : mode === "signup"
-              ? "Create Account"
-              : "Login"}
+              ? (ja ? "アカウントを作成" : "Create Account")
+              : (ja ? "ログイン" : "Login")}
           </button>
         </form>
         {mode === "signup" && (
           <p className="mt-4 text-center text-xs text-slate-400">
-            Already have an account?{" "}
+            {ja ? "登録済みの方は" : "Already have an account?"}{" "}
             <button
               type="button"
               className="text-emerald-300 underline-offset-2 hover:underline"
               onClick={() => setMode("login")}
             >
-              Login here
+              {ja ? "ログインへ" : "Login here"}
             </button>
           </p>
         )}

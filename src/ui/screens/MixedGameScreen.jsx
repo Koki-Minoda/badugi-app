@@ -580,7 +580,7 @@ export default function MixedGameScreen({ language: languageProp }) {
             onClick={() => navigate("/menu")}
             className="px-4 py-2 rounded-full border border-white/20 hover:bg-white/10 transition text-sm"
           >
-            Main Menu
+            {ja ? "メニュー" : "Main Menu"}
           </button>
           <button
             onClick={() => navigate("/games")}

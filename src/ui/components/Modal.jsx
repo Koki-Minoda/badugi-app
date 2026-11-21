@@ -1,6 +1,8 @@
+import { useLanguage } from "../preferences/language.js";
 import React from "react";
 
 export default function Modal({ open, title, onClose, children, className = "" }) {
+  const ja = useLanguage() === "ja";
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -12,7 +14,7 @@ export default function Modal({ open, title, onClose, children, className = "" }
             className="text-sm text-slate-400 hover:text-white"
             onClick={onClose}
           >
-            Close
+            {ja ? "閉じる" : "Close"}
           </button>
         </div>
         <div className="px-4 py-5 space-y-3 text-xs text-slate-200">

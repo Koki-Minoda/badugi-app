@@ -416,7 +416,7 @@ export default function HandHistoryScreen({
               )}
               <p className="mt-1 text-slate-300/80">{copy.feedbackBody}</p>
               <p className="mt-2 text-xs text-slate-400">
-                Hands: {feedbackPayloadResult.handCount} / Minimum: {MIN_FEEDBACK_HANDS}
+                {language === "ja" ? "ハンド数" : "Hands"}: {feedbackPayloadResult.handCount} / {language === "ja" ? "必要ハンド数" : "Minimum"}: {MIN_FEEDBACK_HANDS}
               </p>
               <label className="mt-3 block text-xs font-semibold text-slate-300">
                 {copy.feedbackScope}

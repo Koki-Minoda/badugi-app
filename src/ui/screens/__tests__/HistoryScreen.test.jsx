@@ -94,8 +94,8 @@ describe("HistoryScreen", () => {
     expect(screen.getByRole("heading", { name: "キャッシュゲーム履歴" })).toBeTruthy();
     expect(screen.getByText("cash-hand-1")).toBeTruthy();
     expect(screen.getAllByText(/Seat 0 \+120/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Action Timeline").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Pot details").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("アクションの流れ").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("ポットの内訳").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/winners: Hero \+120/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("CPU 1").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Badugi").length).toBeGreaterThan(0);

@@ -287,7 +287,7 @@ export default function HistoryScreen() {
     >
       <header className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">History</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">{ja ? "履歴" : "History"}</p>
           <h1 className="text-2xl sm:text-3xl font-extrabold">{ja ? 'トーナメント & ハンド履歴' : 'Tournament & hand history'}</h1><LanguageSelect />
         </div>
         {hasStoredFeedbackAuth() && <button type="button" onClick={() => setPersonalResultsHands(readPersonalResultsHands())} className="min-h-11 rounded-full border border-emerald-300/40 px-4 text-emerald-200">{ja ? 'マイ結果を見る' : 'View my results'}</button>}
@@ -305,7 +305,7 @@ export default function HistoryScreen() {
           onClick={() => navigate("/menu")}
           className="px-4 py-2 rounded-full border border-white/20 hover:bg-white/10 transition text-sm"
         >
-          Main Menu
+          {ja ? "メニュー" : "Main Menu"}
         </button>
       </header>
 
@@ -318,8 +318,8 @@ export default function HistoryScreen() {
                 {ja ? '30ハンド以上の履歴から、参加率やチップ増減を振り返ります。' : 'Review participation rates and chip changes from at least 30 recorded hands.'}
               </p>
               <p className="mt-2 text-xs text-slate-400">
-                {ja ? '対象' : 'Scope'}: {selectedId ? `Tournament ${selectedId}` : "Cash game"} / Hands:{" "}
-                {feedbackPayloadResult.handCount} / Minimum: {MIN_FEEDBACK_HANDS}
+                {ja ? '対象' : 'Scope'}: {selectedId ? `${ja ? "大会" : "Tournament"} ${selectedId}` : (ja ? "キャッシュゲーム" : "Cash game")} / {ja ? "ハンド数" : "Hands"}:{" "}
+                {feedbackPayloadResult.handCount} / {ja ? "必要ハンド数" : "Minimum"}: {MIN_FEEDBACK_HANDS}
               </p>
               <label className="mt-3 block max-w-sm text-xs font-semibold text-slate-300">
                 {ja ? 'フィードバック対象' : 'Hands to review'}
@@ -389,7 +389,7 @@ export default function HistoryScreen() {
           {feedbackKeyHands.length > 0 && (
             <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 text-xs text-slate-100">
               <div className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-emerald-300">
-                Feedback key hands
+                {ja ? "振り返るハンド" : "Feedback key hands"}
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {feedbackKeyHands.map((spot) => (
@@ -413,7 +413,7 @@ export default function HistoryScreen() {
                         onClick={() => handleOpenFeedbackReplay(spot)}
                         data-testid="cash-review-replay"
                       >
-                        Replay
+                        {ja ? "再生" : "Replay"}
                       </button>
                     ) : null}
                   </div>
@@ -478,18 +478,18 @@ export default function HistoryScreen() {
                     <div className="mt-3"><ReviewBookmarkButton hand={hand} /></div>
                     <div className="mt-3 grid gap-3 text-sm text-slate-200 md:grid-cols-2">
                       <div className="rounded-xl border border-white/5 bg-slate-900/50 p-3">
-                        <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Table</p>
-                        <p>Variant: {variantLabel}</p>
-                        <p>Evaluator: {evaluatorLabel}</p>
-                        <p>Button: {hand.buttonSeat ?? "-"}</p>
+                        <p className="text-xs uppercase tracking-[0.25em] text-slate-500">{ja ? "卓の情報" : "Table"}</p>
+                        <p>{ja ? "種目" : "Variant"}: {variantLabel}</p>
+                        <p>{ja ? "手札評価" : "Evaluator"}: {evaluatorLabel}</p>
+                        <p>{ja ? "ボタン位置" : "Button"}: {hand.buttonSeat ?? "-"}</p>
                         <p>SB: {hand.sbSeat ?? "-"}</p>
                         <p>BB: {hand.bbSeat ?? "-"}</p>
                       </div>
                       <div className="rounded-xl border border-white/5 bg-slate-900/50 p-3">
-                        <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Result</p>
-                        <p>Pot: {totalPot}</p>
-                        <p>Winner: {winners}</p>
-                        <p>Showdown: {hand.events?.some((event) => event?.type === "SHOWDOWN") ? "Yes" : "No"}</p>
+                        <p className="text-xs uppercase tracking-[0.25em] text-slate-500">{ja ? "結果" : "Result"}</p>
+                        <p>{ja ? "ポット" : "Pot"}: {totalPot}</p>
+                        <p>{ja ? "勝者" : "Winner"}: {winners}</p>
+                        <p>{ja ? "ショーダウン" : "Showdown"}: {hand.events?.some((event) => event?.type === "SHOWDOWN") ? (ja ? "あり" : "Yes") : (ja ? "なし" : "No")}</p>
                       </div>
                     </div>
                     {playerRows.length > 0 && (
@@ -497,13 +497,13 @@ export default function HistoryScreen() {
                         <table className="min-w-full text-xs">
                           <thead className="bg-slate-900/70 text-slate-400">
                             <tr>
-                              <th className="p-2 text-left">Seat</th>
-                              <th className="p-2 text-left">Player</th>
-                              <th className="p-2 text-right">Stack</th>
-                              <th className="p-2 text-right">Bet</th>
-                              <th className="p-2 text-left">Status</th>
-                              <th className="p-2 text-left">Hand / Eval</th>
-                              <th className="p-2 text-left">Last action</th>
+                              <th className="p-2 text-left">{ja ? "席" : "Seat"}</th>
+                              <th className="p-2 text-left">{ja ? "プレイヤー" : "Player"}</th>
+                              <th className="p-2 text-right">{ja ? "持ち点" : "Stack"}</th>
+                              <th className="p-2 text-right">{ja ? "ベット" : "Bet"}</th>
+                              <th className="p-2 text-left">{ja ? "状態" : "Status"}</th>
+                              <th className="p-2 text-left">{ja ? "手札・評価" : "Hand / Eval"}</th>
+                              <th className="p-2 text-left">{ja ? "最後のアクション" : "Last action"}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -526,7 +526,7 @@ export default function HistoryScreen() {
                     )}
                     {potRows.length > 0 && (
                       <div className="mt-3 rounded-xl border border-white/5 bg-slate-900/40 p-3 text-xs">
-                        <p className="mb-2 font-semibold text-slate-200">Pot details</p>
+                        <p className="mb-2 font-semibold text-slate-200">{ja ? "ポットの内訳" : "Pot details"}</p>
                         <div className="grid gap-2 md:grid-cols-2">
                           {potRows.map((pot, idx) => (
                             <div key={`${hand.handId}-pot-${idx}`} className="rounded-lg bg-slate-950/50 p-2">
@@ -550,7 +550,7 @@ export default function HistoryScreen() {
                     {Array.isArray(hand.events) && hand.events.length > 0 && (
                       <div className="mt-3 rounded-xl border border-white/5 bg-slate-900/40 p-3 text-xs">
                         <div className="mb-2 flex items-center justify-between">
-                          <p className="font-semibold text-slate-200">Action Timeline</p>
+                          <p className="font-semibold text-slate-200">{ja ? "アクションの流れ" : "Action Timeline"}</p>
                           <span className="text-slate-500">{hand.events.length} events</span>
                         </div>
                         <ol className="max-h-48 list-decimal list-inside space-y-1 overflow-y-auto text-slate-300">
@@ -586,11 +586,11 @@ export default function HistoryScreen() {
                 <thead className="bg-slate-950/60 text-slate-300">
                   <tr>
                     <th className="text-left p-3">{ja ? '日付' : 'Date'}</th>
-                    <th className="text-right p-3">Buy-in</th>
+                    <th className="text-right p-3">{ja ? "参加額" : "Buy-in"}</th>
                     <th className="text-right p-3">{ja ? '参加数' : 'Entrants'}</th>
                     <th className="text-right p-3">{ja ? '着順' : 'Place'}</th>
                     <th className="text-right p-3">{ja ? '賞金' : 'Prize'}</th>
-                    <th className="text-left p-3">Tier</th>
+                    <th className="text-left p-3">{ja ? "大会区分" : "Tier"}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -666,12 +666,12 @@ export default function HistoryScreen() {
                       <table className="min-w-full text-xs">
                         <thead className="bg-slate-900/70 text-slate-400">
                           <tr>
-                            <th className="p-2 text-left">Seat</th>
-                            <th className="p-2 text-left">Player</th>
-                            <th className="p-2 text-right">Bet</th>
-                            <th className="p-2 text-right">Stack (before → after)</th>
-                            <th className="p-2 text-right">Draw</th>
-                            <th className="p-2 text-left">Hand / Eval</th>
+                            <th className="p-2 text-left">{ja ? "席" : "Seat"}</th>
+                            <th className="p-2 text-left">{ja ? "プレイヤー" : "Player"}</th>
+                            <th className="p-2 text-right">{ja ? "ベット" : "Bet"}</th>
+                            <th className="p-2 text-right">{ja ? "持ち点（前 → 後）" : "Stack (before → after)"}</th>
+                            <th className="p-2 text-right">{ja ? "交換枚数" : "Draw"}</th>
+                            <th className="p-2 text-left">{ja ? "手札・評価" : "Hand / Eval"}</th>
                             <th className="p-2 text-left">Action</th>
                           </tr>
                         </thead>

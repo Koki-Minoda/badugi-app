@@ -1439,17 +1439,17 @@ export default function GameLayoutBase({
       )}
 
       <Modal
-        title="Seat Manager"
+        title={language === "ja" ? "席設定" : "Seat Manager"}
         open={seatManagerOpen}
         onClose={onCloseSeatManager}
-        primaryActionLabel="Save"
-        secondaryActionLabel="Close"
+        primaryActionLabel={language === "ja" ? "保存" : "Save"}
+        secondaryActionLabel={language === "ja" ? "閉じる" : "Close"}
         onPrimaryAction={onCloseSeatManager}
         onSecondaryAction={onCloseSeatManager}
       >
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold">Auto Rotate Seats</span>
+            <span className="text-sm font-semibold">{language === "ja" ? "席を自動で回す" : "Auto Rotate Seats"}</span>
             <input
               type="checkbox"
               checked={autoRotateSeats}
@@ -1459,7 +1459,7 @@ export default function GameLayoutBase({
             />
           </div>
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-wider text-slate-400">Seat Layout</p>
+            <p className="text-xs uppercase tracking-wider text-slate-400">{language === "ja" ? "席の配置" : "Seat Layout"}</p>
             {seatConfig.map((seatType, index) => (
               <label key={index} className="flex items-center justify-between gap-3 text-sm">
                 <span>{language === "ja" ? `席 ${index + 1}` : `Seat ${index + 1}`}</span>
@@ -1472,7 +1472,7 @@ export default function GameLayoutBase({
                 >
                   {seatTypeOptions.map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.label}
+                      {language === "ja" && option.value === "EMPTY" ? "空席" : option.label}
                     </option>
                   ))}
                 </select>
@@ -1481,7 +1481,7 @@ export default function GameLayoutBase({
           </div>
           <div className="space-y-1">
             <label className="text-xs uppercase tracking-wider text-slate-400">
-              Starting Stack
+              {language === "ja" ? "開始時の持ち点" : "Starting Stack"}
             </label>
             <input
               type="number"
@@ -1498,14 +1498,14 @@ export default function GameLayoutBase({
               onClick={onRotateSeatConfig}
               className="flex-1 rounded border border-white/20 py-2 text-sm font-semibold"
             >
-              Rotate
+              {language === "ja" ? "席を回す" : "Rotate"}
             </button>
             <button
               type="button"
               onClick={onResetSeatConfig}
               className="flex-1 rounded border border-white/20 py-2 text-sm font-semibold"
             >
-              Reset
+              {language === "ja" ? "元に戻す" : "Reset"}
             </button>
           </div>
           <button
@@ -1513,7 +1513,7 @@ export default function GameLayoutBase({
             onClick={onRedeal}
             className="w-full rounded bg-yellow-500 py-2 text-sm font-semibold text-black"
           >
-            Redeal
+            {language === "ja" ? "配り直す" : "Redeal"}
           </button>
         </div>
       </Modal>
@@ -1523,7 +1523,7 @@ export default function GameLayoutBase({
         open={Boolean(p2pCaptureEnabled)}
         onClose={() => onToggleP2pCapture(false)}
         primaryActionLabel="Export"
-        secondaryActionLabel="Close"
+        secondaryActionLabel={language === "ja" ? "閉じる" : "Close"}
         onPrimaryAction={onExportP2pMatches}
         onSecondaryAction={() => onToggleP2pCapture(false)}
       >

@@ -345,7 +345,15 @@ export default function MixedGameScreen({ language: languageProp }) {
   };
 
   const handleApplyPreset = (presetId) => {
-    if (blockWhenLocked()) return;
+    if (mixedLocked) {
+      const preview = [...proPresets, ...LEARNING_PRESETS].find(preset => preset.id === presetId);
+      if (preview) {
+        setDraft(buildDraftFromProfile(preview));
+        setMessage(ja ? '内容を表示しています。編集・保存・開始は世界大会優勝後に利用できます。' : 'Preview only. Win the World Championship to edit, save and start.');
+        setError('');
+      }
+      return;
+    }
     const existing = profiles.find((p) => p.id === presetId);
     if (existing) {
       setSelectedProfileId(existing.id);
@@ -595,7 +603,7 @@ export default function MixedGameScreen({ language: languageProp }) {
       <main className="max-w-6xl mx-auto px-6 pb-16 space-y-8">
         {mixedLocked && (
           <div className="rounded-3xl border border-amber-400/40 bg-amber-500/10 text-amber-100 text-sm p-4">
-            {ja ? '世界大会を優勝すると Mixed Game が解放されます。まずはトーナメントで実績を積みましょう。' : 'Win the World Championship to unlock MIX.'}
+            {ja ? '現在は閲覧のみ利用できます。世界大会で優勝すると、MIXの編集・保存・開始が解放されます。' : 'Win the World Championship to unlock MIX.'}
           </div>
         )}
 
@@ -640,7 +648,7 @@ export default function MixedGameScreen({ language: languageProp }) {
                   onClick={() => handleApplyPreset(preset.id)}
                   className="mt-2 px-4 py-2 rounded-xl bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition text-sm"
                 >
-                  {ja ? '読み込む' : 'Load'}
+                  {mixedLocked ? (ja ? '内容を見る' : 'Preview') : (ja ? '読み込む' : 'Load')}
                 </button>
               </div>
             ))}
@@ -685,14 +693,15 @@ export default function MixedGameScreen({ language: languageProp }) {
               <button
                 onClick={handleDelete}
                 className="flex-1 px-3 py-2 rounded-xl bg-red-500/40 text-sm"
-                disabled={!selectedProfileId}
+                disabled={builderDisabled || !selectedProfileId}
               >
                 {ja ? '削除' : 'Delete'}
               </button>
             </div>
           </div>
 
-          <div className="bg-slate-900/80 border border-white/10 rounded-3xl p-6 space-y-5">
+          <fieldset disabled={builderDisabled} data-testid="mix-editor" className="bg-slate-900/80 border border-white/10 rounded-3xl p-6 space-y-5">
+            <legend className="px-2 font-semibold">{ja ? "MIXの内容" : "MIX setup"}</legend>
             <div className="grid gap-4 md:grid-cols-2">
               <label className="flex flex-col gap-2">
                 <span className="text-sm text-slate-300">{ja ? 'プロフィール名' : 'MIX name'}</span>
@@ -875,10 +884,11 @@ export default function MixedGameScreen({ language: languageProp }) {
                 />
               </div>
             </div>
-          </div>
+          </fieldset>
         </section>
 
-        <section className="flex flex-wrap gap-4">
+        {mixedLocked && <p id="mix-lock-reason" className="text-sm text-amber-200">{ja ? "編集・保存・開始には世界大会での優勝が必要です。プリセットの内容は確認できます。" : "Win the World Championship to edit, save and start. You can preview presets now."}</p>}
+        <section className="flex flex-wrap gap-4" aria-describedby={mixedLocked ? "mix-lock-reason" : undefined}>
           <button
             onClick={handleSave}
             className="px-6 py-3 rounded-2xl bg-slate-800 border border-white/20 hover:bg-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed"

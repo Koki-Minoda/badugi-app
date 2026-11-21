@@ -51,6 +51,16 @@ describe('learning rules and template contracts', () => {
 });
 
 describe('learning routes', () => {
+  it('offers every game in one selector next to its rules and play action', () => {
+    renderHub('/learn?variant=badugi');
+    const selector = screen.getByRole('combobox', { name: '学習する種目' });
+    expect(selector.options).toHaveLength(LEARNING_GAMES.length);
+    fireEvent.change(selector, { target: { value: 'deuce_to_seven_triple_draw' } });
+    expect(screen.getByTestId('learn-play').getAttribute('href')).toBe('/game?variant=deuce_to_seven_triple_draw');
+    expect(screen.getByTestId('learn-play').textContent).toContain('2-7 Triple Draw');
+    expect(screen.queryByRole('button', { name: 'Badugi', exact: true })).toBeNull();
+  });
+
   it('imports an unsaved deep link while preserving a previously edited template', () => {
     const view = renderHub('/mixed?preset=learn-horse');
     let profiles = JSON.parse(localStorage.getItem('mixedGameProfiles'));

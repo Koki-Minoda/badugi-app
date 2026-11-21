@@ -63,8 +63,13 @@ export default function LearningHubScreen() {
         <div className="flex flex-wrap gap-3"><button onClick={savePlan} type="button" className="min-h-11 rounded-lg bg-emerald-300 px-4 font-semibold text-slate-950">{ja ? 'テンプレートを保存' : 'Save template'}</button><Link to={`/mixed?preset=${plan.id}`} className="rounded-lg border border-white/25 px-4 py-3">{ja ? 'MIX設定で確認' : 'Review MIX settings'}</Link></div>
         {message && <p role="status" className="text-sm text-emerald-200">{message}</p>}
       </section>}
-      <div className="grid gap-5 lg:grid-cols-[minmax(220px,1fr)_2fr]">
-        <section className="space-y-3"><h2 className="text-lg font-bold">{ja ? '種目から選ぶ' : 'Choose a game'}</h2><div className="grid grid-cols-2 gap-2 lg:grid-cols-1">{LEARNING_GAMES.map(game => <button key={game.id} type="button" onClick={() => selectVariant(game)} aria-pressed={selected.id === game.id} className={`min-h-11 rounded-xl border px-3 py-3 text-left text-sm ${selected.id === game.id ? 'border-emerald-300 bg-emerald-400/15' : 'border-white/15 bg-slate-900'}`}>{game.name}</button>)}</div></section>
+      <div className="space-y-5">
+        <label className="block space-y-2">
+          <span className="text-lg font-bold">{ja ? '学習する種目' : 'Game to study'}</span>
+          <select className="min-h-11 w-full rounded-xl border border-white/20 bg-slate-900 p-3 text-base" value={selected.id} onChange={event => selectVariant(getLearningGame(event.target.value))}>
+            {LEARNING_GAMES.map(game => <option key={game.id} value={game.id}>{game.name}</option>)}
+          </select>
+        </label>
         <div className="space-y-5 rounded-2xl border border-white/15 bg-slate-900/70 p-5"><RuleCard variantId={selected.id} previousId={previous} language={language} />
           <div className="flex flex-wrap gap-3">{gate.canLaunch ? <Link data-testid="learn-play" state={{ learningVariant: selected.id }} to={`/game?variant=${selected.id}`} className="min-h-11 rounded-xl bg-emerald-300 px-5 py-3 font-bold text-slate-950">{ja ? `${selected.name}をプレイ` : `Play ${selected.name}`}</Link> : <p role="status" className="text-sm text-amber-200">{ja ? 'この種目は現在、ルールの確認のみ利用できます。' : 'This game is currently available for rules study only.'}</p>}
           <Link to="/history" className="rounded-xl border border-white/25 px-5 py-3">{ja ? 'プレイ後に履歴を振り返る' : 'Review your hand history'}</Link></div>

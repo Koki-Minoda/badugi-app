@@ -48,21 +48,21 @@ describe("MainMenuScreen", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/games?mode=cash");
   });
 
-  it("routes explicit variant selection to the selector screen", () => {
+  it("does not duplicate cash or settings controls", () => {
     render(<MainMenuScreen language="en" />);
-    fireEvent.click(screen.getByTestId("menu-variant-select"));
-    expect(mockNavigate).toHaveBeenCalledWith("/games?mode=cash");
+    expect(screen.queryByTestId("menu-variant-select")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
+    expect(screen.getByTestId("menu-settings")).toBeTruthy();
   });
 
-  it("uses the provided selector callback for cash and variant buttons", () => {
+  it("uses the provided selector callback for the single cash button", () => {
     const handleSelectRing = vi.fn();
     render(<MainMenuScreen language="en" onSelectRing={handleSelectRing} />);
 
     fireEvent.click(screen.getByTestId("menu-ring"));
     expect(handleSelectRing).toHaveBeenCalledWith();
 
-    fireEvent.click(screen.getByTestId("menu-variant-select"));
-    expect(handleSelectRing).toHaveBeenCalledTimes(2);
+    expect(handleSelectRing).toHaveBeenCalledTimes(1);
   });
 
   it("routes to tournament and friend match flows", () => {
@@ -113,26 +113,26 @@ describe("MainMenuScreen", () => {
 
   it("binds the language select value to props", () => {
     render(<MainMenuScreen language="ja" />);
-    fireEvent.click(screen.getByRole("button", { name: /open settings/i }));
+    fireEvent.click(screen.getByTestId("menu-settings"));
     expect(screen.getByTestId("language-select").value).toBe("ja");
   });
 
   it("uses Japanese labels for variant selection and hand history", () => {
     render(<MainMenuScreen language="ja" />);
-    expect(screen.getByRole("button", { name: "ゲームを選択" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "キャッシュゲーム" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "ハンド履歴" })).toBeTruthy();
     expect(screen.getByText("キャッシュ・トナメ")).toBeTruthy();
     expect(screen.getByText("履歴から確認")).toBeTruthy();
 
-    fireEvent.click(screen.getByTestId("menu-variant-select"));
-    expect(screen.getByText("ゲームを選択")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("menu-ring"));
+    expect(screen.queryByRole("button", { name: "ゲームを選択" })).toBeNull();
     expect(mockNavigate).toHaveBeenCalledWith("/games?mode=cash");
   });
 
   it("notifies when language changes", () => {
     const handleChange = vi.fn();
     render(<MainMenuScreen language="en" onChangeLanguage={handleChange} />);
-    fireEvent.click(screen.getByRole("button", { name: /open settings/i }));
+    fireEvent.click(screen.getByTestId("menu-settings"));
     fireEvent.change(screen.getByTestId("language-select"), {
       target: { value: "ja" },
     });

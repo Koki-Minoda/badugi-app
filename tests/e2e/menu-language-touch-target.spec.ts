@@ -16,7 +16,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 852, height: 320 }
     await page.goto(APP_URL);
     await page.getByTestId('title-enter-button').click();
 
-    const settings = page.getByRole('button', { name: 'Open Settings' });
+    const settings = page.getByTestId('menu-settings');
     await expect(settings).toBeVisible();
     const settingsBox = await settings.boundingBox();
     expect(settingsBox?.width).toBeGreaterThanOrEqual(44);

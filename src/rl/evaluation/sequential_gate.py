@@ -73,6 +73,8 @@ def _conservation_bounds(cell: dict, hands: int) -> tuple[float, float]:
 def validate_manifest(plan: dict) -> None:
     if plan.get("schema") != SCHEMA or plan.get("scoreUnit") != "big_bet_per_100_hands":
         raise ValueError("unknown gate schema or score unit")
+    if plan.get("scoreBoundMethod", "global") not in ("global", "cell_conservation"):
+        raise ValueError("unknown score-bound method")
     for key in ("candidateModelSha256", "referenceModelSha256", "controllerContractSha256"):
         if not _sha(plan.get(key)):
             raise ValueError(f"missing or invalid {key}")
@@ -170,10 +172,6 @@ def _validate_rows(plan: dict, rows: dict[str, list[dict]]) -> tuple[int, dict]:
             if (type(hands) is not int or hands != plan["handsPerSession"] or
                     not isinstance(net, (int, float)) or not math.isfinite(net)):
                 raise ValueError("invalid session hand count or net big bets")
-            score = 100.0 * net / hands
-            low, high = plan["scoreBounds"]
-            if score < low or score > high:
-                raise ValueError("session score outside predeclared bounds; no clipping")
             cell = cells[row["cell"]]
             seats = cell["tableSeats"]
             occupied = cell["occupiedSeats"]
@@ -195,6 +193,13 @@ def _validate_rows(plan: dict, rows: dict[str, list[dict]]) -> tuple[int, dict]:
                     row.get("activeBigBlindMin") != big_bet / 2 or
                     row.get("activeBigBlindMax") != big_bet / 2):
                 raise ValueError("row violates frozen conserved-chip score-bound proof")
+            # A sum of per-hand floating values can sit one ULP beyond an
+            # attainable boundary. Score from the independently audited final
+            # chip ledger, after verifying agreement with the reported net.
+            score = 100.0 * (final[hero] - stack) / (big_bet * hands)
+            low, high = plan["scoreBounds"]
+            if score < low or score > high:
+                raise ValueError("session score outside predeclared bounds; no clipping")
             for field in ("illegalActions", "fallbacks", "inferenceRequests", "inferenceUsed"):
                 if type(row.get(field)) is not int or row[field] < 0:
                     raise ValueError(f"invalid {field}")
@@ -244,13 +249,24 @@ def _estimate(plan: dict, grouped: dict, n: int, metric: str) -> dict:
             sample_variance = sum((value - center) ** 2 for value in values) / (n - 1)
             total += weight * weight * sample_variance / n
         descriptive_variance[arm] = total
-    width = plan["scoreBounds"][1] - plan["scoreBounds"][0]
     alpha_per_metric_look = plan["familywiseAlpha"] / (
         len(plan["lookSessionsPerCell"]) * len(METRICS))
-    variance_factor = sum(weight * weight / n for _, weight in weights)
-    arm_radius = width * math.sqrt(0.5 * math.log(4 / alpha_per_metric_look) *
-                                   variance_factor)
-    return {
+    if plan.get("scoreBoundMethod", "global") == "cell_conservation":
+        cells = {cell["name"]: cell for cell in selected}
+        # Hoeffding's heterogeneous-range bound, applied to each frozen cell's
+        # conserved no-rebuy chip pool. Union bound covers both arms and tails.
+        range_variance = 0.0
+        for name, weight in weights:
+            low, high = _conservation_bounds(cells[name], plan["handsPerSession"])
+            range_variance += weight * weight * (high - low) ** 2 / n
+        arm_radius = math.sqrt(0.5 * math.log(4 / alpha_per_metric_look) *
+                               range_variance)
+    else:
+        width = plan["scoreBounds"][1] - plan["scoreBounds"][0]
+        variance_factor = sum(weight * weight / n for _, weight in weights)
+        arm_radius = width * math.sqrt(0.5 * math.log(4 / alpha_per_metric_look) *
+                                       variance_factor)
+    result = {
         "candidate": candidate, "reference": reference,
         "difference": candidate - reference,
         "lower": candidate - reference - 2 * arm_radius,
@@ -259,6 +275,9 @@ def _estimate(plan: dict, grouped: dict, n: int, metric: str) -> dict:
         "descriptiveVarianceOfWeightedMean": descriptive_variance,
         "unit": plan["scoreUnit"],
     }
+    if plan.get("scoreBoundMethod") == "cell_conservation":
+        result["confidenceBoundMethod"] = "per_cell_hoeffding_union_arms_tails_looks_metrics"
+    return result
 
 
 def evaluate(plan: dict, rows: dict[str, list[dict]]) -> dict:

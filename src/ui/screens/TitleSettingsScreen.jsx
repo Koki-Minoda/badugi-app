@@ -177,7 +177,6 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
           </div>
           <div className="space-y-3 text-sm text-slate-200">
             <p>{ja ? "名前と称号は対局中のプレイヤーカードに表示されます。" : "Your name and title appear on the in-table player card."}</p>
-            <p>{ja ? "アバターは今後、チャットやログのアニメーションに使用予定です。" : "The avatar will be used for chat/log animations in upcoming updates."}</p>
           </div>
           <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/5 p-4 space-y-3">
             <p className="text-xs uppercase tracking-widest text-emerald-300">

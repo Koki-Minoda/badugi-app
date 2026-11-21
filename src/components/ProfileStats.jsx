@@ -45,9 +45,6 @@ export default function ProfileStats({ embedded = false, onClose = null } = {}) 
           <StatCard label="総賞金" value={fmtJpy(stats.totalPrize)} />
           <StatCard label="ROI" value={`${(stats.roi * 100).toFixed(1)}%`} />
         </div>
-        <p className="text-xs text-slate-400">
-          今後は VPIP / PFR / Aggression 等の詳細指標も追加予定です。
-        </p>
       </div>
     </div>
   );

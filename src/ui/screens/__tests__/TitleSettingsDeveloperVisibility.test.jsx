@@ -12,6 +12,7 @@ it('keeps the normal profile editor and hides diagnostic controls by default', (
   localStorage.setItem('dev.p2pCapture', '1');
   open('/settings');
   expect(screen.getByLabelText('プレイヤー名')).toBeTruthy();
+  expect(screen.queryByText(/今後|upcoming updates/)).toBeNull();
   expect(screen.queryByTestId('dev-tier-panel')).toBeNull();
   expect(screen.queryByText('JSONL Export')).toBeNull();
 });

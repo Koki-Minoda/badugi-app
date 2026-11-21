@@ -1436,7 +1436,7 @@ export default function GameLayoutBase({
         </footer>
       )}
 
-      {!isMobileLayout && (
+      {!isMobileLayout && debugFlags?.enabled && (
         <Notification
           variant={notificationVariant}
           message={notificationMessage}

@@ -3,12 +3,12 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, expect, it } from 'vitest';
 import GameLayoutBase from '../GameLayoutBase.jsx';
 afterEach(cleanup);
-function show({ cash = true, phase = 'BET', draw = 0, mixedRotation = null } = {}) {
+function show({ cash = true, phase = 'BET', draw = 0, mixedRotation = null, debug = false } = {}) {
   return render(<GameLayoutBase headerProps={{ language: 'ja', ratingState: {}, rankInfo: {} }}
-    sidePanelProps={{ seatViews: [], seatConfig: [], seatTypeOptions: [], totalPot: 30 }}
+    sidePanelProps={{ seatViews: [], seatConfig: [], seatTypeOptions: [], totalPot: 30, notificationMessage: "ロード 0ms · 操作 waiting..." }}
     tableProps={{ seatViews: [], seatLayouts: [], heroDrawSelection: [], phase, tablePhase: phase, drawRoundValue: draw, betRoundValue: 0, tableSummaryProps: { maxDraws: 3 }, mixedRotation }}
     controlsProps={{ isCashGame: cash, actionPanelInfo: { waitingLabel: 'CPUの操作を待っています' } }}
-    overlaysProps={{}} debugProps={{}} />);
+    overlaysProps={{}} debugProps={{}} debugFlags={{ enabled: debug }} />);
 }
 it('shows one cash progress label and one waiting message', () => {
   show();
@@ -24,4 +24,14 @@ it('keeps draw progress and MIX rotation information', () => {
 it('retains tournament phase controls', () => {
   show({ cash: false });
   expect(screen.getByTestId('phase-compact-strip')).toBeTruthy();
+});
+
+it('hides performance measurements in normal play while keeping player waiting guidance', () => {
+  show();
+  expect(screen.queryByText('ロード 0ms · 操作 waiting...')).toBeNull();
+  expect(screen.getByText('CPUの操作を待っています')).toBeTruthy();
+});
+it('keeps performance measurements available in explicit debug mode', () => {
+  show({ debug: true });
+  expect(screen.getByText('ロード 0ms · 操作 waiting...')).toBeTruthy();
 });

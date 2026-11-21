@@ -10,7 +10,16 @@ const progress = vi.hoisted(() => ({ unlocked: false }));
 vi.mock('../../hooks/usePlayerProgress.js', () => ({ usePlayerProgress: () => ({ worldChampCleared: progress.unlocked }) }));
 beforeEach(() => { localStorage.clear(); progress.unlocked = false; });
 afterEach(cleanup);
-function show() { render(<MemoryRouter><MixedGameProvider><MixedGameScreen language="ja" /></MixedGameProvider></MemoryRouter>); }
+function show(url = '/mixed') { render(<MemoryRouter initialEntries={[url]}><MixedGameProvider><MixedGameScreen language="ja" /></MixedGameProvider></MemoryRouter>); }
+it('previews a preset link without creating a saved MIX while locked', () => {
+  show();
+  const before = localStorage.getItem('mixedGameProfiles');
+  cleanup();
+  show('/mixed?preset=learn-lowball');
+  expect(localStorage.getItem('mixedGameProfiles')).toBe(before);
+  expect(screen.getByRole('textbox', { name: 'MIX名' }).value).toBe('Lowball Basics');
+  expect(screen.getByTestId('mix-editor').disabled).toBe(true);
+});
 it('allows preset preview without persisting changes and explains disabled editing', () => {
   show();
   const editor = screen.getByTestId('mix-editor');

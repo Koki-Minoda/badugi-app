@@ -15,6 +15,18 @@ async function noOverflow(page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 }
 
+test('a locked preset link previews without creating or replacing saved MIX settings', async ({ page }) => {
+  await page.goto('/mixed');
+  const before = await page.evaluate(() => localStorage.getItem('mixedGameProfiles'));
+  await page.goto('/mixed?preset=learn-lowball');
+  await expect(page.getByRole('textbox', { name: 'MIX名' })).toHaveValue('Lowball Basics');
+  await expect(page.getByTestId('mix-editor')).toHaveAttribute('disabled', '');
+  await expect(page.getByRole('textbox', { name: 'MIX名' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'MIXを保存', exact: true })).toBeDisabled();
+  expect(await page.evaluate(() => localStorage.getItem('mixedGameProfiles'))).toBe(before);
+  await noOverflow(page);
+});
+
 test('menu opens the learning hub, with no horizontal overflow', async ({ page }, info) => {
   await page.goto('/menu');
   await page.getByTestId('menu-learn').click();

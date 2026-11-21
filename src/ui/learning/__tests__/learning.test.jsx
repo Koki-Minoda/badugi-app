@@ -12,8 +12,9 @@ import { LANGUAGE_STORAGE_KEY } from '../../../config/mgxLocaleConfig.js';
 import { DeuceToSevenSingleDrawController } from '../../../games/draw/DeuceToSevenSingleDrawController.js';
 
 vi.mock('../../../games/config/canLaunchVariant.js', () => ({ canLaunchVariant: id => ({ canLaunch: id !== 'flh' }) }));
-vi.mock('../../hooks/usePlayerProgress.js', () => ({ usePlayerProgress: () => ({ tournament: { wins: {} } }) }));
-beforeEach(() => { localStorage.clear(); sessionStorage.clear(); });
+const playerProgress = vi.hoisted(() => ({ unlocked: false }));
+vi.mock('../../hooks/usePlayerProgress.js', () => ({ usePlayerProgress: () => ({ worldChampCleared: playerProgress.unlocked }) }));
+beforeEach(() => { localStorage.clear(); sessionStorage.clear(); playerProgress.unlocked = false; });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 const renderHub = (url = '/learn') => render(<MemoryRouter initialEntries={[url]}><MixedGameProvider><Routes><Route path="/learn" element={<LearningHubScreen />} /><Route path="/mixed" element={<MixedGameScreen language="ja" />} /></Routes></MixedGameProvider></MemoryRouter>);
 
@@ -61,7 +62,8 @@ describe('learning routes', () => {
     expect(screen.queryByRole('button', { name: 'Badugi', exact: true })).toBeNull();
   });
 
-  it('imports an unsaved deep link while preserving a previously edited template', () => {
+  it('imports an unsaved deep link after unlock while preserving a previously edited template', () => {
+    playerProgress.unlocked = true;
     const view = renderHub('/mixed?preset=learn-horse');
     let profiles = JSON.parse(localStorage.getItem('mixedGameProfiles'));
     expect(profiles.find(p => p.id === 'learn-horse').handsPerGame).toBe(4);

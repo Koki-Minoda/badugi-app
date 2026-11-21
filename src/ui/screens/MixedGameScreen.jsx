@@ -280,6 +280,16 @@ export default function MixedGameScreen({ language: languageProp }) {
     const params = new URLSearchParams(location.search);
     const presetId = params.get("preset");
     if (!presetId) return;
+    if (mixedLocked) {
+      const preview = [...profiles, ...proPresets, ...LEARNING_PRESETS].find(preset => preset.id === presetId);
+      if (preview) {
+        setDraft(buildDraftFromProfile(preview));
+        setMessage(ja ? '内容を表示しています。編集・保存・開始は世界大会優勝後に利用できます。' : 'Preview only. Win the World Championship to edit, save and start.');
+        setError('');
+      }
+      navigate('/mixed', { replace: true });
+      return;
+    }
     const existing = profiles.find((p) => p.id === presetId);
     if (existing) {
       setSelectedProfileId(existing.id);
@@ -297,7 +307,7 @@ export default function MixedGameScreen({ language: languageProp }) {
       }
     }
     navigate("/mixed", { replace: true });
-  }, [location.search, proPresets, profiles, navigate, saveProfile, language, ja]);
+  }, [location.search, proPresets, profiles, navigate, saveProfile, language, ja, mixedLocked]);
 
   const variantOptions = useMemo(() => {
     const profiles = listVariantProfiles().map((profile) =>

@@ -14,7 +14,9 @@ from rl.training.train_badugi_controller_v2_draft import (
     training_opponent_profile,
 )
 from rl.training.export_badugi_controller_v2_mode_ensemble import ModeEnsemble
-from rl.training.export_badugi_controller_v2_candidate import check_parity
+from rl.training.export_badugi_controller_v2_candidate import (
+    check_legal_action_equivalence, check_parity,
+)
 from rl.training.export_badugi_controller_v2_phase_candidate import PhaseEnsemble
 from rl.training.validate_badugi_controller_v2_draft import (
     FoldGuardedPhaseAgent, OnnxAgent, PhaseRoutedAgent, opening_context,
@@ -58,6 +60,14 @@ class BootstrapPolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             check_parity(expected, np.asarray([[0.1, 0.49, 0.5], [0.5, 0.1, 0.2]],
                                                    dtype=np.float32))
+
+    def test_precision_export_checks_every_legal_mask(self):
+        original = np.asarray([[10, 5, 4, 0, 0, 0]], dtype=np.float32)
+        self.assertEqual(check_legal_action_equivalence(original, original), (63, 0))
+        altered = np.asarray([[10, 4, 5, 0, 0, 0]], dtype=np.float32)
+        self.assertEqual(original.argmax(axis=1).tolist(), altered.argmax(axis=1).tolist())
+        with self.assertRaisesRegex(ValueError, "changed .* legal actions"):
+            check_legal_action_equivalence(original, altered)
 
     def test_fresh_session_profile_covers_pressure_at_first_hand(self):
         bootstrap = Counter(training_opponent_profile(index, index, True)

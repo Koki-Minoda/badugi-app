@@ -18,8 +18,12 @@ it('shows one cash progress label and one waiting message', () => {
 });
 it('keeps draw progress and MIX rotation information', () => {
   show({ phase: 'DRAW', draw: 2, mixedRotation: { handsPlayedInCurrentGame: 1, handsPerGame: 4, nextName: 'Badugi' } });
-  expect(screen.getByTestId('table-phase-badge').textContent).toBe('交換 2/3');
+  expect(screen.getByTestId('table-phase-badge').textContent).toBe('交換 3/3');
   expect(screen.getByTestId('mixed-rotation-status').textContent).toContain('MIX 2/4 · 次 Badugi');
+});
+it.each([0, 1, 2])('labels zero-based draw %i as the actual exchange number', (draw) => {
+  show({ phase: 'DRAW', draw });
+  expect(screen.getByTestId('table-phase-badge').textContent).toBe(`交換 ${draw + 1}/3`);
 });
 it('retains tournament phase controls', () => {
   show({ cash: false });

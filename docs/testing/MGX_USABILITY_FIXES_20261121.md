@@ -58,3 +58,5 @@ U03の確認画像: [iPhone](../../reports/usability-fixes/2026-11-21/u03-iphone
 ## iOSシミュレーター再QMの追補
 
 - #462: iPhone 17 / iOS 26.5で設定ヘッダーの語尾だけが折り返す問題を修正。320・390・852pxの日英レイアウトをChromium各6件、iPhone WebKit各6件で検証。既知不具合50件・RL安全性66件・build通過。[修正前](../../reports/usability-fixes/2026-11-21/ios-simulator/04-settings-header-before-fit.jpg)、[修正後](../../reports/usability-fixes/2026-11-21/ios-simulator/06-settings-header-fixed.jpg)。
+
+- #463: 2ndが1/3、3rdが2/3になる交換回数表示を修正。0始まりの局面番号を表示時に変換し、PC・スマホで1/3・2/3・3/3、単一ドロー1/1を表示。英語のスマホ表示にも回数を追加。レイアウト回帰18件、既知不具合50件、RL安全性66件、build通過。実対局の[2nd](../../reports/usability-fixes/2026-11-21/ios-simulator/19-second-draw-fixed.jpg)・[3rd](../../reports/usability-fixes/2026-11-21/ios-simulator/20-third-draw-fixed.jpg)も再確認。

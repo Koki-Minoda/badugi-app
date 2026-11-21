@@ -351,9 +351,7 @@ export default function GameLayoutBase({
     maxDrawsForDisplay,
     Math.max(
       1,
-      isDrawDisplayPhase
-        ? Number(drawRoundValue) || 1
-        : (Number(drawRoundValue) || 0) + 1,
+      (Number(drawRoundValue) || 0) + 1,
     ),
   );
   const betRoundNumberForDisplay = Math.max(

@@ -1,8 +1,10 @@
 import { canLaunchVariant } from '../../games/config/canLaunchVariant.js';
 import { normalizeAppVariantId } from './appVariantRouting.js';
 
-export function getCashLaunchRequest({ pathname, search }) {
+export function getCashLaunchRequest({ pathname, search, state }) {
   if (pathname !== '/game' && pathname !== '/dev/game') return null;
+  // Explicit learning/MIX/tournament launches carry their own identity.
+  if (state?.learningVariant || state?.mixedProfileId || state?.multiGameConfig || state?.multiGameResume) return null;
   const params = new URLSearchParams(search);
   const mode = params.get('mode');
   if (mode && mode !== 'cash') return null;

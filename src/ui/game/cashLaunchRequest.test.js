@@ -2,6 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { getCashLaunchRequest } from './cashLaunchRequest.js';
 
 describe('cash game links', () => {
+  it.each([
+    { mixedProfileId: 'qa-mix' },
+    { learningVariant: 'badugi' },
+    { multiGameConfig: { games: ['D03'] } },
+    { multiGameResume: true },
+  ])('preserves an explicit launch identity instead of treating its URL as plain cash: %o', state => {
+    expect(getCashLaunchRequest({ pathname: '/game', search: '?variant=badugi', state })).toBeNull();
+  });
   it.each(['beginner', 'standard', 'pro'])('preserves the selected %s opponent on a cold game visit', tier => {
     expect(getCashLaunchRequest({ pathname: '/game', search: `?variant=badugi&aiTier=${tier}` }))
       .toEqual({ variantId: 'badugi', cashTierId: tier });

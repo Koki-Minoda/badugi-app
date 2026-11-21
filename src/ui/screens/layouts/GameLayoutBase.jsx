@@ -364,6 +364,10 @@ export default function GameLayoutBase({
   const phaseCompactText = usesStreetProgress
     ? `${displayPhase} | ${streetLabel}`
     : `${displayPhase} | D${drawNumberForDisplay} | R${betRoundNumberForDisplay}`;
+  const cashPhaseText = usesStreetProgress ? [displayPhase.startsWith("BET") ? (language === "ja" ? "ベット" : "Bet") : displayPhase, streetLabel].filter(Boolean).join(" · ")
+    : isDrawDisplayPhase ? `${language === "ja" ? "交換" : "Draw"} ${drawNumberForDisplay}/${maxDrawsForDisplay}`
+    : displayPhase.startsWith("BET") ? `${language === "ja" ? "ベット" : "Bet"} ${betRoundNumberForDisplay}/${maxDrawsForDisplay + 1}`
+    : displayPhase === "SHOWDOWN" ? (language === "ja" ? "ショーダウン" : "Showdown") : displayPhase;
   const phasePrimaryText = displayPhase;
   const phaseSecondaryText = usesStreetProgress ? streetLabel : `R${betRoundNumberForDisplay}`;
   const drawRailItems = [
@@ -1018,7 +1022,7 @@ export default function GameLayoutBase({
                       data-testid="table-phase-badge"
                       className={`${isMobileLayout ? "ml-1 px-2 py-0.5 text-[10px]" : "px-3 py-1 text-[11px]"} rounded-full border font-semibold ${phaseBadgeAccentClass}`}
                     >
-                      {isDrawDisplayPhase
+                      {isCashGame ? cashPhaseText : isDrawDisplayPhase
                         ? `${phaseCompactText} · DRAW RUSHER`
                         : useDenseActionPanel
                           ? `${displayPhase} | ${phaseSecondaryText}`
@@ -1135,13 +1139,14 @@ export default function GameLayoutBase({
                     layoutMode={mobileLayoutMode}
                   />
                 )}
-                <div
+                  {mixedRotation && <p data-testid="mixed-rotation-status" className="mr-2 shrink-0 text-xs text-emerald-200">
+                    MIX {mixedRotation.handsPlayedInCurrentGame + 1}/{mixedRotation.handsPerGame}{mixedRotation.nextName ? ` · ${language === 'ja' ? '次' : 'Next'} ${mixedRotation.nextName}` : ''}
+                  </p>}
+                {!isCashGame &&                 <div
                   data-testid="phase-compact-strip"
                   className={`${isMobileLayout ? (useRailPhasePanel ? "rounded-lg px-1 py-0.5 text-[10px]" : useDenseActionPanel ? "rounded-lg px-2 py-0.5 text-[10px]" : "rounded-2xl p-2 text-base") : "rounded-2xl p-3"} flex items-center justify-between border font-black shadow-lg ${phaseAccentClass}`}
                 >
-                  {mixedRotation && <span data-testid="mixed-rotation-status" className="mr-2 shrink-0 text-xs text-emerald-200">
-                    MIX {mixedRotation.handsPlayedInCurrentGame + 1}/{mixedRotation.handsPerGame}{mixedRotation.nextName ? ` · ${language === 'ja' ? '次' : 'Next'} ${mixedRotation.nextName}` : ''}
-                  </span>}
+
                   {useRailPhasePanel ? (
                     <div className="grid w-full grid-cols-4 overflow-hidden rounded-md border border-white/10 bg-black/20">
                       {drawRailItems.map((item, itemIndex) => (
@@ -1218,7 +1223,7 @@ export default function GameLayoutBase({
                       </div>}
                     </>
                   )}
-                </div>
+                </div>}
                 <div
                   className={`${isMobileLayout ? "hidden" : "hidden min-[1360px]:flex"} flex-col gap-2 rounded-2xl border border-white/10 bg-slate-900/85 p-3 shadow-lg`}
                 >
@@ -1287,7 +1292,7 @@ export default function GameLayoutBase({
                           : (language === "ja" ? "処理中" : "Resolving")}
                       </p>
                     </div>
-                    {!useDenseActionPanel && (
+                    {!useDenseActionPanel && !isCashGame && (
                       <div className="rounded-xl border border-white/10 bg-black/30 px-2 py-1.5">
                         <p className="uppercase tracking-wide text-slate-500">
                           {language === "ja" ? "状態" : "State"}

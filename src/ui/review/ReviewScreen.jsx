@@ -13,6 +13,12 @@ import ReviewCompletion from '../learning/progress/ReviewCompletion.jsx';
 import { useLearningProgress } from '../learning/progress/useLearningProgress.js';
 
 const variantLabel = hand => getLearningGame(reviewVariant(hand))?.name ?? hand.variantName ?? reviewVariant(hand);
+function startingHandLabel(hand) {
+  const seats = hand.seats ?? hand.playerSummaries ?? hand.players ?? [];
+  const hero = seats.find(seat => seat.isHero) ?? seats.find(seat => (seat.seat ?? seat.seatIndex) === 0);
+  return (hero?.initialHand ?? []).filter(card => ['string', 'number'].includes(typeof card))
+    .map(card => String(card).replace(/S$/, '♠').replace(/H$/, '♥').replace(/D$/, '♦').replace(/C$/, '♣')).join(' ');
+}
 function dateLabel(hand, language) {
   const date = new Date(hand.startedAt ?? hand.ts ?? hand.endedAt);
   return Number.isFinite(date.getTime()) ? date.toLocaleString(language === 'ja' ? 'ja-JP' : 'en-US') : '—';
@@ -53,8 +59,8 @@ export default function ReviewScreen() {
       <p role="status" className="text-sm text-emerald-200">{visible.length} / {entries.length}{ja ? '件' : ' saved hands'}</p>
       {!visible.length && <div className="space-y-3 rounded-2xl border border-white/15 p-6"><p>{!entries.length ? (ja ? '復習したいハンドを、対局結果や履歴の「あとで復習に保存」から追加してください。' : 'Use Save for review in hand results or history to add your first hand.') : (ja ? '条件に合うハンドはありません。' : 'No saved hands match these filters.')}</p>{entries.length > 0 && <button type="button" onClick={() => { setVariant(''); setTag(''); setQuery(''); setParams({}); }} className="min-h-11 text-emerald-200 underline">{ja ? '絞り込みを解除' : 'Clear filters'}</button>}</div>}
       {visible.map(entry => <details key={entry.key} data-testid="saved-hand" className="rounded-2xl border border-white/15 bg-slate-900 p-4 sm:p-5">
-        <summary className="cursor-pointer space-y-2 break-words"><span className="font-bold text-emerald-200">{variantLabel(entry.hand)}</span>{entry.hand.mode === "practice" && <span className="ml-2 rounded bg-amber-200/10 px-2 py-1 text-xs text-amber-200">{ja ? "配牌練習" : "Practice"}</span>}<span className="ml-3 text-sm text-slate-300">{dateLabel(entry.hand, language)}</span><span className="block text-sm">{entry.hand.handId} · Pot {reviewPot(entry.hand)}</span><span className="flex flex-wrap gap-2">{entry.tags.map(value => <span key={value} className="rounded-full bg-slate-800 px-3 py-1 text-xs">{value}</span>)}</span>{entry.note && <span className="block whitespace-pre-wrap text-sm text-slate-300 line-clamp-2">{entry.note}</span>}</summary>
-        <div className="mt-5 space-y-5"><ReviewCompletion reviewKey={entry.key} language={language} /><ReviewPracticeLink hand={entry.hand} language={language} /><SavedHandDetails hand={entry.hand} language={language} /><ReviewEditor entry={entry} language={language} /></div>
+        <summary className="cursor-pointer space-y-2 break-words"><span className="font-bold text-emerald-200">{variantLabel(entry.hand)}</span>{entry.hand.mode === "practice" && <span className="ml-2 rounded bg-amber-200/10 px-2 py-1 text-xs text-amber-200">{ja ? "配牌練習" : "Practice"}</span>}<span className="ml-3 text-sm text-slate-300">{dateLabel(entry.hand, language)}</span><span className="block text-sm">{startingHandLabel(entry.hand)}{startingHandLabel(entry.hand) && " · "}{ja ? "ポット" : "Pot"} {reviewPot(entry.hand)}</span><span className="flex flex-wrap gap-2">{entry.tags.map(value => <span key={value} className="rounded-full bg-slate-800 px-3 py-1 text-xs">{value}</span>)}</span>{entry.note && <span className="block whitespace-pre-wrap text-sm text-slate-300 line-clamp-2">{entry.note}</span>}</summary>
+        <div className="mt-5 space-y-5"><ReviewCompletion reviewKey={entry.key} language={language} /><ReviewPracticeLink hand={entry.hand} language={language} /><SavedHandDetails hand={entry.hand} language={language} /><ReviewEditor entry={entry} language={language} /><p className="break-all text-xs text-slate-400">{ja ? "ハンドID" : "Hand ID"}: {entry.hand.handId}</p></div>
       </details>)}
     </div>
   </main>;

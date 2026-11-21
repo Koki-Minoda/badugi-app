@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DeuceToSevenTripleDrawEngine } from "../../games/draw/DeuceToSevenTripleDrawEngine.js";
+import { DeuceToSevenSingleDrawEngine } from "../../games/draw/DeuceToSevenSingleDrawEngine.js";
 import { AceToFiveTripleDrawEngine } from "../../games/draw/AceToFiveTripleDrawEngine.js";
 import {
   DRAW_OBSERVATION_SCHEMA_VERSION,
@@ -11,6 +12,41 @@ import {
 import { buildDrawBootstrapDataset } from "../drawBootstrapDataset.js";
 
 describe("draw observation schema", () => {
+  it.each([
+    ["D01", DeuceToSevenTripleDrawEngine],
+    ["S01", DeuceToSevenSingleDrawEngine],
+  ])("includes live street bets in the %s engine-state pot input", (variantId, Engine) => {
+    const engine = new Engine();
+    const raw = engine.initHand({
+      handId: "observation-opening",
+      seatConfig: ["HUMAN", "CPU"],
+      startingStack: 100,
+      dealerIndex: 0,
+      structure: { sb: 1, bb: 2 },
+    });
+    const state = engine.applyForcedBets(raw);
+    const payload = buildDrawObservationPayload({ state, seatIndex: 0, variantId });
+    const vector = buildDrawObservationVector(payload);
+
+    expect(state.pots).toEqual([]);
+    expect(state.players.map((player) => player.bet)).toEqual([1, 2]);
+    expect(payload.features.pot).toBe(3);
+    expect(vector[24]).toBeCloseTo(3 / (99 * 6));
+
+    const snapshotPayload = buildDrawObservationPayload({
+      state: { ...state, pot: 3 },
+      seatIndex: 0,
+      variantId,
+    });
+    expect(snapshotPayload.features.pot).toBe(3);
+    const collectedPayload = buildDrawObservationPayload({
+      state: { ...state, metadata: { ...state.metadata, potAmount: 8 } },
+      seatIndex: 0,
+      variantId,
+    });
+    expect(collectedPayload.features.pot).toBe(11);
+  });
+
   it("builds common D01 2-7 lowball vectors with variant feature slots", () => {
     const state = {
       street: "DRAW",

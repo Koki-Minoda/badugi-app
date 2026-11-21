@@ -1,0 +1,1606 @@
+{
+  "criteria": {
+    "heroResponseP95Ms": 100,
+    "cpuTurnP95Ms": 2000,
+    "eventLoopMaxMs": 250,
+    "transitionMs": 2000,
+    "repeatRatio": 2,
+    "repeatDeltaMs": {
+      "hero-response": 100,
+      "cpu-turn": 500,
+      "event-loop": 50,
+      "storage-write": 10
+    }
+  },
+  "flags": [
+    {
+      "project": "android-chromium",
+      "leg": "badeucey-cash",
+      "cycle": 0,
+      "kind": "hero-response",
+      "value": 132,
+      "limit": 100
+    },
+    {
+      "project": "android-chromium",
+      "leg": "badeucey-cash",
+      "cycle": 1,
+      "kind": "hero-response",
+      "value": 127.3,
+      "limit": 100
+    },
+    {
+      "project": "android-chromium",
+      "leg": "after-reload",
+      "cycle": 3,
+      "kind": "hero-response",
+      "value": 121.3,
+      "limit": 100
+    }
+  ],
+  "generatedAt": "2026-11-21T06:29:13.766Z",
+  "root": "reports/mobile-performance/local-before-pressure-v2",
+  "units": "milliseconds unless named otherwise",
+  "notes": [
+    "Thresholds are investigation heuristics, not approved release requirements.",
+    "physicalDevice identifies hardware runs; other projects use host CPU mobile emulation.",
+    "Physical runs use scripted DOM button activation and do not measure physical touch input latency.",
+    "Samples marked includesSyntheticHistorySetup contain artificial quota-fill work; event-loop maxima and early/late comparisons exclude these samples from game-lag attribution. Raw metrics remain available.",
+    "CPU turn time includes intentional pause and render transition; it is not model inference latency.",
+    "First cold hand and reload hand are separate from repeated-cycle comparisons.",
+    "Transitions include UI automation dispatch, while hero-response is browser click to first observed state change.",
+    "performance.memory is browser-dependent and may be quantized."
+  ],
+  "projects": [
+    {
+      "project": "android-chromium",
+      "physicalDevice": false,
+      "failures": [],
+      "completedHands": 20,
+      "pageErrors": [],
+      "heroResponseTimeouts": [],
+      "stages": [
+        {
+          "leg": "cold-badugi-cash",
+          "cycles": [
+            {
+              "cycle": -1,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 7,
+                  "p50": 13.3,
+                  "p95": 14.4,
+                  "max": 14.4
+                },
+                "cpu-turn": {
+                  "n": 34,
+                  "p50": 467.8,
+                  "p95": 954.8,
+                  "max": 1321.5
+                },
+                "event-loop": {
+                  "n": 210,
+                  "p50": 0,
+                  "p95": 8.2,
+                  "max": 102.5
+                },
+                "long-task": {
+                  "n": 4,
+                  "p50": 84,
+                  "p95": 160,
+                  "max": 160
+                },
+                "frame-gap": {
+                  "n": 1240,
+                  "p50": 16.7,
+                  "p95": 16.8,
+                  "max": 133.3
+                },
+                "storage-write": {
+                  "n": 351,
+                  "p50": 0,
+                  "p95": 0.4,
+                  "max": 0.8
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 364,
+                "warnings": 2,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 42
+            }
+          ],
+          "changes": {}
+        },
+        {
+          "leg": "badeucey-cash",
+          "cycles": [
+            {
+              "cycle": 0,
+              "includesSyntheticHistorySetup": true,
+              "metrics": {
+                "hero-response": {
+                  "n": 8,
+                  "p50": 13.7,
+                  "p95": 132,
+                  "max": 132
+                },
+                "cpu-turn": {
+                  "n": 28,
+                  "p50": 469.9,
+                  "p95": 918.5,
+                  "max": 918.9
+                },
+                "event-loop": {
+                  "n": 199,
+                  "p50": 0,
+                  "p95": 3.2,
+                  "max": 1508
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 131,
+                  "p95": 131,
+                  "max": 131
+                },
+                "frame-gap": {
+                  "n": 1193,
+                  "p50": 16.7,
+                  "p95": 16.8,
+                  "max": 1550
+                },
+                "storage-write": {
+                  "n": 382,
+                  "p50": 0,
+                  "p95": 11.2,
+                  "max": 16.3
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 692,
+                "warnings": 7,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 83
+            },
+            {
+              "cycle": 1,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 7,
+                  "p50": 13.4,
+                  "p95": 127.3,
+                  "max": 127.3
+                },
+                "cpu-turn": {
+                  "n": 36,
+                  "p50": 464.9,
+                  "p95": 916.3,
+                  "max": 919
+                },
+                "event-loop": {
+                  "n": 182,
+                  "p50": 0,
+                  "p95": 1.1,
+                  "max": 101.4
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 127,
+                  "p95": 127,
+                  "max": 127
+                },
+                "frame-gap": {
+                  "n": 1094,
+                  "p50": 16.7,
+                  "p95": 16.7,
+                  "max": 116.7
+                },
+                "storage-write": {
+                  "n": 301,
+                  "p50": 0,
+                  "p95": 0.8,
+                  "max": 16.4
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 2729,
+                "warnings": 70,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 332
+            },
+            {
+              "cycle": 2,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 7,
+                  "p50": 13.5,
+                  "p95": 16.5,
+                  "max": 16.5
+                },
+                "cpu-turn": {
+                  "n": 32,
+                  "p50": 465.2,
+                  "p95": 921.2,
+                  "max": 1031.3
+                },
+                "event-loop": {
+                  "n": 200,
+                  "p50": 0,
+                  "p95": 0.9,
+                  "max": 114.8
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 112,
+                  "p95": 112,
+                  "max": 112
+                },
+                "frame-gap": {
+                  "n": 1199,
+                  "p50": 16.7,
+                  "p95": 16.8,
+                  "max": 99.9
+                },
+                "storage-write": {
+                  "n": 321,
+                  "p50": 0,
+                  "p95": 0.6,
+                  "max": 18.1
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 4699,
+                "warnings": 106,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 576
+            }
+          ],
+          "changes": {
+            "hero-response": {
+              "earlyP95": 127.3,
+              "lateP95": 16.5,
+              "deltaMs": -110.8,
+              "ratio": 0.13
+            },
+            "cpu-turn": {
+              "earlyP95": 916.3,
+              "lateP95": 921.2,
+              "deltaMs": 4.9,
+              "ratio": 1.01
+            },
+            "event-loop": {
+              "earlyP95": 1.1,
+              "lateP95": 0.9,
+              "deltaMs": -0.2,
+              "ratio": 0.82
+            },
+            "storage-write": {
+              "earlyP95": 0.8,
+              "lateP95": 0.6,
+              "deltaMs": -0.2,
+              "ratio": 0.75
+            }
+          }
+        },
+        {
+          "leg": "badugi-after-badeucey",
+          "cycles": [
+            {
+              "cycle": 0,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 7,
+                  "p50": 13,
+                  "p95": 17.1,
+                  "max": 17.1
+                },
+                "cpu-turn": {
+                  "n": 36,
+                  "p50": 466.4,
+                  "p95": 917,
+                  "max": 921.1
+                },
+                "event-loop": {
+                  "n": 203,
+                  "p50": 0,
+                  "p95": 1.6,
+                  "max": 69.4
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 103,
+                  "p95": 103,
+                  "max": 103
+                },
+                "frame-gap": {
+                  "n": 1208,
+                  "p50": 16.7,
+                  "p95": 16.8,
+                  "max": 83.4
+                },
+                "storage-write": {
+                  "n": 324,
+                  "p50": 0,
+                  "p95": 0.7,
+                  "max": 15.3
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 1056,
+                "warnings": 13,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 125
+            },
+            {
+              "cycle": 1,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 8,
+                  "p50": 13.1,
+                  "p95": 14.9,
+                  "max": 14.9
+                },
+                "cpu-turn": {
+                  "n": 38,
+                  "p50": 465.5,
+                  "p95": 933.5,
+                  "max": 1032.1
+                },
+                "event-loop": {
+                  "n": 217,
+                  "p50": 0,
+                  "p95": 1.3,
+                  "max": 87.3
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 112,
+                  "p95": 112,
+                  "max": 112
+                },
+                "frame-gap": {
+                  "n": 1295,
+                  "p50": 16.7,
+                  "p95": 16.7,
+                  "max": 100
+                },
+                "storage-write": {
+                  "n": 340,
+                  "p50": 0,
+                  "p95": 0.6,
+                  "max": 19.6
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 3086,
+                "warnings": 74,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 377
+            },
+            {
+              "cycle": 2,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 8,
+                  "p50": 13.1,
+                  "p95": 17.5,
+                  "max": 17.5
+                },
+                "cpu-turn": {
+                  "n": 37,
+                  "p50": 465.6,
+                  "p95": 918.5,
+                  "max": 918.7
+                },
+                "event-loop": {
+                  "n": 221,
+                  "p50": 0,
+                  "p95": 1,
+                  "max": 31.1
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 104,
+                  "p95": 104,
+                  "max": 104
+                },
+                "frame-gap": {
+                  "n": 1321,
+                  "p50": 16.7,
+                  "p95": 16.7,
+                  "max": 100
+                },
+                "storage-write": {
+                  "n": 345,
+                  "p50": 0,
+                  "p95": 0.5,
+                  "max": 15.8
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 5062,
+                "warnings": 110,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 622
+            }
+          ],
+          "changes": {
+            "hero-response": {
+              "earlyP95": 17.1,
+              "lateP95": 17.5,
+              "deltaMs": 0.4,
+              "ratio": 1.02
+            },
+            "cpu-turn": {
+              "earlyP95": 917,
+              "lateP95": 918.5,
+              "deltaMs": 1.5,
+              "ratio": 1
+            },
+            "event-loop": {
+              "earlyP95": 1.6,
+              "lateP95": 1,
+              "deltaMs": -0.6,
+              "ratio": 0.63
+            },
+            "storage-write": {
+              "earlyP95": 0.7,
+              "lateP95": 0.5,
+              "deltaMs": -0.2,
+              "ratio": 0.71
+            }
+          }
+        },
+        {
+          "leg": "badeucey-mtt",
+          "cycles": [
+            {
+              "cycle": 0,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 8,
+                  "p50": 11.8,
+                  "p95": 13.4,
+                  "max": 13.4
+                },
+                "cpu-turn": {
+                  "n": 36,
+                  "p50": 467.3,
+                  "p95": 920.1,
+                  "max": 920.4
+                },
+                "event-loop": {
+                  "n": 199,
+                  "p50": 0,
+                  "p95": 1.8,
+                  "max": 48.1
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 56,
+                  "p95": 56,
+                  "max": 56
+                },
+                "frame-gap": {
+                  "n": 1194,
+                  "p50": 16.7,
+                  "p95": 16.8,
+                  "max": 50.1
+                },
+                "storage-write": {
+                  "n": 268,
+                  "p50": 0,
+                  "p95": 0.5,
+                  "max": 1.4
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 1389,
+                "warnings": 43,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 167
+            },
+            {
+              "cycle": 1,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 7,
+                  "p50": 14.8,
+                  "p95": 58.4,
+                  "max": 58.4
+                },
+                "cpu-turn": {
+                  "n": 31,
+                  "p50": 465,
+                  "p95": 918.1,
+                  "max": 918.4
+                },
+                "event-loop": {
+                  "n": 166,
+                  "p50": 0,
+                  "p95": 0.9,
+                  "max": 29.3
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 58,
+                  "p95": 58,
+                  "max": 58
+                },
+                "frame-gap": {
+                  "n": 996,
+                  "p50": 16.7,
+                  "p95": 16.7,
+                  "max": 33.3
+                },
+                "storage-write": {
+                  "n": 230,
+                  "p50": 0,
+                  "p95": 0.7,
+                  "max": 1.7
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 3371,
+                "warnings": 76,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 412
+            },
+            {
+              "cycle": 2,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 7,
+                  "p50": 13.7,
+                  "p95": 55.1,
+                  "max": 55.1
+                },
+                "cpu-turn": {
+                  "n": 29,
+                  "p50": 467.8,
+                  "p95": 918.6,
+                  "max": 919.4
+                },
+                "event-loop": {
+                  "n": 166,
+                  "p50": 0,
+                  "p95": 1.1,
+                  "max": 50.8
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 54,
+                  "p95": 54,
+                  "max": 54
+                },
+                "frame-gap": {
+                  "n": 994,
+                  "p50": 16.7,
+                  "p95": 16.8,
+                  "max": 33.3
+                },
+                "storage-write": {
+                  "n": 230,
+                  "p50": 0,
+                  "p95": 0.5,
+                  "max": 1.5
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 5347,
+                "warnings": 113,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 657
+            }
+          ],
+          "changes": {
+            "hero-response": {
+              "earlyP95": 13.4,
+              "lateP95": 55.1,
+              "deltaMs": 41.7,
+              "ratio": 4.11
+            },
+            "cpu-turn": {
+              "earlyP95": 920.1,
+              "lateP95": 918.6,
+              "deltaMs": -1.5,
+              "ratio": 1
+            },
+            "event-loop": {
+              "earlyP95": 1.8,
+              "lateP95": 1.1,
+              "deltaMs": -0.7,
+              "ratio": 0.61
+            },
+            "storage-write": {
+              "earlyP95": 0.5,
+              "lateP95": 0.5,
+              "deltaMs": 0,
+              "ratio": 1
+            }
+          }
+        },
+        {
+          "leg": "badugi-after-paused-mtt",
+          "cycles": [
+            {
+              "cycle": 0,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 8,
+                  "p50": 12.5,
+                  "p95": 15.9,
+                  "max": 15.9
+                },
+                "cpu-turn": {
+                  "n": 39,
+                  "p50": 467,
+                  "p95": 919.2,
+                  "max": 919.7
+                },
+                "event-loop": {
+                  "n": 230,
+                  "p50": 0,
+                  "p95": 1,
+                  "max": 145.5
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 131,
+                  "p95": 131,
+                  "max": 131
+                },
+                "frame-gap": {
+                  "n": 1379,
+                  "p50": 16.7,
+                  "p95": 16.7,
+                  "max": 116.6
+                },
+                "storage-write": {
+                  "n": 354,
+                  "p50": 0,
+                  "p95": 0.4,
+                  "max": 19.4
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 1777,
+                "warnings": 58,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 215
+            },
+            {
+              "cycle": 1,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 8,
+                  "p50": 13.2,
+                  "p95": 15.4,
+                  "max": 15.4
+                },
+                "cpu-turn": {
+                  "n": 38,
+                  "p50": 466,
+                  "p95": 919.4,
+                  "max": 919.8
+                },
+                "event-loop": {
+                  "n": 222,
+                  "p50": 0,
+                  "p95": 1.1,
+                  "max": 87.4
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 119,
+                  "p95": 119,
+                  "max": 119
+                },
+                "frame-gap": {
+                  "n": 1323,
+                  "p50": 16.7,
+                  "p95": 16.8,
+                  "max": 100.1
+                },
+                "storage-write": {
+                  "n": 344,
+                  "p50": 0,
+                  "p95": 0.5,
+                  "max": 16.4
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 3747,
+                "warnings": 95,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 458
+            },
+            {
+              "cycle": 2,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 8,
+                  "p50": 13.5,
+                  "p95": 16.9,
+                  "max": 16.9
+                },
+                "cpu-turn": {
+                  "n": 43,
+                  "p50": 465.2,
+                  "p95": 918.7,
+                  "max": 919.3
+                },
+                "event-loop": {
+                  "n": 239,
+                  "p50": 0,
+                  "p95": 1,
+                  "max": 105
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 120,
+                  "p95": 120,
+                  "max": 120
+                },
+                "frame-gap": {
+                  "n": 1431,
+                  "p50": 16.7,
+                  "p95": 16.7,
+                  "max": 116.7
+                },
+                "storage-write": {
+                  "n": 364,
+                  "p50": 0,
+                  "p95": 0.3,
+                  "max": 16.9
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 5747,
+                "warnings": 145,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 707
+            }
+          ],
+          "changes": {
+            "hero-response": {
+              "earlyP95": 15.9,
+              "lateP95": 16.9,
+              "deltaMs": 1,
+              "ratio": 1.06
+            },
+            "cpu-turn": {
+              "earlyP95": 919.2,
+              "lateP95": 918.7,
+              "deltaMs": -0.5,
+              "ratio": 1
+            },
+            "event-loop": {
+              "earlyP95": 1,
+              "lateP95": 1,
+              "deltaMs": 0,
+              "ratio": 1
+            },
+            "storage-write": {
+              "earlyP95": 0.4,
+              "lateP95": 0.3,
+              "deltaMs": -0.1,
+              "ratio": 0.75
+            }
+          }
+        },
+        {
+          "leg": "resumed-badeucey-mtt",
+          "cycles": [
+            {
+              "cycle": 0,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 8,
+                  "p50": 12.8,
+                  "p95": 14.8,
+                  "max": 14.8
+                },
+                "cpu-turn": {
+                  "n": 30,
+                  "p50": 467.1,
+                  "p95": 920.5,
+                  "max": 960.5
+                },
+                "event-loop": {
+                  "n": 180,
+                  "p50": 0,
+                  "p95": 1.2,
+                  "max": 31.9
+                },
+                "long-task": {
+                  "n": 2,
+                  "p50": 55,
+                  "p95": 71,
+                  "max": 71
+                },
+                "frame-gap": {
+                  "n": 1075,
+                  "p50": 16.7,
+                  "p95": 16.7,
+                  "max": 50
+                },
+                "storage-write": {
+                  "n": 267,
+                  "p50": 0,
+                  "p95": 0.7,
+                  "max": 1.2
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 2080,
+                "warnings": 62,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 252
+            },
+            {
+              "cycle": 1,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 7,
+                  "p50": 13.7,
+                  "p95": 14.2,
+                  "max": 14.2
+                },
+                "cpu-turn": {
+                  "n": 32,
+                  "p50": 464.7,
+                  "p95": 919.6,
+                  "max": 919.7
+                },
+                "event-loop": {
+                  "n": 169,
+                  "p50": 0,
+                  "p95": 1,
+                  "max": 21.6
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 52,
+                  "p95": 52,
+                  "max": 52
+                },
+                "frame-gap": {
+                  "n": 1014,
+                  "p50": 16.7,
+                  "p95": 16.8,
+                  "max": 33.4
+                },
+                "storage-write": {
+                  "n": 257,
+                  "p50": 0,
+                  "p95": 0.9,
+                  "max": 1.5
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 4032,
+                "warnings": 98,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 493
+            },
+            {
+              "cycle": 2,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 7,
+                  "p50": 13.2,
+                  "p95": 14.6,
+                  "max": 14.6
+                },
+                "cpu-turn": {
+                  "n": 28,
+                  "p50": 468.5,
+                  "p95": 919.2,
+                  "max": 965.2
+                },
+                "event-loop": {
+                  "n": 183,
+                  "p50": 0,
+                  "p95": 0.8,
+                  "max": 44.4
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 50,
+                  "p95": 50,
+                  "max": 50
+                },
+                "frame-gap": {
+                  "n": 1099,
+                  "p50": 16.7,
+                  "p95": 16.7,
+                  "max": 33.4
+                },
+                "storage-write": {
+                  "n": 272,
+                  "p50": 0,
+                  "p95": 0.7,
+                  "max": 1.7
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 6050,
+                "warnings": 148,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 745
+            }
+          ],
+          "changes": {
+            "hero-response": {
+              "earlyP95": 14.8,
+              "lateP95": 14.6,
+              "deltaMs": -0.2,
+              "ratio": 0.99
+            },
+            "cpu-turn": {
+              "earlyP95": 920.5,
+              "lateP95": 919.2,
+              "deltaMs": -1.3,
+              "ratio": 1
+            },
+            "event-loop": {
+              "earlyP95": 1.2,
+              "lateP95": 0.8,
+              "deltaMs": -0.4,
+              "ratio": 0.67
+            },
+            "storage-write": {
+              "earlyP95": 0.7,
+              "lateP95": 0.7,
+              "deltaMs": 0,
+              "ratio": 1
+            }
+          }
+        },
+        {
+          "leg": "cycle-boundary",
+          "cycles": [
+            {
+              "cycle": 0,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 7,
+                  "p50": 12.2,
+                  "p95": 14.2,
+                  "max": 14.2
+                },
+                "cpu-turn": {
+                  "n": 35,
+                  "p50": 466.7,
+                  "p95": 920.4,
+                  "max": 1029.8
+                },
+                "event-loop": {
+                  "n": 205,
+                  "p50": 0,
+                  "p95": 1.7,
+                  "max": 85.3
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 108,
+                  "p95": 108,
+                  "max": 108
+                },
+                "frame-gap": {
+                  "n": 1223,
+                  "p50": 16.7,
+                  "p95": 16.7,
+                  "max": 100.1
+                },
+                "storage-write": {
+                  "n": 343,
+                  "p50": 0,
+                  "p95": 0.7,
+                  "max": 17.1
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 2426,
+                "warnings": 66,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 294
+            },
+            {
+              "cycle": 1,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 7,
+                  "p50": 13.8,
+                  "p95": 14.1,
+                  "max": 14.1
+                },
+                "cpu-turn": {
+                  "n": 34,
+                  "p50": 467,
+                  "p95": 920.3,
+                  "max": 1040.1
+                },
+                "event-loop": {
+                  "n": 199,
+                  "p50": 0,
+                  "p95": 1.1,
+                  "max": 43.4
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 123,
+                  "p95": 123,
+                  "max": 123
+                },
+                "frame-gap": {
+                  "n": 1191,
+                  "p50": 16.7,
+                  "p95": 16.8,
+                  "max": 100
+                },
+                "storage-write": {
+                  "n": 338,
+                  "p50": 0,
+                  "p95": 0.5,
+                  "max": 16.6
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 4372,
+                "warnings": 102,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 534
+            },
+            {
+              "cycle": 2,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 8,
+                  "p50": 13.8,
+                  "p95": 14.8,
+                  "max": 14.8
+                },
+                "cpu-turn": {
+                  "n": 36,
+                  "p50": 465.3,
+                  "p95": 918.6,
+                  "max": 919.3
+                },
+                "event-loop": {
+                  "n": 209,
+                  "p50": 0,
+                  "p95": 0.9,
+                  "max": 91.2
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 103,
+                  "p95": 103,
+                  "max": 103
+                },
+                "frame-gap": {
+                  "n": 1247,
+                  "p50": 16.7,
+                  "p95": 16.7,
+                  "max": 99.9
+                },
+                "storage-write": {
+                  "n": 353,
+                  "p50": 0,
+                  "p95": 0.7,
+                  "max": 15.5
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 6408,
+                "warnings": 152,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 788
+            }
+          ],
+          "changes": {
+            "hero-response": {
+              "earlyP95": 14.2,
+              "lateP95": 14.8,
+              "deltaMs": 0.6,
+              "ratio": 1.04
+            },
+            "cpu-turn": {
+              "earlyP95": 920.4,
+              "lateP95": 918.6,
+              "deltaMs": -1.8,
+              "ratio": 1
+            },
+            "event-loop": {
+              "earlyP95": 1.7,
+              "lateP95": 0.9,
+              "deltaMs": -0.8,
+              "ratio": 0.53
+            },
+            "storage-write": {
+              "earlyP95": 0.7,
+              "lateP95": 0.7,
+              "deltaMs": 0,
+              "ratio": 1
+            }
+          }
+        },
+        {
+          "leg": "final-before-reload",
+          "cycles": [
+            {
+              "cycle": 3,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 0,
+                  "p50": null,
+                  "p95": null,
+                  "max": null
+                },
+                "cpu-turn": {
+                  "n": 0,
+                  "p50": null,
+                  "p95": null,
+                  "max": null
+                },
+                "event-loop": {
+                  "n": 0,
+                  "p50": null,
+                  "p95": null,
+                  "max": null
+                },
+                "long-task": {
+                  "n": 0,
+                  "p50": null,
+                  "p95": null,
+                  "max": null
+                },
+                "frame-gap": {
+                  "n": 2,
+                  "p50": 16.6,
+                  "p95": 16.7,
+                  "max": 16.7
+                },
+                "storage-write": {
+                  "n": 0,
+                  "p50": null,
+                  "p95": null,
+                  "max": null
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 6408,
+                "warnings": 152,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 788
+            }
+          ],
+          "changes": {}
+        },
+        {
+          "leg": "after-reload",
+          "cycles": [
+            {
+              "cycle": 3,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 10,
+                  "p50": 13.3,
+                  "p95": 121.3,
+                  "max": 121.3
+                },
+                "cpu-turn": {
+                  "n": 27,
+                  "p50": 466.3,
+                  "p95": 918.6,
+                  "max": 1073
+                },
+                "event-loop": {
+                  "n": 170,
+                  "p50": 0,
+                  "p95": 4.2,
+                  "max": 98.4
+                },
+                "long-task": {
+                  "n": 1,
+                  "p50": 121,
+                  "p95": 121,
+                  "max": 121
+                },
+                "frame-gap": {
+                  "n": 1023,
+                  "p50": 16.7,
+                  "p95": 16.7,
+                  "max": 100
+                },
+                "storage-write": {
+                  "n": 329,
+                  "p50": 0,
+                  "p95": 0.4,
+                  "max": 14.8
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 330,
+                "warnings": 3,
+                "errors": 1
+              },
+              "heapBytes": 39600000,
+              "cpuTraceEntries": 34
+            }
+          ],
+          "changes": {}
+        }
+      ],
+      "transitions": [
+        {
+          "name": "cash-badeucey_triple_draw",
+          "stats": {
+            "n": 3,
+            "p50": 145.42,
+            "p95": 148.97,
+            "max": 148.97
+          },
+          "samples": [
+            {
+              "cycle": 0,
+              "ms": 148.97
+            },
+            {
+              "cycle": 1,
+              "ms": 145.42
+            },
+            {
+              "cycle": 2,
+              "ms": 139.55
+            }
+          ]
+        },
+        {
+          "name": "cash-badugi",
+          "stats": {
+            "n": 10,
+            "p50": 158.37,
+            "p95": 175.9,
+            "max": 175.9
+          },
+          "samples": [
+            {
+              "cycle": 0,
+              "ms": 164.34
+            },
+            {
+              "cycle": 0,
+              "ms": 158.37
+            },
+            {
+              "cycle": 0,
+              "ms": 174.54
+            },
+            {
+              "cycle": 1,
+              "ms": 144.54
+            },
+            {
+              "cycle": 1,
+              "ms": 144.74
+            },
+            {
+              "cycle": 1,
+              "ms": 175.9
+            },
+            {
+              "cycle": 2,
+              "ms": 142.73
+            },
+            {
+              "cycle": 2,
+              "ms": 147.78
+            },
+            {
+              "cycle": 2,
+              "ms": 170.69
+            },
+            {
+              "cycle": 3,
+              "ms": 171.58
+            }
+          ]
+        },
+        {
+          "name": "start-badeucey-mtt",
+          "stats": {
+            "n": 3,
+            "p50": 44.21,
+            "p95": 49.61,
+            "max": 49.61
+          },
+          "samples": [
+            {
+              "cycle": 0,
+              "ms": 49.61
+            },
+            {
+              "cycle": 1,
+              "ms": 44.21
+            },
+            {
+              "cycle": 2,
+              "ms": 41.96
+            }
+          ]
+        },
+        {
+          "name": "resume-badeucey-mtt",
+          "stats": {
+            "n": 3,
+            "p50": 224.61,
+            "p95": 271.7,
+            "max": 271.7
+          },
+          "samples": [
+            {
+              "cycle": 0,
+              "ms": 271.7
+            },
+            {
+              "cycle": 1,
+              "ms": 217.28
+            },
+            {
+              "cycle": 2,
+              "ms": 224.61
+            }
+          ]
+        }
+      ],
+      "storage": [
+        {
+          "key": "badugi.history.hands",
+          "timing": {
+            "n": 87,
+            "p50": 7.8,
+            "p95": 16.9,
+            "max": 19.6
+          },
+          "maxBytes": 10378276,
+          "totalMs": 732.6
+        },
+        {
+          "key": "sync.queue.v1",
+          "timing": {
+            "n": 1015,
+            "p50": 0.1,
+            "p95": 0.9,
+            "max": 1.7
+          },
+          "maxBytes": 375432,
+          "totalMs": 284.5
+        },
+        {
+          "key": "__mgx_variant_availability_probe__",
+          "timing": {
+            "n": 2896,
+            "p50": 0,
+            "p95": 0.1,
+            "max": 1.1
+          },
+          "maxBytes": 2,
+          "totalMs": 56.4
+        },
+        {
+          "key": "__mgx_preview_flag_probe__",
+          "timing": {
+            "n": 2246,
+            "p50": 0,
+            "p95": 0.1,
+            "max": 0.9
+          },
+          "maxBytes": 2,
+          "totalMs": 32.5
+        },
+        {
+          "key": "badugi.history.tournamentHands",
+          "timing": {
+            "n": 8,
+            "p50": 0.8,
+            "p95": 1.7,
+            "max": 1.7
+          },
+          "maxBytes": 534602,
+          "totalMs": 7.1
+        },
+        {
+          "key": "badugi.heroTracker",
+          "timing": {
+            "n": 6,
+            "p50": 0,
+            "p95": 0.7,
+            "max": 0.7
+          },
+          "maxBytes": 1388,
+          "totalMs": 1.5
+        },
+        {
+          "key": "mgx_auth",
+          "timing": {
+            "n": 24,
+            "p50": 0,
+            "p95": 0.3,
+            "max": 0.6
+          },
+          "maxBytes": 838,
+          "totalMs": 0.9
+        },
+        {
+          "key": "mgx.handResult.autoNext",
+          "timing": {
+            "n": 2,
+            "p50": 0,
+            "p95": 0.5,
+            "max": 0.5
+          },
+          "maxBytes": 6,
+          "totalMs": 0.5
+        },
+        {
+          "key": "playerRatingState",
+          "timing": {
+            "n": 4,
+            "p50": 0,
+            "p95": 0.4,
+            "max": 0.4
+          },
+          "maxBytes": 2698,
+          "totalMs": 0.4
+        },
+        {
+          "key": "mgx.tournament.mtt.active",
+          "timing": {
+            "n": 15,
+            "p50": 0,
+            "p95": 0.2,
+            "max": 0.2
+          },
+          "maxBytes": 22312,
+          "totalMs": 0.4
+        },
+        {
+          "key": "mgx.career.rivals",
+          "timing": {
+            "n": 3,
+            "p50": 0,
+            "p95": 0.1,
+            "max": 0.1
+          },
+          "maxBytes": 1384,
+          "totalMs": 0.1
+        },
+        {
+          "key": "mgx.tournament.v2",
+          "timing": {
+            "n": 2,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "maxBytes": 2396,
+          "totalMs": 0
+        },
+        {
+          "key": "mgx.qa.sessionId",
+          "timing": {
+            "n": 1,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "maxBytes": 50,
+          "totalMs": 0
+        },
+        {
+          "key": "history.systemEvents",
+          "timing": {
+            "n": 4,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "maxBytes": 1914,
+          "totalMs": 0
+        }
+      ],
+      "diagnosticBuffer": {
+        "at": "2026-11-21T06:21:05.436Z",
+        "cycle": 3,
+        "leg": "final-before-reload",
+        "kind": "diagnostic-buffer",
+        "entries": 6561,
+        "characters": 5819095
+      }
+    }
+  ]
+}

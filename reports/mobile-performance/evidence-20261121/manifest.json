@@ -1,0 +1,27 @@
+[
+  {
+    "file": "production-baseline--iphone-webkit.jsonl.gz",
+    "uncompressedSha256": "d867a4694684b7127f13d6683ff74c1af447d616d5a6d1d46d6b7a2b7288e725",
+    "uncompressedBytes": 1076724
+  },
+  {
+    "file": "production-baseline--android-chromium.jsonl.gz",
+    "uncompressedSha256": "550cf57be5c68853032de89f776c8876bea20584869dcfa7607ce634d704d9d0",
+    "uncompressedBytes": 1158400
+  },
+  {
+    "file": "local-before-pressure-v2--android-chromium.jsonl.gz",
+    "uncompressedSha256": "e87cb40d85610c5903bc88c9f0a569e21cea341d08ac41592bdb6dc955fb646c",
+    "uncompressedBytes": 1935974
+  },
+  {
+    "file": "local-fixed-pressure--android-chromium.jsonl.gz",
+    "uncompressedSha256": "494265771db3198c9ee7db6726805ce606eab809ef06f4fac0d3ac5106a4d796",
+    "uncompressedBytes": 1983119
+  },
+  {
+    "file": "physical-production-scripted--iphone-16-safari.jsonl.gz",
+    "uncompressedSha256": "e5bba9f4904e655172102634197d68fbb7caf0140afb3653eee1b0e5fd8059d9",
+    "uncompressedBytes": 71378
+  }
+]

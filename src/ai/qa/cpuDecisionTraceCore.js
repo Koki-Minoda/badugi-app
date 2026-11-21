@@ -133,8 +133,12 @@ export function buildCpuDecisionTraceRow({
   };
 }
 
+export const MAX_BROWSER_CPU_DECISION_TRACES = 2000;
+
 export function recordBrowserCpuDecisionTrace(row) {
   if (typeof window === "undefined") return;
   window.__MGX_CPU_DECISION_TRACE__ ??= [];
   window.__MGX_CPU_DECISION_TRACE__.push(row);
+  const excess = window.__MGX_CPU_DECISION_TRACE__.length - MAX_BROWSER_CPU_DECISION_TRACES;
+  if (excess > 0) window.__MGX_CPU_DECISION_TRACE__.splice(0, excess);
 }

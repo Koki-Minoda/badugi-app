@@ -412,6 +412,8 @@ jobs:
             npx playwright test --config playwright.release-candidate.config.js &&
             npx playwright test --config playwright.release-candidate-phase.config.js
           '
+      - name: Decision First hand line and auto-next interruption
+        run: bash scripts/ci/run-with-backend.sh npx playwright test tests/e2e/decision-first-hand-line.spec.ts --project=badugi-flow --output=test-results/decision-first
       - name: Upload candidate browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -420,6 +422,8 @@ jobs:
           path: |
             test-results/release-candidate/
             test-results/release-candidate-phase/
+            test-results/decision-first/
+            reports/screenshots/decision-first-line/
             reports/release-candidate-mix/
           if-no-files-found: ignore
           retention-days: 30

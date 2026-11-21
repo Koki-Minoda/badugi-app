@@ -74,3 +74,20 @@ it('shows recorded hero cards and legacy stack fields without displaying opponen
   expect(screen.getByText('500 → 520')).toBeTruthy();
   expect(screen.queryByText('K♠')).toBeNull();
 });
+
+it('keeps filters collapsed while showing active conditions and preserving a search', () => {
+  saveReview(hand);
+  render(<MemoryRouter initialEntries={['/learn/review?status=pending']}><ReviewScreen /></MemoryRouter>);
+  const filters = screen.getByTestId('review-filters');
+  expect(filters.open).toBe(false);
+  expect(filters.querySelector('summary').textContent).toContain('未復習');
+  fireEvent.click(filters.querySelector('summary'));
+  expect(filters.open).toBe(true);
+  fireEvent.change(screen.getByLabelText('メモ・ハンドを検索'), { target: { value: 'no-match' } });
+  fireEvent.click(filters.querySelector('summary'));
+  expect(filters.open).toBe(false);
+  expect(filters.querySelector('summary').textContent).toContain('検索あり');
+  expect(screen.getByText('条件に合うハンドはありません。')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: '絞り込みを解除' }));
+  expect(screen.getByTestId('saved-hand')).toBeTruthy();
+});

@@ -7,6 +7,8 @@ import PracticeScreen from '../PracticeScreen.jsx';
 afterEach(() => { cleanup(); vi.useRealTimers(); localStorage.clear(); });
 it('requires the correct number of distinct cards and does not start on selection alone', () => {
   render(<MemoryRouter><PracticeScreen /></MemoryRouter>);
+  expect(screen.getByTestId('practice-card-picker').open).toBe(false);
+  fireEvent.click(screen.getByText('開始手札を変更'));
   fireEvent.click(screen.getByText('選択をクリア'));
   fireEvent.click(screen.getByRole('button', { name: 'A♠', exact: true }));
   expect(screen.getByRole('button', { name: 'この手札で練習する' }).disabled).toBe(true);

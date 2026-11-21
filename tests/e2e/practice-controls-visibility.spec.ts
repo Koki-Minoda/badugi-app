@@ -10,6 +10,7 @@ for (const [name, device] of [
       const page = await context.newPage();
       try {
       await page.goto(process.env.E2E_APP_URL ? '/learn/practice' : '/dev/learn/practice');
+      await page.getByTestId('practice-setup-options').locator('summary').click();
       await page.getByLabel('全席を自分で操作する').check();
       await page.getByLabel('全員の手札を表示する').check();
       await page.getByRole('button', { name: 'この手札で練習する' }).click();
@@ -32,3 +33,21 @@ for (const [name, device] of [
       } finally { await browser.close(); }
   });
 }
+
+test('mobile setup keeps starting cards near play and edits cards on demand', async ({ page }, info) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  const base = process.env.E2E_APP_URL ?? 'http://127.0.0.1:3000/dev';
+  await page.goto(`${base}/learn/practice`);
+  const picker = page.getByTestId('practice-card-picker');
+  const start = page.getByRole('button', { name: 'この手札で練習する' });
+  await expect(picker).not.toHaveAttribute('open');
+  await expect(start).toBeInViewport();
+  await page.screenshot({ path: info.outputPath('practice-setup.png') });
+  await picker.locator('summary').click();
+  await page.getByRole('button', { name: '選択をクリア' }).click();
+  await expect(start).toBeDisabled();
+  for (const card of ['A♠', '2♥', '3♦', '4♣']) await picker.getByRole('button', { name: card, exact: true }).click();
+  await expect(picker.getByRole('button', { name: 'K♠', exact: true })).toBeDisabled();
+  await start.click();
+  await expect(page.getByTestId('practice-hero-hand').getByRole('button')).toHaveText(['A♠', '2♥', '3♦', '4♣']);
+});

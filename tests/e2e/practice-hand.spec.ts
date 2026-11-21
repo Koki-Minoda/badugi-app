@@ -25,6 +25,7 @@ for (const game of games) test(`${game.id}: play selected cards, repeat, save, a
   await page.getByRole('link', { name: /開始手札を決めて練習する/ }).click();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await page.getByRole('combobox', { name: '種目', exact: true }).selectOption(game.id);
+  await page.getByText('開始手札を変更', { exact: true }).click();
   await page.getByRole('button', { name: '選択をクリア' }).click();
   await expect(page.getByRole('button', { name: 'この手札で練習する' })).toBeDisabled();
   for (const card of game.cards) await page.getByRole('button', { name: card, exact: true }).click();
@@ -75,6 +76,7 @@ test('practice setup works in English and refuses incomplete selections', async 
   await page.goto('/learn');
   await page.getByRole('combobox', { name: 'Language' }).selectOption('en');
   await page.getByRole('link', { name: /Practice a starting hand/ }).click();
+  await page.getByText('Edit starting hand', { exact: true }).click();
   await page.getByRole('button', { name: 'Clear selection' }).click();
   await page.getByRole('button', { name: 'A♠', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Practice this hand' })).toBeDisabled();

@@ -91,10 +91,17 @@ function PracticeContent({ incoming }) {
       {!session ? <section className="space-y-5 rounded-2xl border border-white/15 bg-slate-900 p-4 sm:p-6">
         {incoming && !incoming.error && <p className="text-sm text-emerald-200">{ja ? '開始手札を読み込みました。条件を確認して練習を開始してください。' : 'Starting hand loaded. Check the setup before starting practice.'}</p>}
         <label className="block">{ja ? '種目' : 'Game'}<select aria-label={ja ? '種目' : 'Game'} value={variant} onChange={event => { const next = PRACTICE_GAMES.find(item => item.id === event.target.value); setVariant(next.id); setCards([...next.defaults]); setError(''); }} className="mt-2 block w-full rounded-xl bg-slate-800 p-3">{PRACTICE_GAMES.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-        <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-bold">{ja ? '自分の開始手札' : 'Your starting hand'} · {cards.length} / {game.count}</h2><button type="button" className={buttonClass} onClick={() => setCards([])}>{ja ? '選択をクリア' : 'Clear selection'}</button></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-bold">{ja ? '自分の開始手札' : 'Your starting hand'} · {cards.length} / {game.count}</h2></div>
         <div className="flex min-h-12 flex-wrap gap-2" aria-label={ja ? '選んだ手札' : 'Selected hand'}>{cards.map(card => <span key={card} className={`rounded-lg bg-white px-3 py-3 font-bold ${/[HD]$/.test(card) ? 'text-red-700' : 'text-slate-950'}`}>{cardLabel(card)}</span>)}</div>
+        <details key={variant} open={Boolean(incoming?.error)} className="space-y-3" data-testid="practice-card-picker">
+          <summary className="min-h-11 cursor-pointer py-2 font-semibold text-emerald-200">{ja ? '開始手札を変更' : 'Edit starting hand'}</summary>
+          <button type="button" className={buttonClass} onClick={() => setCards([])}>{ja ? '選択をクリア' : 'Clear selection'}</button>
         <p className="text-sm text-slate-300">{ja ? `${game.count}枚選んでください。選択中のカードを押すと解除できます。` : `Choose ${game.count} cards. Press a selected card to remove it.`}</p>
         <div className="space-y-3">{['S', 'H', 'D', 'C'].map(suit => <div key={suit} className="grid grid-cols-7 gap-2 sm:grid-cols-[repeat(13,minmax(0,1fr))]">{PRACTICE_CARDS.filter(card => card.endsWith(suit)).map(card => <button type="button" key={card} aria-pressed={cards.includes(card)} disabled={!cards.includes(card) && cards.length === game.count} onClick={() => setCards(previous => previous.includes(card) ? previous.filter(value => value !== card) : [...previous, card])} className={`min-h-11 min-w-0 rounded-lg border px-1 text-sm font-bold disabled:opacity-40 ${cards.includes(card) ? 'border-emerald-300 bg-emerald-300 text-slate-950' : /[HD]$/.test(card) ? 'border-white/20 bg-slate-800 text-red-300' : 'border-white/20 bg-slate-800 text-white'}`}>{cardLabel(card)}</button>)}</div>)}</div>
+          <p className="text-xs text-slate-400">{ja ? `${game.count}枚を選ぶと追加できなくなります。別のカードに変えるには、選択中のカードを外してください。` : `Once ${game.count} cards are selected, remove a selected card before adding another.`}</p>
+        </details>
+        <details className="space-y-3" data-testid="practice-setup-options">
+          <summary className="min-h-11 cursor-pointer py-2 font-semibold text-emerald-200">{ja ? '練習条件・設定' : 'Practice setup'} · {options.selfPlay ? (ja ? '全席操作' : 'All seats') : 'CPU'}{options.showAll ? (ja ? ' · 手札公開' : ' · All hands visible') : ''}{options.neverFold ? (ja ? ' · フォールドなし' : ' · Never folds') : ''}</summary>
         <p className="text-sm leading-relaxed text-slate-300">{ja ? '6人卓、自分はボタン、持ち点は全員2,000、ブラインド10/20。相手5人はCPUです。自分の開始手札を固定し、相手の手札と山札は毎回配り直します。' : 'Six seats, you on the button, 2,000 chips each, blinds 10/20. Five CPU opponents. Your starting hand stays fixed; opponents and the remaining deck are dealt again each time.'}</p>
         <fieldset className="space-y-3 rounded-xl border border-white/15 p-3">
           <legend className="px-2 font-bold">{ja ? '練習設定' : 'Practice settings'}</legend>
@@ -102,6 +109,7 @@ function PracticeContent({ incoming }) {
           {[['neverFold', 'CPUはフォールドしない', 'CPU never folds'], ['selfPlay', '全席を自分で操作する', 'Control every seat'], ['showAll', '全員の手札を表示する', 'Show all hands']].map(([key, jp, en]) => <label key={key} className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={Boolean(options[key])} onChange={event => changeOption(key, event.target.checked)} />{ja ? jp : en}</label>)}
           <p className="text-sm text-slate-300">{ja ? '毎回2,000点から開始します。全席操作では手番の席のカードを表示し、ハンド終了前まで一手戻せます。' : 'Each hand starts with 2,000 chips. In all-seat practice, the acting seat’s cards are shown. Undo is available until the hand ends.'}</p>
         </fieldset>
+        </details>
         <button type="button" onClick={start} disabled={!validatePracticeSetup(variant, cards)} className="min-h-12 w-full rounded-xl bg-emerald-300 px-5 py-3 font-bold text-slate-950 disabled:opacity-40">{ja ? 'この手札で練習する' : 'Practice this hand'}</button>
         <ShareLink url={validatePracticeSetup(variant, cards) ? `${window.location.origin}${practiceUrl({ variant, cards })}` : null} />
         <PracticePresets variant={variant} cards={cards} language={language} onLoad={setup => { setVariant(setup.variant); setCards(setup.cards); setError(''); }} />

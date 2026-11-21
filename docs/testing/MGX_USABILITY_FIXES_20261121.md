@@ -54,3 +54,7 @@ U03の確認画像: [iPhone](../../reports/usability-fixes/2026-11-21/u03-iphone
 [検証結果と画像ハッシュ](../../reports/usability-fixes/2026-11-21/final/verification.json)、[スマホメニュー](../../reports/usability-fixes/2026-11-21/final/menu-mobile.png)、[iPhoneサイズの練習](../../reports/usability-fixes/2026-11-21/final/practice-iphone.png)、[手札設定](../../reports/usability-fixes/2026-11-21/final/practice-setup-mobile.png)、[エクイティ](../../reports/usability-fixes/2026-11-21/final/equity-mobile.png)、[設定](../../reports/usability-fixes/2026-11-21/final/settings-mobile-en.png)。
 
 修正後のiOSシミュレーターでの再QM、本番反映後の再QMは未実施。元のQMで追加確認に挙げた通常キャッシュの待機、履歴が不足していたグラフ状態は、この修正だけで解決・確認済みとは扱わない。
+
+## iOSシミュレーター再QMの追補
+
+- #462: iPhone 17 / iOS 26.5で設定ヘッダーの語尾だけが折り返す問題を修正。320・390・852pxの日英レイアウトをChromium各6件、iPhone WebKit各6件で検証。既知不具合50件・RL安全性66件・build通過。[修正前](../../reports/usability-fixes/2026-11-21/ios-simulator/04-settings-header-before-fit.jpg)、[修正後](../../reports/usability-fixes/2026-11-21/ios-simulator/06-settings-header-fixed.jpg)。

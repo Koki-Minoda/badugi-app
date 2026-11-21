@@ -126,16 +126,16 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null, 
 
   return (
     <div className={`${embedded ? "bg-transparent" : "min-h-screen bg-slate-950"} text-white`}>
-      <header className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
+      <header className="max-w-6xl mx-auto px-6 py-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm uppercase tracking-widest text-emerald-300">{ja ? "設定" : "Settings"}</p>
-          <h1 className="text-3xl font-extrabold">{ja ? "プロフィール設定" : "Title & Avatar"}</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold">{ja ? "プロフィール設定" : "Title & Avatar"}</h1>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button
             type="button"
             onClick={handleBack}
-            className="min-h-11 px-4 py-2 rounded-lg border border-white/30 hover:bg-white/10 transition"
+            className="min-h-11 whitespace-nowrap px-4 py-2 rounded-lg border border-white/30 hover:bg-white/10 transition"
           >
             {backLabel ?? (ja ? (embedded ? "ゲームへ戻る" : "ゲーム選択へ戻る") : (embedded ? "Back to game" : "Back to menu"))}
           </button>
@@ -143,7 +143,7 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null, 
             <button
               type="button"
               onClick={() => navigate("/game")}
-              className="px-4 py-2 rounded-lg bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition"
+              className="min-h-11 whitespace-nowrap px-4 py-2 rounded-lg bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition"
             >
               {ja ? "ゲームへ" : "Jump into Game"}
             </button>

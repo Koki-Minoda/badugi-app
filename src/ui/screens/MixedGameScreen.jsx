@@ -1,4 +1,5 @@
 import { useLanguage } from '../preferences/language.js';
+import VariantChoices from '../mixed/VariantChoices.jsx';
 import LanguageSelect from '../preferences/LanguageSelect.jsx';
 import ShareLink from '../sharing/ShareLink.jsx';
 import { sharedMixUrl } from '../sharing/mixShare.js';
@@ -114,19 +115,6 @@ const buildDraftFromProfile = (profile = {}) => ({
   softBans: Array.isArray(profile.softBans) ? [...profile.softBans] : [],
 });
 
-const parseIdList = (value = "") =>
-  value
-    .split(/[,\s]+/)
-    .map((id) => id.trim().toUpperCase())
-    .filter(Boolean);
-
-function IdListInput({ ids, onCommit, ...props }) {
-  const [text, setText] = useState(() => ids.join(", "));
-  useEffect(() => { setText(ids.join(", ")); }, [ids]);
-  return <input {...props} type="text" value={text}
-    onChange={event => setText(event.target.value)}
-    onBlur={() => onCommit(parseIdList(text))} />;
-}
 
 function SelectedList({ draft, setDraft, isVariantPlayable }) {
   const ja=useLanguage()==='ja';
@@ -403,7 +391,7 @@ export default function MixedGameScreen({ language: languageProp }) {
   const handleSave = () => {
     if (blockWhenLocked()) return;
     if (!draft.name.trim()) {
-      setError(ja ? 'プロフィール名を入力してください。' : 'Enter a MIX name.');
+      setError(ja ? 'MIX名を入力してください。' : 'Enter a MIX name.');
       return;
     }
     if (draft.selectedGameIds.length === 0) {
@@ -413,7 +401,7 @@ export default function MixedGameScreen({ language: languageProp }) {
     const saved = saveProfile(draft);
     setSelectedProfileId(saved.id);
     setDraft(buildDraftFromProfile(saved));
-    setMessage(ja ? 'プロフィールを保存しました。' : 'MIX saved.');
+    setMessage(ja ? 'MIXを保存しました。' : 'MIX saved.');
     setError("");
   };
 
@@ -656,7 +644,7 @@ export default function MixedGameScreen({ language: languageProp }) {
         </section>
         <section className="grid gap-6 lg:grid-cols-[320px_1fr]">
           <div className="bg-slate-900/80 border border-white/10 rounded-3xl p-4 space-y-3">
-            <h2 className="text-lg font-semibold">{ja ? 'プロフィール一覧' : 'Saved MIXes'}</h2>
+            <h2 className="text-lg font-semibold">{ja ? '保存したMIX' : 'Saved MIXes'}</h2>
             <div className="space-y-2 max-h-[360px] overflow-y-auto">
               {profiles.map((profile) => (
                 <button
@@ -704,7 +692,7 @@ export default function MixedGameScreen({ language: languageProp }) {
             <legend className="px-2 font-semibold">{ja ? "MIXの内容" : "MIX setup"}</legend>
             <div className="grid gap-4 md:grid-cols-2">
               <label className="flex flex-col gap-2">
-                <span className="text-sm text-slate-300">{ja ? 'プロフィール名' : 'MIX name'}</span>
+                <span className="text-sm text-slate-300">{ja ? 'MIX名' : 'MIX name'}</span>
                 <input
                   type="text"
                   value={draft.name}
@@ -787,35 +775,19 @@ export default function MixedGameScreen({ language: languageProp }) {
               </label>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
-              <label className="flex flex-col gap-2 text-sm text-slate-300">
-                {ja ? '必ず除外する種目' : 'Exclude games'}
-                <IdListInput
-                  ids={draft.hardBans}
-                  onCommit={(ids) => setDraft(prev => ({ ...prev, hardBans: ids }))}
-                  className="rounded-xl bg-slate-950/60 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  placeholder={ja ? '例: B09, ST4' : 'e.g. B09, ST4'}
-                />
-              </label>
-              <label className="flex flex-col gap-2 text-sm text-slate-300">
-                {ja ? '出現しにくくする種目' : 'Reduce selection weight'}
-                <IdListInput
-                  ids={draft.softBans}
-                  onCommit={(ids) => setDraft(prev => ({ ...prev, softBans: ids }))}
-                  className="rounded-xl bg-slate-950/60 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  placeholder={ja ? '例: B09' : 'e.g. B09'}
-                />
-              </label>
+              <VariantChoices label={ja ? '必ず除外する種目' : 'Exclude games'} options={listVariantProfiles()} ids={draft.hardBans} onChange={ids => setDraft(prev => ({ ...prev, hardBans: ids }))} ja={ja} />
+              <VariantChoices label={ja ? '出現しにくくする種目' : 'Reduce selection weight'} options={listVariantProfiles()} ids={draft.softBans} onChange={ids => setDraft(prev => ({ ...prev, softBans: ids }))} ja={ja} />
             </div>
             {draft.selectionMode === "CATEGORY" && (
               <div className="rounded-3xl border border-white/10 p-4 space-y-3 bg-slate-900/40">
-                <p className="text-sm text-slate-200 font-semibold">カテゴリ設定</p>
+                <p className="text-sm text-slate-200 font-semibold">{ja ? "カテゴリ設定" : "Category settings"}</p>
                 <p className="text-xs text-slate-400">
-                  重みづけと候補IDを指定できます（空の場合はカテゴリ全体から抽選）。
+                  {ja ? "出現比率と候補の種目を選べます。候補が未指定ならカテゴリ全体から抽選します。" : "Set category weights and choose candidate games. An empty selection uses the whole category."}
                 </p>
                 {CATEGORY_ORDER.map((category) => {
-                  const label = VARIANT_CATEGORY_LABELS[category] ?? category;
+                  const label = categoryLabels[category] ?? category;
                   const weightValue = draft.categoryRules.weights?.[category] ?? 0;
-                  const poolValue = (draft.categoryRules.pools?.[category] ?? []).join(", ");
+                  const poolValue = draft.categoryRules.pools?.[category] ?? [];
                   return (
                     <div
                       key={category}
@@ -825,6 +797,7 @@ export default function MixedGameScreen({ language: languageProp }) {
                         <span className="text-sm text-slate-200">{label}</span>
                         <input
                           type="number"
+                          aria-label={ja ? `${label}の出現比率` : `${label} weight`}
                           min={0}
                           step={0.5}
                           value={weightValue}
@@ -844,25 +817,9 @@ export default function MixedGameScreen({ language: languageProp }) {
                           className="w-24 rounded bg-slate-900 border border-white/10 px-2 py-1 text-xs text-right focus:outline-none focus:ring-1 focus:ring-emerald-500"
                         />
                       </div>
-                      <textarea
-                        value={poolValue}
-                        onChange={(e) =>
-                          setDraft((prev) => ({
-                            ...prev,
-                            categoryRules: {
-                              ...prev.categoryRules,
-                              weights: prev.categoryRules.weights,
-                              pools: {
-                                ...prev.categoryRules.pools,
-                                [category]: parseIdList(e.target.value),
-                              },
-                            },
-                          }))
-                        }
-                        className="w-full rounded-xl bg-slate-950/60 border border-white/10 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        placeholder="ID をカンマ/スペース区切りで入力"
-                        rows={2}
-                      />
+                      <VariantChoices label={ja ? `${label}の候補` : `${label} candidates`} options={listVariantProfiles().filter(profile => profile.category === category)} ids={poolValue} ja={ja}
+                        emptyLabel={ja ? 'カテゴリ全体' : 'All games in this category'}
+                        onChange={ids => setDraft(prev => ({ ...prev, categoryRules: { ...prev.categoryRules, pools: { ...prev.categoryRules.pools, [category]: ids } } }))} />
                     </div>
                   );
                 })}
@@ -894,7 +851,7 @@ export default function MixedGameScreen({ language: languageProp }) {
             className="px-6 py-3 rounded-2xl bg-slate-800 border border-white/20 hover:bg-slate-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={builderDisabled}
           >
-            {ja ? 'プロフィール保存' : 'Save MIX'}
+            {ja ? 'MIXを保存' : 'Save MIX'}
           </button>
           <button
             onClick={handleStart}

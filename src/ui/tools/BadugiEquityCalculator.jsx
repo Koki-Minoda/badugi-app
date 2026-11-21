@@ -235,7 +235,13 @@ export default function BadugiEquityCalculator({ ja, spot = null }) {
         </div>
       )}
       {error && <p role="status" className={`rounded-xl border p-4 text-sm ${error === 'handSize' ? 'border-white/20 text-slate-300' : 'border-amber-300/40 text-amber-100'}`}>{current?.data?.line && (ja ? `${current.data.line}行目 · ` : `Line ${current.data.line} · `)}{errors[error][ja ? 0 : 1]}</p>}
-      {(result || columns.length > 0) && <BadugiEquityResults result={result} columns={columns} choices={choices} hero={hero} opponent={opponentChoice} onHero={id => update('heroDiscards', choices[id])} onOpponent={id => update('opponentChoice', id)} players={players} ja={ja} />}
+      {(result || columns.length > 0) && <div className="space-y-3" data-testid="equity-detail-results">
+        {ranged && <div className="rounded-xl border border-emerald-300/30 p-3 text-sm">
+          <h3 className="font-bold">{ja ? 'レンジAの詳細結果' : 'Detailed results for Range A'}</h3>
+          <p className="mt-1 text-slate-300">{ja ? '自分' : 'You'}: {remainingDraws === 0 ? (ja ? '交換なし（最終手札）' : 'Final hand, no draw') : heroDiscards.length ? heroDiscards.map(cardText).join(' ') + (ja ? ' を交換' : ' discarded') : (ja ? 'パット' : 'Stand pat')} · {ja ? '相手' : 'Opponent'}: {remainingDraws === 0 ? (ja ? '交換なし' : 'No draw') : opponentChoice < 0 ? (ja ? '交換枚数ごとの比較' : 'Compare all draw counts') : (ja ? `${opponentChoice}枚交換` : `Draw ${opponentChoice}`)} · {ja ? `残り${remainingDraws}ドロー` : `${remainingDraws} draws remaining`}</p>
+        </div>}
+        <BadugiEquityResults result={result} columns={columns} choices={choices} hero={hero} opponent={opponentChoice} onHero={id => update('heroDiscards', choices[id])} onOpponent={id => update('opponentChoice', id)} players={players} ja={ja} />
+      </div>}
       {remainingDraws <= 2 && <BadugiFinalBet base={request} remainingDraws={remainingDraws} opponentCount={opponentChoice} spot={reviewSpot} ja={ja} />}
     </section>
   );

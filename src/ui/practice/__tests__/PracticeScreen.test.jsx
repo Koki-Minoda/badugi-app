@@ -24,3 +24,16 @@ it('stops pending CPU work when leaving a hand and preserves setup for restartin
   expect(screen.queryByTestId('practice-table')).toBeNull();
   expect(screen.getByRole('button', { name: 'この手札で練習する' }).disabled).toBe(false);
 });
+it('places the hand and controls before opponents while preserving visible hands and all-seat mode', () => {
+  localStorage.setItem('mgx.practice.options', JSON.stringify({ selfPlay: true, showAll: true }));
+  render(<MemoryRouter><PracticeScreen /></MemoryRouter>);
+  fireEvent.click(screen.getByText('この手札で練習する'));
+  const hand = screen.getByTestId('practice-hero-hand');
+  const actions = screen.getByTestId('practice-actions');
+  const cpu = screen.getByTestId('practice-cpu-1');
+  expect(hand.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(actions.compareDocumentPosition(cpu) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(cpu.textContent).not.toContain('▧');
+  expect(actions.querySelectorAll('button').length).toBeGreaterThan(0);
+  expect(screen.getByRole('status').textContent).toContain('席');
+});

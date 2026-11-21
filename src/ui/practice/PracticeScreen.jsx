@@ -1,7 +1,7 @@
 import ShareLink from '../sharing/ShareLink.jsx';
 import { practiceUrl } from './practiceTransfer.js';
 import { useLanguage } from '../preferences/language.js';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import LanguageSelect from '../preferences/LanguageSelect.jsx';
 import ReviewBookmarkButton from '../review/ReviewBookmarkButton.jsx';
@@ -24,6 +24,10 @@ function PracticeContent({ incoming }) {
   const [variant, setVariant] = useState(incoming?.variant ?? PRACTICE_GAMES[0].id);
   const [cards, setCards] = useState(incoming?.cards ?? (incoming?.error ? [] : [...PRACTICE_GAMES[0].defaults]));
   const [session, setSession] = useState(null);
+  const tableRef = useRef(null);
+  useEffect(() => {
+    if (session) tableRef.current?.scrollIntoView?.({ block: 'start' });
+  }, [session]);
   const [options, setOptions] = useState(() => {
     try { return { cpuDelay: 700, neverFold: false, selfPlay: false, showAll: false, ...JSON.parse(localStorage.getItem('mgx.practice.options') ?? '{}') }; }
     catch { return { cpuDelay: 700, neverFold: false, selfPlay: false, showAll: false }; }
@@ -101,11 +105,10 @@ function PracticeContent({ incoming }) {
         <button type="button" onClick={start} disabled={!validatePracticeSetup(variant, cards)} className="min-h-12 w-full rounded-xl bg-emerald-300 px-5 py-3 font-bold text-slate-950 disabled:opacity-40">{ja ? 'この手札で練習する' : 'Practice this hand'}</button>
         <ShareLink url={validatePracticeSetup(variant, cards) ? `${window.location.origin}${practiceUrl({ variant, cards })}` : null} />
         <PracticePresets variant={variant} cards={cards} language={language} onLoad={setup => { setVariant(setup.variant); setCards(setup.cards); setError(''); }} />
-      </section> : <section className="space-y-5" data-testid="practice-table">
+      </section> : <section ref={tableRef} className="space-y-5" data-testid="practice-table">
         <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold">{game.name}</h2><button type="button" className={buttonClass} onClick={() => { setSession(null); setError(''); setSelection([]); }}>{ja ? '条件を変更' : 'Change setup'}</button></div>
         <p className="text-sm text-slate-300">{session.options.selfPlay ? (ja ? '全席を自分で操作' : 'All-seat practice') : (ja ? `CPUの速さ: ${{150:'速め',700:'標準',1500:'ゆっくり'}[session.options.cpuDelay]}${session.options.neverFold ? ' · フォールドなし' : ''}` : `CPU speed: ${{150:'Fast',700:'Normal',1500:'Slow'}[session.options.cpuDelay]}${session.options.neverFold ? ' · Never folds' : ''}`)} · {ja ? '開始持ち点 2,000' : 'Starting stack 2,000'}</p>
         {session.options.selfPlay && <button type="button" className={buttonClass} disabled={finished || !session.undoHistory.length} onClick={() => { if (session.undo()) { setSelection([]); setError(''); setVersion(value => value + 1); } }}>{ja ? '一手戻す' : 'Undo'}</button>}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{snapshot.players.slice(1).map((player, index) => <div key={index} data-testid={`practice-cpu-${index + 1}`} className={`min-w-0 space-y-2 rounded-xl border p-3 ${actor === index + 1 && !finished ? 'border-amber-200' : 'border-white/15'} ${player.folded ? 'opacity-50' : ''}`}><p className="truncate text-sm font-semibold">CPU {index + 1}</p><p className="text-sm">{player.stack} <span className="text-slate-400">· {ja ? 'ベット' : 'Bet'} {player.betThisRound ?? player.bet ?? 0}</span></p><p className="flex flex-wrap gap-1 text-sm">{player.hand.map((card, cardIndex) => <span key={cardIndex} className="rounded bg-slate-800 px-1">{(session.options.showAll || (finished && !player.folded)) ? cardLabel(card) : '▧'}</span>)}</p><p className="text-xs text-slate-300">{player.folded ? (ja ? 'フォールド' : 'Folded') : player.lastAction}</p></div>)}</div>
         <div className="rounded-2xl border border-emerald-300/30 bg-emerald-900/20 p-4 text-center">
           <p className="text-lg font-bold">Pot {finished ? snapshot.lastHandResult?.pot ?? 0 : snapshot.pot ?? snapshot.players.reduce((sum, player) => sum + (player.totalInvested ?? 0), 0)}</p>
           <p role="status" data-testid="practice-turn">{finished ? (ja ? 'ハンド終了' : 'Hand finished') : `${drawPhase ? (ja ? 'カード交換' : 'Draw') : (ja ? 'ベット' : 'Betting')} · ${ja ? '交換' : 'Draw round'} ${snapshot.drawRound ?? 0}/3 · ${heroTurn ? (session.options.selfPlay ? (ja ? `席 ${activeSeat + 1} の番` : `Seat ${activeSeat + 1} to act`) : (ja ? 'あなたの番' : 'Your turn')) : `CPU ${actor}`}`}</p>
@@ -115,7 +118,7 @@ function PracticeContent({ incoming }) {
           <div className="flex flex-wrap justify-center gap-2" data-testid="practice-hero-hand">{hero.hand.map((card, index) => <button type="button" key={`${index}-${card}`} aria-label={cardLabel(card)} aria-pressed={selection.includes(index)} disabled={!heroTurn || !drawPhase || Boolean(error)} onClick={() => setSelection(previous => previous.includes(index) ? previous.filter(value => value !== index) : [...previous, index])} className={`min-h-16 min-w-12 rounded-lg border-2 bg-white px-2 py-4 text-lg font-bold ${/[HD]$/.test(card) ? 'text-red-700' : 'text-slate-950'} ${selection.includes(index) ? 'border-amber-400 ring-2 ring-amber-400' : 'border-white'}`}>{cardLabel(card)}</button>)}</div>
           {!finished && <div className="space-y-3">
             {heroTurn && drawPhase && <p className="text-sm text-slate-300">{ja ? '交換したいカードを選んでください。0枚ならそのまま進みます。' : 'Select cards to discard. Select none to stand pat.'}</p>}
-            <div className="flex flex-wrap justify-center gap-2">{legal.map(action => action.type === 'DRAW' ? <button type="button" key="DRAW" disabled={Boolean(error)} className={`${buttonClass} bg-emerald-300 text-slate-950`} onClick={() => act({ type: 'DRAW', discardIndexes: selection })}>{ja ? `${selection.length}枚交換する` : `Draw ${selection.length} cards`}</button> : <button type="button" key={action.type} disabled={Boolean(error)} className={buttonClass} onClick={() => act({ type: action.type })}>{actionLabels[action.type]?.[ja ? 0 : 1] ?? action.type}{action.type === 'CALL' ? ` ${toCall}` : ['RAISE', 'BET'].includes(action.type) ? ` +${betSize}` : ''}</button>)}</div>
+            <div data-testid="practice-actions" className="flex flex-wrap justify-center gap-2">{legal.map(action => action.type === 'DRAW' ? <button type="button" key="DRAW" disabled={Boolean(error)} className={`${buttonClass} bg-emerald-300 text-slate-950`} onClick={() => act({ type: 'DRAW', discardIndexes: selection })}>{ja ? `${selection.length}枚交換する` : `Draw ${selection.length} cards`}</button> : <button type="button" key={action.type} disabled={Boolean(error)} className={buttonClass} onClick={() => act({ type: action.type })}>{actionLabels[action.type]?.[ja ? 0 : 1] ?? action.type}{action.type === 'CALL' ? ` ${toCall}` : ['RAISE', 'BET'].includes(action.type) ? ` +${betSize}` : ''}</button>)}</div>
           </div>}
           {finished && <div className="space-y-4" data-testid="practice-result">
             {progressSaveError && <div className="text-sm text-amber-200"><p role="alert">{progressError(progressSaveError, ja)}</p><button type="button" className="min-h-11 underline" onClick={() => { try { recordPracticeCompletion(session.record()); setProgressSaveError(''); } catch (failure) { setProgressSaveError(failure.message); } }}>{ja ? '進捗の保存を再試行' : 'Retry saving progress'}</button></div>}
@@ -127,6 +130,7 @@ function PracticeContent({ incoming }) {
             <Link to="/learn/review" className="inline-block min-h-11 py-2 text-emerald-200">{ja ? '復習一覧を開く' : 'Open saved hands'}</Link>
           </div>}
         </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{snapshot.players.slice(1).map((player, index) => <div key={index} data-testid={`practice-cpu-${index + 1}`} className={`min-w-0 space-y-2 rounded-xl border p-3 ${actor === index + 1 && !finished ? 'border-amber-200' : 'border-white/15'} ${player.folded ? 'opacity-50' : ''}`}><p className="truncate text-sm font-semibold">CPU {index + 1}</p><p className="text-sm">{player.stack} <span className="text-slate-400">· {ja ? 'ベット' : 'Bet'} {player.betThisRound ?? player.bet ?? 0}</span></p><p className="flex flex-wrap gap-1 text-sm">{player.hand.map((card, cardIndex) => <span key={cardIndex} className="rounded bg-slate-800 px-1">{(session.options.showAll || (finished && !player.folded)) ? cardLabel(card) : '▧'}</span>)}</p><p className="text-xs text-slate-300">{player.folded ? (ja ? 'フォールド' : 'Folded') : player.lastAction}</p></div>)}</div>
       </section>}
     </div>
   </main>;

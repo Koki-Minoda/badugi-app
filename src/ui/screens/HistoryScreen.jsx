@@ -19,6 +19,8 @@ import {
 } from "../feedback/playFeedbackStore.js";
 import { buildReplayReviewContract } from "../feedback/replayReviewContract.js";
 import ReplayScreen from "./ReplayScreen.jsx";
+import PersonalResults from "../personalResults/PersonalResults.jsx";
+import { readPersonalResultsHands } from "../personalResults/readPersonalResultsHands.js";
 import {
   createHistoryExportPayload,
   downloadHistoryExport,
@@ -141,6 +143,7 @@ export default function HistoryScreen() {
   });
   const [feedbackScope, setFeedbackScope] = useState("mixed");
   const [activeFeedbackReplay, setActiveFeedbackReplay] = useState(null);
+  const [personalResultsHands, setPersonalResultsHands] = useState(null);
   const filtered = tournaments.filter((entry) => {
     if (!search.trim()) return true;
     return (
@@ -264,6 +267,16 @@ export default function HistoryScreen() {
     );
   }
 
+  if (personalResultsHands) return (
+    <PersonalResults hands={personalResultsHands} language={language}
+      onBack={() => setPersonalResultsHands(null)}
+      onReplay={(handId, target) => {
+        const hand = personalResultsHands.find((entry) => entry.handId === handId);
+        if (hand) setActiveFeedbackReplay({ handId, hand, target });
+      }}
+    />
+  );
+
   return (
     <div
       className="min-h-screen"
@@ -277,6 +290,7 @@ export default function HistoryScreen() {
           <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">History</p>
           <h1 className="text-2xl sm:text-3xl font-extrabold">{ja ? 'トーナメント & ハンド履歴' : 'Tournament & hand history'}</h1><LanguageSelect />
         </div>
+        {hasStoredFeedbackAuth() && <button type="button" onClick={() => setPersonalResultsHands(readPersonalResultsHands())} className="min-h-11 rounded-full border border-emerald-300/40 px-4 text-emerald-200">{ja ? 'マイ結果を見る' : 'View my results'}</button>}
         <button type="button" onClick={() => navigate("/learn/review")} className="min-h-11 rounded-full border border-emerald-300/40 px-4 text-emerald-200">{ja ? '復習一覧' : 'Review list'}</button>
         <button
           type="button"

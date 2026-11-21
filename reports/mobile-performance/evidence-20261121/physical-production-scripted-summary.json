@@ -1,0 +1,219 @@
+{
+  "criteria": {
+    "heroResponseP95Ms": 100,
+    "cpuTurnP95Ms": 2000,
+    "eventLoopMaxMs": 250,
+    "transitionMs": 2000,
+    "repeatRatio": 2,
+    "repeatDeltaMs": {
+      "hero-response": 100,
+      "cpu-turn": 500,
+      "event-loop": 50,
+      "storage-write": 10
+    }
+  },
+  "flags": [],
+  "generatedAt": "2026-11-21T06:29:43.421Z",
+  "root": "reports/mobile-performance/physical-production-scripted",
+  "units": "milliseconds unless named otherwise",
+  "notes": [
+    "Thresholds are investigation heuristics, not approved release requirements.",
+    "physicalDevice identifies hardware runs; other projects use host CPU mobile emulation.",
+    "Physical runs use scripted DOM button activation and do not measure physical touch input latency.",
+    "Samples marked includesSyntheticHistorySetup contain artificial quota-fill work; event-loop maxima and early/late comparisons exclude these samples from game-lag attribution. Raw metrics remain available.",
+    "CPU turn time includes intentional pause and render transition; it is not model inference latency.",
+    "First cold hand and reload hand are separate from repeated-cycle comparisons.",
+    "Transitions include UI automation dispatch, while hero-response is browser click to first observed state change.",
+    "performance.memory is browser-dependent and may be quantized."
+  ],
+  "projects": [
+    {
+      "project": "iphone-16-safari",
+      "physicalDevice": true,
+      "failures": [
+        {
+          "at": "2026-11-21T06:26:06.459Z",
+          "cycle": 0,
+          "leg": "cold-badugi-cash",
+          "kind": "failure",
+          "message": "Error: Timeout in cold-badugi-cash"
+        }
+      ],
+      "completedHands": 1,
+      "pageErrors": [],
+      "heroResponseTimeouts": [],
+      "stages": [
+        {
+          "leg": "cold-badugi-cash",
+          "cycles": [
+            {
+              "cycle": -1,
+              "includesSyntheticHistorySetup": false,
+              "metrics": {
+                "hero-response": {
+                  "n": 7,
+                  "p50": 11,
+                  "p95": 15,
+                  "max": 15
+                },
+                "cpu-turn": {
+                  "n": 37,
+                  "p50": 466,
+                  "p95": 928,
+                  "max": 1725
+                },
+                "event-loop": {
+                  "n": 201,
+                  "p50": 4,
+                  "p95": 5,
+                  "max": 11
+                },
+                "long-task": {
+                  "n": 0,
+                  "p50": null,
+                  "p95": null,
+                  "max": null
+                },
+                "frame-gap": {
+                  "n": 1254,
+                  "p50": 17,
+                  "p95": 20,
+                  "max": 49
+                },
+                "storage-write": {
+                  "n": 223,
+                  "p50": 0,
+                  "p95": 0,
+                  "max": 1
+                }
+              },
+              "probeVersion": 2,
+              "consoleCalls": {
+                "logs": 364,
+                "errors": 1,
+                "warnings": 2
+              },
+              "heapBytes": null,
+              "cpuTraceEntries": 42
+            }
+          ],
+          "changes": {}
+        }
+      ],
+      "transitions": [],
+      "storage": [
+        {
+          "key": "sync.queue.v1",
+          "timing": {
+            "n": 51,
+            "p50": 0,
+            "p95": 1,
+            "max": 1
+          },
+          "maxBytes": 312724,
+          "totalMs": 5
+        },
+        {
+          "key": "__mgx_preview_flag_probe__",
+          "timing": {
+            "n": 118,
+            "p50": 0,
+            "p95": 0,
+            "max": 1
+          },
+          "maxBytes": 2,
+          "totalMs": 2
+        },
+        {
+          "key": "mgx.tournament.v2",
+          "timing": {
+            "n": 1,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "maxBytes": 1006,
+          "totalMs": 0
+        },
+        {
+          "key": "badugi.heroTracker",
+          "timing": {
+            "n": 2,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "maxBytes": 490,
+          "totalMs": 0
+        },
+        {
+          "key": "mgx_auth",
+          "timing": {
+            "n": 2,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "maxBytes": 806,
+          "totalMs": 0
+        },
+        {
+          "key": "__mgx_variant_availability_probe__",
+          "timing": {
+            "n": 45,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "maxBytes": 2,
+          "totalMs": 0
+        },
+        {
+          "key": "mgx.qa.sessionId",
+          "timing": {
+            "n": 1,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "maxBytes": 50,
+          "totalMs": 0
+        },
+        {
+          "key": "playerRatingState",
+          "timing": {
+            "n": 1,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "maxBytes": 1066,
+          "totalMs": 0
+        },
+        {
+          "key": "history.systemEvents",
+          "timing": {
+            "n": 1,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "maxBytes": 480,
+          "totalMs": 0
+        },
+        {
+          "key": "badugi.history.hands",
+          "timing": {
+            "n": 1,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "maxBytes": 180062,
+          "totalMs": 0
+        }
+      ],
+      "diagnosticBuffer": null
+    }
+  ]
+}

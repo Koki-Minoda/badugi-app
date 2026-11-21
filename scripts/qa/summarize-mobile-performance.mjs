@@ -41,6 +41,12 @@ for (const project of fs.readdirSync(root)) {
     .filter(Boolean)
     .map((line) => JSON.parse(line));
   const probes = rows.filter((row) => row.kind === "probe");
+  const fixtureProbes = new Set();
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].kind !== "history-fixture") continue;
+    const nextProbe = rows.slice(i + 1).find((row) => row.kind === "probe");
+    if (nextProbe) fixtureProbes.add(nextProbe);
+  }
   const stages = [];
   for (const leg of [...new Set(probes.map((row) => row.leg))]) {
     const group = probes.filter((row) => row.leg === leg);
@@ -59,6 +65,7 @@ for (const project of fs.readdirSync(root)) {
         );
       return {
         cycle: row.cycle,
+        includesSyntheticHistorySetup: fixtureProbes.has(row),
         metrics,
         probeVersion: row.probeVersion ?? 1,
         consoleCalls: row.console,
@@ -66,7 +73,9 @@ for (const project of fs.readdirSync(root)) {
         cpuTraceEntries: row.cpuTraceEntries,
       };
     });
-    const comparable = cycles.filter((row) => row.cycle >= 0);
+    const comparable = cycles.filter(
+      (row) => row.cycle >= 0 && !row.includesSyntheticHistorySetup,
+    );
     const early = comparable[0],
       late = comparable.at(-1);
     const changes = {};
@@ -130,6 +139,8 @@ for (const project of fs.readdirSync(root)) {
   const allSamples = probes.flatMap((row) => row.samples);
   projects.push({
     project,
+    physicalDevice: rows.some((row) => row.kind === "physical-device"),
+    failures: rows.filter((row) => row.kind === "failure"),
     completedHands: rows.filter((row) => row.kind === "hand").length,
     pageErrors: rows.filter((row) => row.kind === "page-error"),
     heroResponseTimeouts: allSamples.filter(
@@ -162,7 +173,10 @@ for (const project of projects) {
             limit,
           });
       }
-      if (cycle.metrics["event-loop"].max > criteria.eventLoopMaxMs)
+      if (
+        !cycle.includesSyntheticHistorySetup &&
+        cycle.metrics["event-loop"].max > criteria.eventLoopMaxMs
+      )
         flags.push({
           project: project.project,
           leg: stage.leg,
@@ -201,7 +215,9 @@ const report = {
   units: "milliseconds unless named otherwise",
   notes: [
     "Thresholds are investigation heuristics, not approved release requirements.",
-    "Browser mobile emulation on host CPU, not a physical phone.",
+    "physicalDevice identifies hardware runs; other projects use host CPU mobile emulation.",
+    "Physical runs use scripted DOM button activation and do not measure physical touch input latency.",
+    "Samples marked includesSyntheticHistorySetup contain artificial quota-fill work; event-loop maxima and early/late comparisons exclude these samples from game-lag attribution. Raw metrics remain available.",
     "CPU turn time includes intentional pause and render transition; it is not model inference latency.",
     "First cold hand and reload hand are separate from repeated-cycle comparisons.",
     "Transitions include UI automation dispatch, while hero-response is browser click to first observed state change.",

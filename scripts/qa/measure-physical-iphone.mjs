@@ -57,21 +57,22 @@ async function element(selector) {
 }
 async function click(selector) {
   const el = await wait(() => element(selector));
-  const id = el["element-6066-11e4-a52e-4f735466cecf"];
-  if (!id) throw new Error("Expected WebDriver element");
-  await command(`/element/${id}/click`, {});
+  await execute(
+    'arguments[0].scrollIntoView({block:"center",inline:"center"});arguments[0].click();',
+    el,
+  );
 }
 async function textClick(text, scope = "body") {
   const el = await wait(() =>
     execute(
-      'return [...document.querySelector(arguments[1]).querySelectorAll("button")].find(b=>b.textContent.trim()===arguments[0]&&!b.disabled&&b.getBoundingClientRect().height>0)??null;',
+      'return [...document.querySelectorAll(arguments[1]+" button")].find(b=>b.textContent.trim()===arguments[0]&&!b.disabled&&b.getBoundingClientRect().height>0)??null;',
       text,
       scope,
     ),
   );
-  await command(
-    `/element/${el["element-6066-11e4-a52e-4f735466cecf"]}/click`,
-    {},
+  await execute(
+    'arguments[0].scrollIntoView({block:"center"});arguments[0].click();',
+    el,
   );
 }
 async function ready(variant) {
@@ -88,11 +89,7 @@ async function select(variant) {
     const button = await execute(
       'return [...document.querySelectorAll("button")].find(b=>/Triple Draw|トリプルドロー/.test(b.textContent)&&b.getBoundingClientRect().height>0)??null;',
     );
-    if (button)
-      await command(
-        `/element/${button["element-6066-11e4-a52e-4f735466cecf"]}/click`,
-        {},
-      );
+    if (button) await execute("arguments[0].click();", button);
   }
   await click(target);
   await ready(variant);
@@ -185,7 +182,6 @@ async function api(route, method, body) {
 }
 try {
   await command("/timeouts", { script: 30000, pageLoad: 30000, implicit: 0 });
-  await wait(() => execute("return innerWidth>innerHeight;"), 900000);
   const dimensions = await execute(
     'return {width:innerWidth,height:innerHeight,orientation:screen.orientation?.type,platform:navigator.platform,storageKeys:localStorage.length,hasAccount:Boolean(localStorage.getItem("mgx_auth"))};',
   );
@@ -197,9 +193,9 @@ try {
       platformName: session.capabilities.platformName,
     },
     dimensions,
+    inputMethod:
+      "scripted DOM button activation; physical touch latency not measured",
   });
-  if (dimensions.width < dimensions.height)
-    throw new Error("Physical device is still portrait");
   if (dimensions.hasAccount)
     throw new Error(
       "Automation profile already has an account; preserving its data",

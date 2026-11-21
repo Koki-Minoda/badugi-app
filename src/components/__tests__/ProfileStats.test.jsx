@@ -21,6 +21,8 @@ describe("ProfileStats", () => {
 
   it("offers a direct return to game select", () => {
     render(<ProfileStats />);
+    expect(screen.getByText("トーナメント数")).toBeTruthy();
+    expect(screen.queryByText(/今後|追加予定/)).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "ゲーム選択へ戻る" }));
 

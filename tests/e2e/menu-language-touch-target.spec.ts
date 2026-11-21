@@ -16,14 +16,14 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 852, height: 320 }
     await page.goto(APP_URL);
     await page.getByTestId('title-enter-button').click();
 
-    const settings = page.getByRole('button', { name: 'Open Settings' });
+    const settings = page.getByTestId('menu-settings');
     await expect(settings).toBeVisible();
     const settingsBox = await settings.boundingBox();
     expect(settingsBox?.width).toBeGreaterThanOrEqual(44);
     expect(settingsBox?.height).toBeGreaterThanOrEqual(44);
     await settings.click();
 
-    const language = page.getByTestId('language-select');
+    const language = page.getByLabel('言語 / Language');
     await expect(language).toBeVisible();
     const dimensions = await language.evaluate((element) => {
       const rect = element.getBoundingClientRect();
@@ -36,7 +36,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 852, height: 320 }
     await expect(language).toHaveValue('en');
     await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), LANGUAGE_STORAGE_KEY)).toBe('en');
     await page.screenshot({ path: info.outputPath('language-settings.png') });
-    const close = page.getByRole('button', { name: 'Close' });
+    const close = page.getByRole('button', { name: 'Back to menu', exact: true });
     const closeBox = await close.boundingBox();
     expect(closeBox?.height).toBeGreaterThanOrEqual(44);
     await close.click();

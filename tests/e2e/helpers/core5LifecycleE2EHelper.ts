@@ -51,10 +51,10 @@ export async function playCashHand(page: Page, variant: (typeof CORE5_VARIANTS)[
 
 export async function cashOutToSelector(page: Page) {
   await page.getByTestId("hand-result-cash-out").click();
-  const dialog = page.getByRole("dialog", { name: /Cash out result/i });
+  const dialog = page.getByRole("dialog", { name: /^(精算結果|Cash out result)$/i });
   await expect(dialog).toBeVisible({ timeout: 15000 });
   await dialog.getByRole("button", { name: /ゲーム選択|Game Select|Select Game/i }).click();
-  await expect(page.getByText(/Select Your Variant|ゲームを選択/i)).toBeVisible({ timeout: 20000 });
+  await expect(page.getByTestId("menu-ring")).toBeVisible({ timeout: 20000 });
 }
 
 export async function startCore5Tournament(page: Page, variant: (typeof CORE5_VARIANTS)[number]) {

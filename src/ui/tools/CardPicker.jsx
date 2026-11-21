@@ -18,16 +18,16 @@ export default function CardPicker({ cards, count, onChange, blocked = [], label
       <legend className="px-2 font-bold">{label} · {cards.length}{count !== undefined && `/${count}`}</legend>
       <div className={`flex flex-wrap gap-2 ${count !== undefined ? 'min-h-12' : ''}`}>
         {cards.map(card => (
-          <button type="button" key={card} onClick={() => remove(card)} aria-label={`${ja ? '外す' : 'Remove'} ${cardText(card)}`} className={`min-h-11 rounded bg-white font-bold ${bySuit ? 'min-w-11 px-2' : 'px-3'} ${/[HD]$/.test(card) ? 'text-red-700' : 'text-slate-950'}`}>
+          <span key={card} className={`inline-flex min-h-11 items-center rounded bg-white font-bold ${bySuit ? 'min-w-11 px-2' : 'px-3'} ${/[HD]$/.test(card) ? 'text-red-700' : 'text-slate-950'}`}>
             {cardText(card)}
-          </button>
+          </span>
         ))}
         {bySuit && count !== undefined && Array.from({ length: count - cards.length }, (_, index) => (
           <span key={index} aria-hidden="true" className="h-11 w-11 rounded border border-dashed border-slate-500" />
         ))}
       </div>
       <details>
-        <summary className="min-h-11 cursor-pointer py-2 text-emerald-200">{ja ? 'カードを選ぶ' : 'Choose cards'}</summary>
+        <summary className="min-h-11 cursor-pointer py-2 text-emerald-200">{count !== undefined ? (ja ? '手札を編集' : 'Edit hand') : (ja ? '除外カードを編集' : 'Edit dead cards')}</summary>
         {bySuit && (
           <div role="group" aria-label={ja ? 'スート' : 'Suit'} className="mb-2 grid grid-cols-4 gap-2">
             {suits.map(([id, jp, en]) => (
@@ -47,8 +47,8 @@ export default function CardPicker({ cards, count, onChange, blocked = [], label
             );
           })}
         </div>
+        {(!bySuit || (count === undefined && cards.length > 0)) && <button type="button" className="min-h-11 text-sm underline" onClick={() => onChange([])}>{ja ? '選び直す' : 'Clear'}</button>}
       </details>
-      {(!bySuit || (count === undefined && cards.length > 0)) && <button type="button" className="min-h-11 text-sm underline" onClick={() => onChange([])}>{ja ? '選び直す' : 'Clear'}</button>}
       {children}
     </fieldset>
   );

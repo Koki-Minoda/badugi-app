@@ -1,7 +1,7 @@
 import { buildNonModelDecisionTrace } from "../ai/qa/nonModelDecisionTrace.js";
 import { PUBLIC_PLAYABLE_VARIANTS } from '../games/config/variantAvailability.js';
 import { applyCustomStructure } from './tournament/customStructure.js';
-import { useLanguageState } from './preferences/language.js';
+import { useLanguage, useLanguageState } from './preferences/language.js';
 import SaveFailureNotice from './components/SaveFailureNotice.jsx';
 import { MixedGameContext } from "./mixed/mixedGameContext.js";
 import { shiftDealerChoiceVariant, setDealerChoiceModeActive } from './dealersChoice/dealerChoiceManager.js';
@@ -9,6 +9,7 @@ import { multiGameVariantForTable, recordMultiGameResult } from './multigame/mul
 import { computeUnlockState } from "./utils/playerProgress.js";
 import { getPlayerProgressFromConsolidated } from "./utils/consolidatedProgress.js";
 import LearningGameLaunch from "./learning/LearningGameLaunch.jsx";
+import { getCashLaunchRequest } from "./game/cashLaunchRequest.js";
 // src/ui/App.jsx
 import React, {
   useCallback,
@@ -446,6 +447,7 @@ function readStoredAuthIdentity() {
 export default function App() {
   const location = useLocation();
   const trialVariant = new URLSearchParams(location.search).get('variant');
+  const cashLaunchRequestRef = useRef(getCashLaunchRequest(location));
   const guestTrial = !new URLSearchParams(location.search).get('mode') && new URLSearchParams(location.search).get('trial') === '1' && PUBLIC_PLAYABLE_VARIANTS.some(v => v.availabilityKey === trialVariant);
   const mixedGame = useContext(MixedGameContext);
   const mixedGameRef = useRef(mixedGame);
@@ -466,7 +468,7 @@ export default function App() {
   const modeRef = useRef(initialModeRef.current);
   const [language, setLanguage] = useLanguageState();
   // MGX branding: kitsune title screen + title → menu → game flow (2025-11-28)
-  const [currentScreen, setCurrentScreen] = useState(() => (guestTrial || location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? "menu" : "title");
+  const [currentScreen, setCurrentScreen] = useState(() => (cashLaunchRequestRef.current || guestTrial || location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? "menu" : "title");
   const [hubActiveSnapshot, setHubActiveSnapshot] = useState(null);
   const [gameUtilityModal, setGameUtilityModal] = useState(null);
   const pendingRingStartRef = useRef(false);
@@ -14406,9 +14408,11 @@ export default function App() {
             onAuthenticated={handleAuthSuccess}
             onAuthStateChange={handleAuthStateChange}
           >
-            {(guestTrial || location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? <LearningGameLaunch
-              variantId={guestTrial ? trialVariant : location.state.learningVariant ?? location.state.mixedProfileId ?? 'multi-game'}
+            {(cashLaunchRequestRef.current || guestTrial || location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? <LearningGameLaunch
+              variantId={guestTrial ? trialVariant : location.state?.learningVariant ?? cashLaunchRequestRef.current?.variantId ?? location.state?.mixedProfileId ?? 'multi-game'}
               onLaunch={(variantId) => {
+                const cashTierId = cashLaunchRequestRef.current?.cashTierId;
+                cashLaunchRequestRef.current = null;
                 navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
                 if (guestTrial) { handleSelectRing(trialVariant); return; }
                 if (location.state?.multiGameConfig || location.state?.multiGameResume) {
@@ -14434,7 +14438,7 @@ export default function App() {
                   dealerChoiceActiveRef.current = Boolean(location.state?.dealerChoice);
                   if (dealerChoiceActiveRef.current) shiftDealerChoiceVariant();
                   handleSelectRing(normalizeAppVariantId(result.gameId), { keepMixed: true });
-                } else handleSelectRing(variantId);
+                } else handleSelectRing(variantId, { cashTierId });
               }}
             /> : <MenuScreenWithLogout
               language={language}
@@ -14477,24 +14481,9 @@ export default function App() {
   if (currentScreen === "settings") {
     return (
       <>
-        <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-6 text-center text-slate-100">
-          <p className="text-xs uppercase tracking-[0.4em] text-amber-400">
-            MGX
-          </p>
-          <h2 className="mt-2 text-4xl font-semibold">
-            {MGX_LOCALES[language]?.modal?.settingsTitle ?? "Settings"}
-          </h2>
-          <p className="mt-4 max-w-xl text-sm text-slate-400">
-            {MGX_LOCALES[language]?.modal?.settingsBody ??
-              "Settings will be added later. Return to the main menu to jump into your preferred mode."}
-          </p>
-          <button
-            type="button"
-            onClick={handleBackToMenu}
-            className="mt-8 rounded-full border border-amber-300/60 px-8 py-3 text-xs uppercase tracking-[0.4em] text-amber-100 hover:bg-amber-300/10"
-          >
-            {MGX_LOCALES[language]?.common?.backToMenu ?? "Back to Menu"}
-          </button>
+        <div className="min-h-screen bg-slate-950">
+          <TitleSettingsScreen embedded onClose={handleBackToMenu}
+            backLabel={language === "ja" ? "メニューへ戻る" : "Back to menu"} />
         </div>
         <SaveFailureNotice language={language} />
         <DebugHud
@@ -14978,6 +14967,7 @@ function GameUtilityModal({ modalName, language, onClose, onReplay }) {
 }
 
 function CashOutResultModal({ summary, onClose, onBackToMenu, onNewSession }) {
+  const ja = useLanguage() === "ja";
   const net = Number(summary?.net ?? 0);
   const netLabel = net >= 0 ? `+${net}` : `${net}`;
   const netClass = net >= 0 ? "text-emerald-300" : "text-red-300";
@@ -14986,38 +14976,38 @@ function CashOutResultModal({ summary, onClose, onBackToMenu, onNewSession }) {
       className="fixed inset-0 z-[320] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
-      aria-label="Cash out result"
+      aria-label={ja ? "精算結果" : "Cash out result"}
     >
       <div className="w-full max-w-md rounded-3xl border border-emerald-300/20 bg-slate-950 p-6 text-white shadow-2xl">
         <div className="mb-5">
           <p className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-300">
-            Cash Out
+            {ja ? "精算結果" : "Cash Out"}
           </p>
           <h2 className="mt-2 text-2xl font-black">
-            {summary?.variantName ?? "Cash Game"}
+            {summary?.variantName ?? (ja ? "キャッシュゲーム" : "Cash Game")}
           </h2>
           <p className="mt-1 text-sm text-slate-400">
-            今回のキャッシュゲーム結果です。続行するか、ゲーム選択へ戻れます。
+            {ja ? "今回のキャッシュゲーム結果です。続行するか、ゲーム選択へ戻れます。" : "Review this cash session, continue playing or return to game selection."}
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <p className="text-slate-500">Buy-in</p>
+            <p className="text-slate-500">{ja ? "参加時の持ち点" : "Buy-in"}</p>
             <p className="text-xl font-black">{summary?.buyIn ?? 0}</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <p className="text-slate-500">Cash out stack</p>
+            <p className="text-slate-500">{ja ? "精算時の持ち点" : "Cash out stack"}</p>
             <p className="text-xl font-black">{summary?.stack ?? 0}</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <p className="text-slate-500">Hands</p>
+            <p className="text-slate-500">{ja ? "ハンド数" : "Hands"}</p>
             <p className="text-xl font-black" data-testid="cash-out-hands">
               {summary?.hands ?? 0}
             </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <p className="text-slate-500">Net</p>
+            <p className="text-slate-500">{ja ? "収支" : "Net"}</p>
             <p className={`text-xl font-black ${netClass}`}>{netLabel}</p>
           </div>
         </div>
@@ -15028,21 +15018,21 @@ function CashOutResultModal({ summary, onClose, onBackToMenu, onNewSession }) {
             onClick={onClose}
             className="rounded-xl border border-white/15 px-3 py-2 text-sm font-bold text-slate-200 hover:bg-white/10"
           >
-            続行
+            {ja ? "続行" : "Continue"}
           </button>
           <button
             type="button"
             onClick={onNewSession}
             className="rounded-xl bg-emerald-500 px-3 py-2 text-sm font-black text-slate-950 hover:bg-emerald-400"
           >
-            新しい卓
+            {ja ? "新しい卓" : "New table"}
           </button>
           <button
             type="button"
             onClick={onBackToMenu}
             className="rounded-xl bg-yellow-400 px-3 py-2 text-sm font-black text-slate-950 hover:bg-yellow-300"
           >
-            ゲーム選択
+            {ja ? "ゲーム選択" : "Select game"}
           </button>
         </div>
       </div>

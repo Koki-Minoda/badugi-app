@@ -7,6 +7,8 @@ import PracticeScreen from '../PracticeScreen.jsx';
 afterEach(() => { cleanup(); vi.useRealTimers(); localStorage.clear(); });
 it('requires the correct number of distinct cards and does not start on selection alone', () => {
   render(<MemoryRouter><PracticeScreen /></MemoryRouter>);
+  expect(screen.getByTestId('practice-card-picker').open).toBe(false);
+  fireEvent.click(screen.getByText('開始手札を変更'));
   fireEvent.click(screen.getByText('選択をクリア'));
   fireEvent.click(screen.getByRole('button', { name: 'A♠', exact: true }));
   expect(screen.getByRole('button', { name: 'この手札で練習する' }).disabled).toBe(true);
@@ -23,4 +25,17 @@ it('stops pending CPU work when leaving a hand and preserves setup for restartin
   act(() => { vi.advanceTimersByTime(2000); });
   expect(screen.queryByTestId('practice-table')).toBeNull();
   expect(screen.getByRole('button', { name: 'この手札で練習する' }).disabled).toBe(false);
+});
+it('places the hand and controls before opponents while preserving visible hands and all-seat mode', () => {
+  localStorage.setItem('mgx.practice.options', JSON.stringify({ selfPlay: true, showAll: true }));
+  render(<MemoryRouter><PracticeScreen /></MemoryRouter>);
+  fireEvent.click(screen.getByText('この手札で練習する'));
+  const hand = screen.getByTestId('practice-hero-hand');
+  const actions = screen.getByTestId('practice-actions');
+  const cpu = screen.getByTestId('practice-cpu-1');
+  expect(hand.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(actions.compareDocumentPosition(cpu) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(cpu.textContent).not.toContain('▧');
+  expect(actions.querySelectorAll('button').length).toBeGreaterThan(0);
+  expect(screen.getByRole('status').textContent).toContain('席');
 });

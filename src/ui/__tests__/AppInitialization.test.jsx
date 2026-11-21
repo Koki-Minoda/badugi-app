@@ -1,6 +1,6 @@
 
 import React from "react";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
@@ -8,9 +8,9 @@ import App from "../App.jsx";
 import { GameEngineProvider } from "../engine/GameEngineContext.jsx";
 import { STORAGE_KEYS } from "../../storage/keys.js";
 
-function renderApp() {
+function renderApp(url = "/game") {
   return render(
-    <MemoryRouter initialEntries={["/game"]}>
+    <MemoryRouter initialEntries={[url]}>
       <GameEngineProvider gameId="badugi">
         <App />
       </GameEngineProvider>
@@ -23,6 +23,27 @@ describe("App smoke test", () => {
     cleanup();
     delete window.__BADUGI_E2E__;
     window.localStorage.clear();
+    vi.unstubAllGlobals();
+    window.history.replaceState(null, '', '/');
+  });
+
+  it("starts a selected cash link after auth hydration and returns to the menu without relaunching", async () => {
+    const url = "/game?variant=badugi&aiTier=beginner";
+    window.history.replaceState(null, '', url);
+    window.localStorage.setItem("mgx_auth", JSON.stringify({
+      accessToken: "qa-token", tokenType: "Bearer",
+      user: { id: 123, username: "QA" }, isAuthenticated: true,
+    }));
+    vi.stubGlobal("fetch", vi.fn(async () => ({
+      ok: true, json: async () => ({ id: 123, username: "QA" }),
+    })));
+    renderApp(url);
+    await screen.findByRole("button", { name: "精算して退出" });
+    expect(screen.queryByRole("button", { name: "登録・ログイン" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "精算して退出" }));
+    fireEvent.click(screen.getByRole("button", { name: "ゲーム選択", exact: true }));
+    await screen.findByRole("button", { name: "キャッシュゲーム", exact: true });
+    expect(screen.queryByRole("button", { name: "精算して退出" })).toBeNull();
   });
 
   it("mounts without runtime or console errors", () => {

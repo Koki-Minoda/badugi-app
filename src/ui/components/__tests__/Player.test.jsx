@@ -14,10 +14,9 @@ const basePlayer = {
   showHand: false,
 };
 
+afterEach(cleanup);
+
 describe("Player", () => {
-  afterEach(() => {
-    cleanup();
-  });
 
   test("keeps the hero player name visible in the mobile card-only layout", () => {
     render(
@@ -250,7 +249,7 @@ describe("Player", () => {
     expect(handleCardClick).toHaveBeenCalledWith(3);
   });
 
-  test("adds Stud and Razz scopes to the Smart HUD game selector", () => {
+  test("opens current-game details explicitly without unrelated streets and closes them", () => {
     render(
       <Player
         player={{ ...basePlayer, stats: { hands: 20, vpipRate: 0.25, pfrRate: 0.1 } }}
@@ -266,10 +265,14 @@ describe("Player", () => {
     fireEvent.mouseEnter(screen.getByTestId("seat-1"));
     expect(screen.queryByTestId("seat-1-detail")).toBeNull();
     fireEvent.mouseMove(screen.getByTestId("seat-1"));
+    expect(screen.queryByTestId("seat-1-detail")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Akiraの詳細" }));
     const detail = screen.getByTestId("seat-1-detail");
-    const scope = within(detail).getByRole("combobox", { name: /hud game scope/i });
-    expect(within(scope).getByRole("option", { name: "Stud" })).toBeTruthy();
-    expect(within(scope).getByRole("option", { name: "Razz" })).toBeTruthy();
+    expect(within(detail).getByText("Badugi")).toBeTruthy();
+    expect(within(detail).queryByText("Flop")).toBeNull();
+    expect(within(detail).queryByRole("combobox")).toBeNull();
+    fireEvent.click(within(detail).getByRole("button", { name: "閉じる" }));
+    expect(screen.queryByTestId("seat-1-detail")).toBeNull();
   });
 
   test("preserves Stud/Razz card order so up-card visibility indexes stay aligned", () => {
@@ -580,4 +583,20 @@ describe("Player", () => {
 
     expect(screen.queryByTestId("seat-1-draw-badge")).toBeNull();
   });
+});
+
+test('summarizes missing player statistics without empty street panels', () => {
+  render(<Player player={basePlayer} index={1} selfIndex={0} turn={0} dealerIdx={0} phase="BET" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Akiraの詳細' }));
+  const detail = within(screen.getByTestId('seat-1-detail'));
+  expect(detail.getByText('統計はまだ集計されていません。')).toBeTruthy();
+  expect(detail.queryByText('VPIP')).toBeNull();
+  expect(detail.queryByText('Flop')).toBeNull();
+});
+test.each([['nlh', true], ['stud', false], ['badugi', false]])('shows measured streets only for the matching family: %s', (displayVariant, streets) => {
+  render(<Player player={{ ...basePlayer, stats: { hands: 10, vpipRate: 0.3, street: { flop: { cb: 0.5 } } } }} index={1} selfIndex={0} turn={0} dealerIdx={0} phase="BET" displayVariant={displayVariant} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Akiraの詳細' }));
+  const detail = within(screen.getByTestId('seat-1-detail'));
+  expect(Boolean(detail.queryByText('Flop'))).toBe(streets);
+  expect(detail.getByText('VPIP')).toBeTruthy();
 });

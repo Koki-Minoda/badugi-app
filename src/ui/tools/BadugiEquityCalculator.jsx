@@ -6,6 +6,7 @@ import { getReviewUserId } from '../personalResults/badugiReplayReview.js';
 import { readBadugiRangeReviews } from '../personalResults/badugiRangeReviewStore.js';
 import BadugiFinalBet from './BadugiFinalBet.jsx';
 import BadugiEquityResults from './BadugiEquityResults.jsx';
+import RangeHandsEditor from './RangeHandsEditor.jsx';
 import CardPicker from './CardPicker.jsx';
 import { badugiDiscardOptions } from './badugiEquity.js';
 import { cardText } from './cardText.js';
@@ -51,6 +52,7 @@ function DiscardPicker({ hand, discards, onChange, ja }) {
           {discards.length > 0 ? (ja ? `${discards.length}枚` : `${discards.length} selected`) : (ja ? 'パット' : 'Stand pat')}
         </span>
       </p>
+      <p className="text-xs text-slate-400">{ja ? "手札は変えずに、今回交換する札を選びます。" : "Select discards for this draw without editing the starting hand."}</p>
       <div className="flex flex-wrap gap-2">
         {hand.map(card => {
           const selected = discards.includes(card);
@@ -178,14 +180,7 @@ export default function BadugiEquityCalculator({ ja, spot = null }) {
               }))}>
               {ja ? '交換枚数に合う2つの候補を入れる' : 'Load two presets for this draw count'}
             </button>}
-            <label className="grid gap-1 text-sm font-medium">{ja ? '相手のレンジ' : 'Opponent range'}
-              <textarea className="min-h-28 w-full rounded-lg border border-white/20 bg-slate-800 p-3 font-mono text-base" spellCheck={false}
-                value={rangeA.text} maxLength={4000} placeholder={rangeExample} aria-describedby="equity-range-help"
-                onChange={event => update('rangeA', { preset: null, text: event.target.value })} />
-            </label>
-            <p id="equity-range-help" className="text-xs text-slate-300">{ja
-              ? '1行に4枚と重みを入力します（例 9S 7C 5D 4H 3）。重み省略は1。最大24行です。観測した交換枚数などを考慮した重みを入力してください。'
-              : 'Use one line per candidate with four cards and a weight, e.g. 9S 7C 5D 4H 3. Weight defaults to 1. Up to 24 lines. Enter weights that account for observed actions.'}</p>
+            <RangeHandsEditor name="A" text={rangeA.text} onChange={value => update('rangeA', value)} ja={ja} />
             {range && <p className="text-xs text-emerald-200">{ja
               ? `有効な候補 ${range.hands}組 · 既知カードと重なる行 ${range.excluded}件を除外。残りの重みで再計算しています。`
               : `${range.hands} valid hands · ${range.excluded} blocked rows removed. Remaining weights are normalized.`}</p>}
@@ -240,7 +235,13 @@ export default function BadugiEquityCalculator({ ja, spot = null }) {
         </div>
       )}
       {error && <p role="status" className={`rounded-xl border p-4 text-sm ${error === 'handSize' ? 'border-white/20 text-slate-300' : 'border-amber-300/40 text-amber-100'}`}>{current?.data?.line && (ja ? `${current.data.line}行目 · ` : `Line ${current.data.line} · `)}{errors[error][ja ? 0 : 1]}</p>}
-      {(result || columns.length > 0) && <BadugiEquityResults result={result} columns={columns} choices={choices} hero={hero} opponent={opponentChoice} onHero={id => update('heroDiscards', choices[id])} onOpponent={id => update('opponentChoice', id)} players={players} ja={ja} />}
+      {(result || columns.length > 0) && <div className="space-y-3" data-testid="equity-detail-results">
+        {ranged && <div className="rounded-xl border border-emerald-300/30 p-3 text-sm">
+          <h3 className="font-bold">{ja ? 'レンジAの詳細結果' : 'Detailed results for Range A'}</h3>
+          <p className="mt-1 text-slate-300">{ja ? '自分' : 'You'}: {remainingDraws === 0 ? (ja ? '交換なし（最終手札）' : 'Final hand, no draw') : heroDiscards.length ? heroDiscards.map(cardText).join(' ') + (ja ? ' を交換' : ' discarded') : (ja ? 'パット' : 'Stand pat')} · {ja ? '相手' : 'Opponent'}: {remainingDraws === 0 ? (ja ? '交換なし' : 'No draw') : opponentChoice < 0 ? (ja ? '交換枚数ごとの比較' : 'Compare all draw counts') : (ja ? `${opponentChoice}枚交換` : `Draw ${opponentChoice}`)} · {ja ? `残り${remainingDraws}ドロー` : `${remainingDraws} draws remaining`}</p>
+        </div>}
+        <BadugiEquityResults result={result} columns={columns} choices={choices} hero={hero} opponent={opponentChoice} onHero={id => update('heroDiscards', choices[id])} onOpponent={id => update('opponentChoice', id)} players={players} ja={ja} />
+      </div>}
       {remainingDraws <= 2 && <BadugiFinalBet base={request} remainingDraws={remainingDraws} opponentCount={opponentChoice} spot={reviewSpot} ja={ja} />}
     </section>
   );

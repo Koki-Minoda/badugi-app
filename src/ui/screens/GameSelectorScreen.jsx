@@ -12,7 +12,6 @@ import { designTokens } from "../../styles/designTokens.js";
 import { PRO_MIXED_PRESETS } from "../../config/mixed/proPresets.js";
 import { LANGUAGE_STORAGE_KEY, MGX_DEFAULT_LOCALE } from "../../config/mgxLocaleConfig.js";
 import variantJa from "../../i18n/variants.ja.json";
-import VariantCardAvailability from "../components/VariantCardAvailability.jsx";
 
 const CATEGORY_ORDER = [
   GAME_VARIANT_CATEGORIES.BOARD,
@@ -108,32 +107,6 @@ function localizeMixedPreset(preset, language) {
   };
 }
 
-function RequirementChips({ requirements, labels }) {
-  if (!requirements) return null;
-  const chips = [];
-  if (requirements.needsBoardRenderer) chips.push(labels.board);
-  if (requirements.needsDrawEngine) chips.push(labels.draw);
-  if (requirements.needsStudEngine) chips.push(labels.stud);
-  if (requirements.needsSplitPot) chips.push(labels.splitPot);
-  if (requirements.needsBadugiEvaluator) chips.push(labels.badugiEval);
-  if (requirements.needsHiLoEvaluator) chips.push(labels.hiLoEval);
-  if (requirements.needsArchieEvaluator) chips.push(labels.archieEval);
-  if (requirements.needsZeroEvaluator) chips.push(labels.zeroEval);
-  if (chips.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-2 text-xs">
-      {chips.map((chip) => (
-        <span
-          key={chip}
-          className="px-2 py-1 rounded-full bg-slate-800 text-slate-200 border border-white/10"
-        >
-          {chip}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function getStatusBadge(profile, labels) {
   if (!profile) return { label: labels.statusUnknown, tone: "neutral" };
   if (profile.status === "live") {
@@ -162,7 +135,6 @@ function VariantCard({ profile, onLaunch, copy }) {
     >
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs text-slate-400">{profile.id}</p>
           <h3 className="text-xl font-semibold">{profile.name}</h3>
         </div>
         <span
@@ -183,11 +155,8 @@ function VariantCard({ profile, onLaunch, copy }) {
       </div>
 
       <p className="text-sm text-slate-300">{profile.description || profile.summary}</p>
-      <VariantCardAvailability availability={gate} language={copy.language} />
-      <RequirementChips requirements={profile.requirements} labels={copy.requirements} />
       <div className="flex items-center justify-between text-xs text-slate-400">
         <span>{copy.betting}: {profile.bettingLabel ?? profile.betting}</span>
-        <span>{copy.priority}: {profile.priorityPhase || "-"}</span>
       </div>
       {launchVariantId === "badugi" && canLaunch ? (
         <label className="flex items-center justify-between gap-3 text-sm text-slate-200">
@@ -210,7 +179,7 @@ function VariantCard({ profile, onLaunch, copy }) {
         disabled={!canLaunch}
         aria-label={`${copy.play}: ${profile.name}`}
         data-testid={`game-selector-play-${launchVariantId}`}
-        title={canLaunch ? copy.play : gate.reason}
+        title={canLaunch ? copy.play : copy.unavailableAction(gate)}
         className={`mt-1 px-4 py-2 rounded-lg font-semibold transition ${
           canLaunch
             ? "bg-emerald-500 text-slate-900 hover:bg-emerald-400"

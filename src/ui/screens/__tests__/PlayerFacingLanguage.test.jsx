@@ -1,0 +1,56 @@
+import React from 'react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { afterEach, expect, it, vi } from 'vitest';
+import AuthScreen from '../AuthScreen.jsx';
+import TitleSettingsScreen from '../TitleSettingsScreen.jsx';
+import Modal from '../../components/Modal.jsx';
+import { AuthContext } from '../../state/authContext.js';
+import { setLanguage } from '../../preferences/language.js';
+
+afterEach(() => { cleanup(); localStorage.clear(); setLanguage('ja'); vi.restoreAllMocks(); });
+it('switches login and registration fields and client validation with language', () => {
+  setLanguage('ja');
+  render(<AuthScreen />);
+  expect(screen.getByRole('heading', { name: 'ログイン' })).toBeTruthy();
+  expect(screen.getByLabelText('メールアドレス')).toBeTruthy();
+  fireEvent.click(screen.getByTestId('auth-signup-tab'));
+  fireEvent.change(screen.getByLabelText('メールアドレス'), { target: { value: 'local@example.test' } });
+  fireEvent.change(screen.getByLabelText('パスワード', { exact: true }), { target: { value: 'password-123' } });
+  fireEvent.change(screen.getByLabelText('パスワード（確認）'), { target: { value: 'different' } });
+  fireEvent.submit(screen.getByTestId('auth-submit').closest('form'));
+  expect(screen.getByText('パスワードが一致しません。')).toBeTruthy();
+  fireEvent.change(screen.getByLabelText('言語 / Language'), { target: { value: 'en' } });
+  expect(screen.getByRole('heading', { name: 'Create an Account' })).toBeTruthy();
+  expect(screen.getByLabelText('Confirm Password')).toBeTruthy();
+  expect(screen.getByTestId('auth-submit').textContent).toBe('Create Account');
+});
+it('submits login using the Japanese controls and keeps the auth contract', async () => {
+  setLanguage('ja');
+  const loginSuccess = vi.fn();
+  const onAuthenticated = vi.fn();
+  const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ access_token: 'local-token', token_type: 'bearer', user: { id: 1, username: 'Local test', email: 'local@example.test' } }) });
+  render(<AuthContext.Provider value={{ loginSuccess }}><AuthScreen onAuthenticated={onAuthenticated} /></AuthContext.Provider>);
+  fireEvent.change(screen.getByLabelText('メールアドレス'), { target: { value: 'local@example.test' } });
+  fireEvent.change(screen.getByLabelText('パスワード'), { target: { value: 'password-123' } });
+  fireEvent.submit(screen.getByTestId('auth-submit').closest('form'));
+  await waitFor(() => expect(onAuthenticated).toHaveBeenCalledTimes(1));
+  expect(fetchMock.mock.calls[0][0]).toContain('/auth/login');
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ email: 'local@example.test', password: 'password-123' });
+  expect(loginSuccess).toHaveBeenCalledWith(expect.objectContaining({ accessToken: 'local-token' }));
+});
+it('switches profile headings, navigation and modal close controls', async () => {
+  setLanguage('en');
+  const onClose = vi.fn();
+  render(<MemoryRouter><TitleSettingsScreen /><Modal open onClose={onClose} title="Test" /></MemoryRouter>);
+  expect(screen.getByRole('heading', { name: 'Title & Avatar' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Back to menu' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Save', exact: true }));
+  expect(await screen.findByText('Saved')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  expect(onClose).toHaveBeenCalledTimes(1);
+  fireEvent.change(screen.getByLabelText('言語 / Language'), { target: { value: 'ja' } });
+  expect(screen.getByRole('heading', { name: 'プロフィール設定' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: '閉じる' }));
+  expect(onClose).toHaveBeenCalledTimes(2);
+});

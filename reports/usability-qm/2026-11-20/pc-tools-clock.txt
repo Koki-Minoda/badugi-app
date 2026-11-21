@@ -1,0 +1,223 @@
+Window: "MGX - Mixed Game eXperience", App: Safari.
+0 標準ウインドウ MGX - Mixed Game eXperience, ID: SafariWindow?IsSecure=true&UUID=FB47E7E7-F6FE-4CEE-8727-1766F311F77B, Secondary Actions: Raise
+	1 グループを分割
+		2 タブグループ
+			3 スクロール領域
+				4 HTMLコンテンツ Description: MGX - Mixed Game eXperience, URL: mgx-poker.com/tools?tab=clock
+					5 container
+						6 見出し ポーカーツール, Value: 1
+							7 テキスト ポーカーツール
+						8 container
+							9 テキスト 言語 / Language
+							10 ポップアップボタン 言語 / Language, Value: 日本語
+						11 link 学習へ戻る, Value: mgx-poker.com/learn
+						12 切り替えボタン 役と分配を比べる, Value: off
+						13 切り替えボタン Badugi エクイティ, Value: off
+						14 切り替えボタン 手札から練習を選ぶ, Value: off
+						15 切り替えボタン ゲーム札・時計, Value: on
+						16 text リアル卓用の時計です。アプリ内の対局や大会とは連動しません。画面を閉じている間も進みます。一時停止すると残り時間を保持します。 ゲーム札
+						17 ポップアップボタン ゲーム札, Value: Badugi
+						18 見出し Badugi, Value: 2
+							19 テキスト Badugi
+						20 テキスト Level 1
+						21 container 残り時間
+							22 テキスト 09:31
+						23 text SB 10 / BB 20 · Ante 0 ベット単位 20  /  40 次: SB 20 / BB 40 · Ante 0 Studはアンティ・ブリングイン・小さいベット・大きいベットを表示します。卓のルールに合わせて編集できます。
+						24 ボタン 時計を開始・再開
+						25 container (collapsed) Secondary Actions: Expand
+							26 概要 ストラクチャーを編集, Value: off
+								27 テキスト ストラクチャーを編集
+							28 ステッパー 0
+								29 不明
+								30 不明
+							31 ステッパー 0
+								32 不明
+								33 不明
+							34 ステッパー 0
+								35 不明
+								36 不明
+							37 ステッパー 0
+								38 不明
+								39 不明
+							40 ステッパー 0
+								41 不明
+								42 不明
+							43 ステッパー 0
+								44 不明
+								45 不明
+							46 ステッパー 0
+								47 不明
+								48 不明
+							49 ステッパー 0
+								50 不明
+								51 不明
+							52 ステッパー 0
+								53 不明
+								54 不明
+							55 ステッパー 0
+								56 不明
+								57 不明
+							58 ステッパー 0
+								59 不明
+								60 不明
+							61 ステッパー 0
+								62 不明
+								63 不明
+							64 ステッパー 0
+								65 不明
+								66 不明
+							67 ステッパー 0
+								68 不明
+								69 不明
+							70 ステッパー 0
+								71 不明
+								72 不明
+							73 ステッパー 0
+								74 不明
+								75 不明
+							76 ステッパー 0
+								77 不明
+								78 不明
+							79 ステッパー 0
+								80 不明
+								81 不明
+							82 ステッパー 0
+								83 不明
+								84 不明
+							85 ステッパー 0
+								86 不明
+								87 不明
+							88 ステッパー 0
+								89 不明
+								90 不明
+							91 ステッパー 0
+								92 不明
+								93 不明
+							94 ステッパー 0
+								95 不明
+								96 不明
+							97 ステッパー 0
+								98 不明
+								99 不明
+							100 ステッパー 0
+								101 不明
+								102 不明
+							103 ステッパー 0
+								104 不明
+								105 不明
+							106 ステッパー 0
+								107 不明
+								108 不明
+							109 ステッパー 0
+								110 不明
+								111 不明
+							112 ステッパー 0
+								113 不明
+								114 不明
+							115 ステッパー 0
+								116 不明
+								117 不明
+							118 ステッパー 0
+								119 不明
+								120 不明
+							121 ステッパー 0
+								122 不明
+								123 不明
+							124 ステッパー 0
+								125 不明
+								126 不明
+							127 ステッパー 0
+								128 不明
+								129 不明
+							130 ステッパー 0
+								131 不明
+								132 不明
+							133 ステッパー 0
+								134 不明
+								135 不明
+							136 ステッパー 0
+								137 不明
+								138 不明
+							139 ステッパー 0
+								140 不明
+								141 不明
+							142 ステッパー 0
+								143 不明
+								144 不明
+							145 ステッパー 0
+								146 不明
+								147 不明
+							148 ステッパー 0
+								149 不明
+								150 不明
+							151 ステッパー 0
+								152 不明
+								153 不明
+							154 ステッパー 0
+								155 不明
+								156 不明
+							157 ステッパー 0
+								158 不明
+								159 不明
+							160 ステッパー 0
+								161 不明
+								162 不明
+							163 ステッパー 0
+								164 不明
+								165 不明
+							166 ステッパー 0
+								167 不明
+								168 不明
+							169 ステッパー 0
+								170 不明
+								171 不明
+							172 ステッパー 0
+								173 不明
+								174 不明
+							175 ステッパー 0
+								176 不明
+								177 不明
+						178 container 種目のルール
+							179 見出し Badugi, Value: 2
+								180 テキスト Badugi
+							181 音声ガイドリスト
+								182 テキスト 勝敗とAの扱い
+								183 テキスト ランクもスートも重複しない有効枚数を優先。同枚数なら高いカードから比べ、低い方が勝ちます。Aは低いカードです。
+								184 テキスト カードと交換
+								185 テキスト 手札4枚。交換は3回。相手の交換枚数を確認します。
+								186 テキスト ベット形式
+								187 テキスト フィックスリミット：ベット・レイズは所定額。額と上限は卓の表示を確認。
+								188 テキスト 手番
+								189 テキスト 最初はBBの左から。交換と以後のベットはボタンの左の残ったプレイヤーから。
+				190 スクロールバー (settable, float) 0
+	191 イメージ WindowControlShadowView._shadowImageView
+	192 ツールバー
+		193 container Secondary Actions: 次に移動, ツールバーから削除
+			194 ボタン Description: サイドバーを表示, Help: サイドバーを表示します, ID: SidebarButton
+			195 メニューボタン Description: タブグループピッカー, ID: TabGroupPickerButton?TabGroup=
+		196 container BackForwardSegmentedControl
+			197 ボタン Description: 戻る, Help: 前のページを表示します, ID: BackButton
+			198 ボタン (disabled) Description: 進む, Help: 次のページを表示します, ID: ForwardButton
+		199 container Secondary Actions: 前に移動, 次に移動, ツールバーから削除
+			200 ボタン ページメニュー, ID: AssistantButton
+			201 ボタン ページをリーディングリストに追加します, ID: OneStepBookmarkingButton
+			202 テキストフィールド (settable) Description: スマート検索フィールド, Value: https://mgx-poker.com/tools?tab=clock, ID: WEB_BROWSER_ADDRESS_AND_SEARCH_FIELD
+			203 ボタン このページを再読み込み, ID: ReloadButton
+		204 ボタン Description: 共有, ID: ShareButton, Secondary Actions: 前に移動, 次に移動, ツールバーから削除
+		205 ボタン Description: 新規タブ, ID: NewTabButton, Secondary Actions: 前に移動, 次に移動, ツールバーから削除
+		206 ボタン Description: タブの概要, ID: TabOverviewButton, Secondary Actions: 前に移動, ツールバーから削除
+	207 閉じるボタン
+	208 フルスクリーンボタン Help: このボタンにはウインドウを拡大する操作もあります, Secondary Actions: ウインドウを拡大
+	209 しまうボタン
+210 menu bar
+	211 Safari
+	212 ファイル
+	213 編集
+	214 表示, ID: SafariViewMenu
+	215 履歴
+	216 ブックマーク, ID: SafariBookmarksMenu
+	217 開発
+	218 ウインドウ, ID: SafariWindowMenu
+	219 ヘルプ, ID: SafariHelpMenu
+
+The focused UI element is 4 HTMLコンテンツ Description: MGX - Mixed Game eXperience, URL: mgx-poker.com/tools?tab=clock

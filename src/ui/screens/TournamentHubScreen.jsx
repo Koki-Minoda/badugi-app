@@ -225,17 +225,10 @@ export default function TournamentHubScreen({
                       <h2 className="mt-1 text-lg font-black uppercase text-white">
                         {view.title}
                       </h2>
-                      <p className="mt-1 text-sm font-semibold text-slate-300">
-                        {view.subtitle}
-                      </p>
                     </div>
                     {!view.variantUnlocked ? (
                       <span className="rounded-md border border-red-300/40 px-2 py-1 text-[10px] font-black uppercase text-red-200">
-                        {ja ? '参加条件あり' : 'Locked'}
-                      </span>
-                    ) : !view.eligibility.eligible || !view.affordability.ok ? (
-                      <span className="rounded-md border border-red-300/40 px-2 py-1 text-[10px] font-black uppercase text-red-200">
-                        {ja ? '参加条件あり' : 'Locked'}
+                        {ja ? '種目が未解放' : 'Game locked'}
                       </span>
                     ) : !view.playable ? (
                       <span className="rounded-md border border-amber-300/40 px-2 py-1 text-[10px] font-black uppercase text-amber-200">
@@ -243,27 +236,7 @@ export default function TournamentHubScreen({
                       </span>
                     ) : null}
                   </div>
-                  <dl className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-300">
-                    <div>
-                      <dt className="font-black uppercase tracking-wide text-slate-500">AI</dt>
-                      <dd>AI: {view.aiTierLabel}</dd>
-                    </div>
-                    <div>
-                      <dt className="font-black uppercase tracking-wide text-slate-500">{ja ? '参加人数' : 'Players'}</dt>
-                      <dd>{formatNumber(view.players)}</dd>
-                    </div>
-                    <div>
-                      <dt className="font-black uppercase tracking-wide text-slate-500">{ja ? '開始持ち点' : 'Stack'}</dt>
-                      <dd>{formatNumber(view.startingStack)}</dd>
-                    </div>
-                    <div>
-                      <dt className="font-black uppercase tracking-wide text-slate-500">{ja ? 'ストラクチャー' : 'Blinds'}</dt>
-                      <dd className="truncate">{view.blindSheetLabel}</dd>
-                    </div>
-                  </dl>
-                  <p className="mt-3 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">
-                    {ja ? (view.status === 'PLAYABLE' ? '参加できます' : '参加条件あり') : view.status}
-                  </p>
+                  <p className="mt-3 text-sm text-slate-300">{ja ? '参加人数' : 'Players'}: {formatNumber(view.players)}</p>
                   {!view.eligibility.eligible ? (
                     <p className="mt-2 text-xs font-semibold text-red-200">
                       {view.eligibility.reason}

@@ -1,5 +1,5 @@
 import PersonalResults from "../personalResults/PersonalResults.jsx";
-import { readPersistedHandHistory } from "../utils/persistedHandHistory.js";
+import { readPersonalResultsHands } from "../personalResults/readPersonalResultsHands.js";
 import ReviewBookmarkButton from "../review/ReviewBookmarkButton.jsx";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -411,12 +411,12 @@ export default function HandHistoryScreen({
               <h2 className="font-semibold text-white">{copy.feedbackTitle}</h2>
               {hasStoredFeedbackAuth() && (
                 <button type="button" className="mt-2 rounded-full border border-emerald-400/40 px-4 py-2 font-semibold text-emerald-200 hover:bg-emerald-400/10"
-                  onClick={() => setPersonalResultsHands([...completedSnapshotList, ...readPersistedHandHistory({ limit: 2000 })])}
+                  onClick={() => setPersonalResultsHands(readPersonalResultsHands())}
                 >{language === "ja" ? "マイ結果を見る" : "View my results"}</button>
               )}
               <p className="mt-1 text-slate-300/80">{copy.feedbackBody}</p>
               <p className="mt-2 text-xs text-slate-400">
-                Hands: {feedbackPayloadResult.handCount} / Minimum: {MIN_FEEDBACK_HANDS}
+                {language === "ja" ? "ハンド数" : "Hands"}: {feedbackPayloadResult.handCount} / {language === "ja" ? "必要ハンド数" : "Minimum"}: {MIN_FEEDBACK_HANDS}
               </p>
               <label className="mt-3 block text-xs font-semibold text-slate-300">
                 {copy.feedbackScope}

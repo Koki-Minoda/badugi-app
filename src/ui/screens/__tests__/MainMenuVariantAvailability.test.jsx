@@ -27,9 +27,9 @@ describe("MainMenu variant availability", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/tournament");
   });
 
-  it("routes variant selection to the gated game selector", () => {
+  it("routes cash to the gated game selector", () => {
     render(<MainMenuScreen language="en" />);
-    fireEvent.click(screen.getByTestId("menu-variant-select"));
+    fireEvent.click(screen.getByTestId("menu-ring"));
     expect(mockNavigate).toHaveBeenCalledWith("/games?mode=cash");
   });
 });

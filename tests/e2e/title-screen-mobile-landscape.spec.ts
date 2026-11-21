@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const appUrl = process.env.E2E_APP_URL ?? "http://127.0.0.1:3000";
 
@@ -73,3 +73,62 @@ test("a late menu image cannot move the tournament button during a press", async
   await page.mouse.up();
   await expect(page.getByTestId("tournament-stage-store")).toBeVisible();
 });
+
+// iOS QM #462: prevent one-character wrapping in profile navigation.
+async function openHeaderScreen(page: Page, path: string) {
+  // Load Vite's entry first: /settings is outside its /dev/ asset base.
+  // These layout checks then use the same client-side routes as the app.
+  await page.goto(appUrl);
+  await expect(page.getByTestId('title-screen')).toBeVisible();
+  await page.evaluate(path => {
+    history.pushState(null, '', path);
+    dispatchEvent(new PopStateEvent('popstate'));
+  }, path);
+}
+for (const width of [320, 390, 852]) for (const locale of ['ja', 'en']) {
+  test(`settings header remains readable at ${width}px in ${locale}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await openHeaderScreen(page, '/settings');
+    await page.getByLabel('言語 / Language').selectOption(locale);
+    const header = page.locator('header').first();
+    await expect(header.getByRole('heading')).toHaveText(locale === 'ja' ? 'プロフィール設定' : 'Title & Avatar');
+    const geometry = await header.evaluate(el => {
+      const title = el.querySelector('h1')!;
+      const range = document.createRange(); range.selectNodeContents(title);
+      const titleLines = range.getClientRects().length;
+      return { titleLines, overflow: document.documentElement.scrollWidth - innerWidth,
+        buttons: [...el.querySelectorAll('button')].map(button => {
+          const range = document.createRange(); range.selectNodeContents(button);
+          const rect = button.getBoundingClientRect();
+          return { lines: range.getClientRects().length, height: rect.height, right: rect.right };
+        }) };
+    });
+    expect(geometry.titleLines).toBe(1);
+    expect(geometry.overflow).toBeLessThanOrEqual(1);
+    for (const button of geometry.buttons) {
+      expect(button.lines).toBe(1);
+      expect(button.height).toBeGreaterThanOrEqual(44);
+      expect(button.right).toBeLessThanOrEqual(width);
+    }
+    await header.getByRole('button', { name: locale === 'ja' ? 'ゲーム選択へ戻る' : 'Back to menu' }).click();
+    await expect(page).not.toHaveURL(/settings/);
+  });
+}
+
+for (const width of [320, 390, 852]) for (const locale of ['ja', 'en']) {
+  test(`MIX header navigation fits ${width}px in ${locale}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await openHeaderScreen(page, '/mixed');
+    await page.getByLabel('言語 / Language').selectOption(locale);
+    const header = page.locator('header').first();
+    await expect(header.getByRole('heading')).toHaveText(locale === 'ja' ? 'MIXを作成' : 'Build a MIX');
+    expect(await header.evaluate(el => [...el.querySelectorAll('button')].every(button => {
+      const range = document.createRange(); range.selectNodeContents(button);
+      const rect = button.getBoundingClientRect();
+      return range.getClientRects().length === 1 && rect.height >= 44 && rect.right <= innerWidth;
+    }))).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    await header.getByRole('button', { name: locale === 'ja' ? 'メニュー' : 'Main Menu', exact: true }).click();
+    await expect(page).toHaveURL(/menu/);
+  });
+}

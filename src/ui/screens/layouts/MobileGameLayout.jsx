@@ -49,7 +49,9 @@ export default function MobileGameLayout({headerProps:h,sidePanelProps:s,tablePr
  useEffect(()=>{if(shortCall)setAmountOpen(false);},[shortCall]);
  const hint=c.heroCanAct?(draw?(ja?'交換するカードをタップ':'Select cards to exchange'):(info.toCall>0?(ja?`あなたの番 · コール ${payableCall}`:`Your turn · Call ${payableCall}`):(ja?'あなたの番 · チェックできます':'Your turn · Check available'))):(ja?(info.currentActorName?`${info.currentActorName} の番`:'次の操作を待っています'):(info.waitingLabel||'Waiting'));
  const street=ja?({Preflop:'プリフロップ',Flop:'フロップ',Turn:'ターン',River:'リバー','3rd Street':'3番街','4th Street':'4番街','5th Street':'5番街','6th Street':'6番街','7th Street':'7番街'}[t.streetLabel]||t.streetLabel):t.streetLabel;
- const phase=draw?(ja?`交換 ${Math.max(1,Number(t.drawRoundValue)||1)}/${t.tableSummaryProps?.maxDraws??3}`:'Draw'):(street || (ja?`ベット ${Number(t.betRoundValue||0)+1}`:'Betting'));
+ const maxDraws=Math.max(1,Number(t.tableSummaryProps?.maxDraws)||3);
+ const drawNumber=Math.min(maxDraws,Math.max(1,(Number(t.drawRoundValue)||0)+1));
+ const phase=draw?`${ja?'交換':'Draw'} ${drawNumber}/${maxDraws}`:(street || (ja?`ベット ${Number(t.betRoundValue||0)+1}`:'Betting'));
  const invoke=a=>{if(!a)return;const fn={onFold:c.playerFold,onCall:c.playerCall,onCheck:c.playerCheck,onRaise:c.playerRaise}[a.handler];fn?.();};
  const renderSeat=({seat,index},isHero=false)=><MobileTableSeat seat={seat} index={index} hero={isHero} active={t.controllerTurn===index} dealer={t.controllerDealerIdx===index} position={t.positionNameFn(index,t.controllerDealerIdx,t.seatLayouts.length)} variant={t.gameVariant} language={h.language} selection={isHero?t.heroDrawSelection:[]} canDraw={isHero&&t.heroCanDraw} onCardClick={t.handleCardClick}/>;
  return <div className={`mgx-play mgx-play--oval ${viewport.width>viewport.height?'is-landscape':'is-portrait'}`} data-layout-mode={viewport.width>viewport.height?'mobile-landscape':'mobile-portrait'} data-testid="mobile-play-layout" data-phase-tone={phaseTone} style={{width:viewport.width,height:viewport.height,left:viewport.left,top:viewport.top}}>

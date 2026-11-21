@@ -74,3 +74,37 @@ it('shows recorded hero cards and legacy stack fields without displaying opponen
   expect(screen.getByText('500 → 520')).toBeTruthy();
   expect(screen.queryByText('K♠')).toBeNull();
 });
+
+it('keeps filters collapsed while showing active conditions and preserving a search', () => {
+  saveReview(hand);
+  render(<MemoryRouter initialEntries={['/learn/review?status=pending']}><ReviewScreen /></MemoryRouter>);
+  const filters = screen.getByTestId('review-filters');
+  expect(filters.open).toBe(false);
+  expect(filters.querySelector('summary').textContent).toContain('未復習');
+  fireEvent.click(filters.querySelector('summary'));
+  expect(filters.open).toBe(true);
+  fireEvent.change(screen.getByLabelText('メモ・ハンドを検索'), { target: { value: 'no-match' } });
+  fireEvent.click(filters.querySelector('summary'));
+  expect(filters.open).toBe(false);
+  expect(filters.querySelector('summary').textContent).toContain('検索あり');
+  expect(screen.getByText('条件に合うハンドはありません。')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: '絞り込みを解除' }));
+  expect(screen.getByTestId('saved-hand')).toBeTruthy();
+});
+
+it('prioritizes the saved hand content and keeps its ID in expanded details and search', () => {
+  const id = 'practice-badugi-long-internal-id-123456789';
+  saveReview({ ...hand, handId: id, mode: 'practice', seats: [{ seat: 0, initialHand: ['AS', '2H', '3D', '4C'] }] }, { note: '交換判断を振り返る' });
+  render(<MemoryRouter><ReviewScreen /></MemoryRouter>);
+  const item = screen.getByTestId('saved-hand');
+  const summary = item.querySelector('summary');
+  expect(summary.textContent).toContain('配牌練習');
+  expect(summary.textContent).toContain('ポット 40');
+  expect(summary.textContent).toContain('A♠ 2♥ 3♦ 4♣');
+  expect(summary.textContent).toContain('交換判断を振り返る');
+  expect(summary.textContent).not.toContain(id);
+  fireEvent.click(summary);
+  expect(within(item).getByText(`ハンドID: ${id}`)).toBeTruthy();
+  fireEvent.change(screen.getByLabelText('メモ・ハンドを検索'), { target: { value: id } });
+  expect(screen.getByTestId('saved-hand')).toBeTruthy();
+});

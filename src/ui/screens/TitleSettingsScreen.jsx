@@ -1,7 +1,8 @@
 import { BUILD_INFO } from "../../config/buildInfo.js";
+import { useLanguage } from "../preferences/language.js";
 import LanguageSelect from '../preferences/LanguageSelect.jsx';
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import TitleForm from "../components/TitleForm";
 import { loadTitleSettings, resetTitleSettings, saveTitleSettings } from "../utils/titleSettings";
 import { usePlayerProgress } from "../hooks/usePlayerProgress.js";
@@ -29,8 +30,12 @@ function formatPercent(value, digits = 1) {
   return `${(value * 100).toFixed(digits)}%`;
 }
 
-export default function TitleSettingsScreen({ embedded = false, onClose = null } = {}) {
+export default function TitleSettingsScreen({ embedded = false, onClose = null, backLabel = null } = {}) {
   const navigate = useNavigate();
+  const ja = useLanguage() === "ja";
+  const stageLabel = (id) => ja ? ({store: "店舗大会", local: "地域大会", national: "全国大会", world: "世界大会"}[id] ?? id) : stageLabels[id];
+  const location = useLocation();
+  const showDeveloperSettings = import.meta.env.DEV && new URLSearchParams(location.search).get("debug") === "1";
   const [settings, setSettings] = useState(() => loadTitleSettings());
   const [devTierOverride, setDevTierOverride] = useState(() => loadAiTierOverride());
   const [kpiSnapshot, setKpiSnapshot] = useState(() => loadLastAiKpiSnapshot());
@@ -121,26 +126,26 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
 
   return (
     <div className={`${embedded ? "bg-transparent" : "min-h-screen bg-slate-950"} text-white`}>
-      <header className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
+      <header className="max-w-6xl mx-auto px-6 py-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm uppercase tracking-widest text-emerald-300">Settings</p>
-          <h1 className="text-3xl font-extrabold">Title & Avatar</h1>
+          <p className="text-sm uppercase tracking-widest text-emerald-300">{ja ? "設定" : "Settings"}</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold">{ja ? "プロフィール設定" : "Title & Avatar"}</h1>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button
             type="button"
             onClick={handleBack}
-            className="px-4 py-2 rounded-lg border border-white/30 hover:bg-white/10 transition"
+            className="min-h-11 whitespace-nowrap px-4 py-2 rounded-lg border border-white/30 hover:bg-white/10 transition"
           >
-            {embedded ? "ゲームへ戻る" : "ゲーム選択へ戻る"}
+            {backLabel ?? (ja ? (embedded ? "ゲームへ戻る" : "ゲーム選択へ戻る") : (embedded ? "Back to game" : "Back to menu"))}
           </button>
           {!embedded && (
             <button
               type="button"
               onClick={() => navigate("/game")}
-              className="px-4 py-2 rounded-lg bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition"
+              className="min-h-11 whitespace-nowrap px-4 py-2 rounded-lg bg-emerald-500 text-slate-900 font-semibold hover:bg-emerald-400 transition"
             >
-              Jump into Game
+              {ja ? "ゲームへ" : "Jump into Game"}
             </button>
           )}
         </div>
@@ -163,7 +168,7 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
               )}
             </div>
             <div>
-              <p className="text-sm uppercase tracking-widest text-emerald-300">Preview</p>
+              <p className="text-sm uppercase tracking-widest text-emerald-300">{ja ? "表示イメージ" : "Preview"}</p>
               <h2 className="text-2xl font-bold">{preview.name}</h2>
               <span className="inline-flex mt-2 px-3 py-1 rounded-full bg-emerald-600/20 text-emerald-300 text-xs uppercase tracking-wide">
                 {preview.title}
@@ -171,12 +176,11 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
             </div>
           </div>
           <div className="space-y-3 text-sm text-slate-200">
-            <p>Your name and title appear on the in-table player card.</p>
-            <p>The avatar will be used for chat/log animations in upcoming updates.</p>
+            <p>{ja ? "名前と称号は対局中のプレイヤーカードに表示されます。" : "Your name and title appear on the in-table player card."}</p>
           </div>
           <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/5 p-4 space-y-3">
             <p className="text-xs uppercase tracking-widest text-emerald-300">
-              World Championship Unlock
+              {ja ? "大会の解放状況" : "World Championship Unlock"}
             </p>
             <ul className="space-y-2 text-sm">
               {unlockState.chain.map((step) => (
@@ -184,7 +188,7 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
                   key={step.id}
                   className="flex items-center justify-between rounded-xl bg-slate-950/30 px-3 py-2"
                 >
-                  <span className="font-semibold">{stageLabels[step.id] ?? step.label}</span>
+                  <span className="font-semibold">{stageLabel(step.id) ?? step.label}</span>
                   <span
                     className={`text-xs font-bold ${
                       step.complete ? "text-emerald-300" : "text-slate-400"
@@ -197,20 +201,20 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
             </ul>
             <p className="text-xs text-amber-300">
               {unlockState.worldChampCleared
-                ? `Advanced modes unlocked (clears: ${unlockState.clearCount}).`
-                : `Next goal: ${stageLabels[pendingStep?.id] ?? "World"} victory needed for unlock.`}
+                ? (ja ? `上級モード解放済み（クリア${unlockState.clearCount}回）。` : `Advanced modes unlocked (clears: ${unlockState.clearCount}).`)
+                : (ja ? `次の目標: ${stageLabel(pendingStep?.id) ?? "世界大会"}で優勝すると解放されます。` : `Next goal: ${stageLabel(pendingStep?.id) ?? "World"} victory needed for unlock.`)}
             </p>
           </div>
         </section>
 
         <section className="bg-white text-slate-900 rounded-3xl p-6 shadow-xl">
-          <h3 className="text-xl font-semibold mb-4">Customize Player Profile</h3>
+          <h3 className="text-xl font-semibold mb-4">{ja ? "プロフィールを編集" : "Customize Player Profile"}</h3>
           <LanguageSelect />
           <TitleForm initialValues={settings} onSave={handleSave} onReset={handleReset} />
         </section>
       </main>
 
-      <section className="max-w-6xl mx-auto px-6 pb-16" data-testid="dev-tier-panel">
+      {showDeveloperSettings && <section className="max-w-6xl mx-auto px-6 pb-16" data-testid="dev-tier-panel">
         <div className="rounded-3xl border border-red-400/30 bg-slate-950/80 p-6 text-white space-y-4">
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -326,7 +330,7 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
             </div>
           </div>
         </div>
-      </section>
+      </section>}
     </div>
   );
 }

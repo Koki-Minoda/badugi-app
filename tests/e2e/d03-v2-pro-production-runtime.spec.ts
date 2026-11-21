@@ -47,7 +47,7 @@ for (const [mode, entrants] of [['cash', 2], ['cash', 3], ['cash', 6], ['tournam
       for (let seat = entrants; seat < 6; seat += 1) {
         await page.getByTestId(`seat-type-${seat}`).selectOption('EMPTY');
       }
-      await page.getByRole('button', { name: 'Close' }).last().click();
+      await page.getByRole('button', { name: /^(閉じる|Close)$/ }).last().click();
       for (let step = 0; step < 120; step += 1) {
         if ((await getProgressState(page)).isTerminal) break;
         const action = await performSafeAction(page, { autoCpu: true, policy: 'heroStay' });

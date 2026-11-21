@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { getReviewUserId } from '../personalResults/badugiReplayReview.js';
 import { saveBadugiRangeComparison } from '../personalResults/badugiRangeReviewStore.js';
 import { orderedRangePresets, rangeAssumptionName } from './badugiRangePresets.js';
+import RangeHandsEditor from './RangeHandsEditor.jsx';
 import { cardText } from './cardText.js';
 import { useBadugiCalculation } from './useBadugiCalculation.js';
 
@@ -90,11 +91,7 @@ export default function BadugiRangeComparison({ base, assumptions, onAlternate, 
       ? '上で入力したレンジをAとして、Bには別の想定を入れます。パットと各1枚交換の取り分がどう変わるかを比較します。'
       : 'Use the range above as A and a second assumption as B. Compare showdown equity for standing pat and each single-card discard.'}</p>
     <RangePresetField label={ja ? 'レンジBの候補' : 'Range B preset'} value={alternate.preset} presets={presets} count={count} onChange={onAlternate} ja={ja} />
-    <details className="rounded-lg border border-white/15 px-3">
-      <summary className="min-h-11 cursor-pointer py-3 text-sm text-emerald-200">{ja ? 'レンジBの手札・重みを編集' : 'Edit Range B hands and weights'}</summary>
-      <textarea className={`${field} mb-3 min-h-28 font-mono`} aria-label={ja ? 'レンジBの手札と重み' : 'Range B hands and weights'}
-        maxLength={4000} value={alternate.text} spellCheck={false} onChange={event => onAlternate({ preset: null, text: event.target.value })} />
-    </details>
+    <RangeHandsEditor name="B" text={alternate.text} onChange={onAlternate} ja={ja} />
     {count < 0 && <p className="text-sm text-slate-300">{ja ? '比較に使う相手の交換枚数を選んでください。' : 'Choose an opponent draw count to compare.'}</p>}
     <button type="button" className={button} disabled={!comparison || Boolean(request && !current)} onClick={() => setSubmitted(comparison)}>
       {ja ? 'レンジA・Bを比較' : 'Compare ranges A and B'}

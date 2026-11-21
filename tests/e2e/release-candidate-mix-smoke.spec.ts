@@ -54,7 +54,7 @@ test('release-candidate cash MIX rotates through all 11 games with real fold and
   await page.screenshot({ path: info.outputPath('builder-before-start.png') });
   console.log('[CANDIDATE_MIX] builder', info.project.name, page.url(),
     (await page.locator('body').innerText()).slice(0, 300), 'errors', errors);
-  await expect(page.getByRole('heading', { name: 'ミックスローテーションを作成' }))
+  await expect(page.getByRole('heading', { name: 'MIXを作成', exact: true }))
     .toBeVisible({ timeout: 10_000 });
   const startButton = page.getByRole('button', { name: /Mixed Game 開始|Start Mixed Game/i });
   await expect(startButton).toBeEnabled({ timeout: 10_000 });

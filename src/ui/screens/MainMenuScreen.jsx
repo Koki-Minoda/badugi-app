@@ -16,7 +16,7 @@ function ModeButton({
   testId,
 }) {
   const base =
-    "w-full rounded-2xl border px-7 py-4 lg:py-5 text-left transition-all cursor-pointer relative overflow-hidden group bg-black/70 backdrop-blur-sm";
+    "w-full rounded-2xl border min-h-11 px-5 py-3 lg:px-7 lg:py-5 text-left transition-all cursor-pointer relative overflow-hidden group bg-black/70 backdrop-blur-sm";
   const goldIdleClasses =
     "border-yellow-400/35 shadow-[0_0_15px_rgba(245,211,107,0.18)]";
   const emeraldActiveClasses =
@@ -42,7 +42,7 @@ function ModeButton({
       className={`${base} ${accentClasses} hover:-translate-y-1 hover:scale-[1.03]`}
     >
       <div className="pointer-events-none absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-white/12 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-      <div className="text-[0.7rem] lg:text-xs font-semibold uppercase tracking-[0.35em] text-slate-200/90">
+      <div className="text-sm lg:text-xs font-semibold uppercase tracking-[0.12em] lg:tracking-[0.35em] text-slate-200/90">
         {label}
       </div>
     </button>
@@ -356,26 +356,26 @@ export default function MainMenuScreen({
       <div className="absolute inset-0 bg-gradient-to-b from-black via-[#050713] to-[#020308]" />
       <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:radial-gradient(circle,_rgba(255,255,255,0.04)_1px,_transparent_1px)] [background-size:4px_4px]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-emerald-500/15 via-transparent to-transparent" />
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-6xl flex-col gap-10 px-8 py-10 lg:flex-row lg:gap-16 lg:py-16">
-        <div className="relative flex flex-[0.45] flex-col justify-center">
+      <div className="relative z-10 mx-auto flex min-h-screen max-w-6xl flex-col gap-4 px-4 py-4 sm:px-8 lg:flex-row lg:gap-16 lg:py-16">
+        <div className="relative flex flex-row lg:flex-[0.45] items-center gap-4 lg:flex-col lg:items-stretch lg:justify-center lg:gap-0">
           <div className="pointer-events-none absolute -left-20 top-24 h-64 w-64 rounded-full bg-emerald-500/20 blur-[120px]" />
-          <div className="relative">
+          <div className="relative w-20 shrink-0 lg:w-auto">
             <img
               src={mgxKitsune}
               alt="MGX Kitsune"
               width={1024}
               height={1024}
-              className="mx-auto w-[260px] drop-shadow-[0_0_35px_rgba(234,179,8,0.45)] lg:w-[320px] xl:w-[360px]"
+              className="mx-auto w-20 drop-shadow-[0_0_35px_rgba(234,179,8,0.45)] lg:w-[320px] xl:w-[360px]"
             />
           </div>
-          <div className="relative z-10 mt-6 space-y-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">
+          <div className="relative z-10 space-y-2 lg:mt-6 lg:space-y-4">
+            <div className="hidden text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300 lg:block">
               {locale.title.modeSelect}
             </div>
             <h1 className="text-2xl font-semibold tracking-wide text-yellow-100 lg:text-3xl">
               {locale.title.heading}
             </h1>
-            <p className="max-w-md text-xs text-slate-300/85 lg:text-sm">
+            <p className="hidden max-w-md text-xs text-slate-300/85 lg:block lg:text-sm">
               {locale.title.description}
             </p>
             <div className="flex gap-3">
@@ -387,46 +387,13 @@ export default function MainMenuScreen({
               >
                 ?
               </button>
-              <button
-                type="button"
-                aria-label="Open Settings"
-                onClick={() => setShowSettings(true)}
-                className="h-11 w-11 rounded-full border border-white/20 text-lg text-white transition hover:border-emerald-300/60 hover:text-emerald-200"
-              >
-                ⚙
-              </button>
             </div>
-            <div className="mt-4 rounded-2xl border border-slate-700/80 bg-black/60 px-5 py-3 text-[0.7rem] text-slate-200 lg:flex lg:items-center lg:justify-between lg:gap-4 lg:text-xs">
-              <div>
-                <p className="uppercase tracking-wide text-slate-400">
-                  {language === "ja" ? "ゲーム形式" : "Game Modes"}
-                </p>
-                <p className="font-semibold text-white">
-                  {language === "ja" ? "キャッシュ・トナメ" : "Cash · MTT"}
-                </p>
-              </div>
-              <div>
-                <p className="uppercase tracking-wide text-slate-400">
-                  {language === "ja" ? "対局の振り返り" : "Hand Review"}
-                </p>
-                <p className="font-semibold text-white">
-                  {language === "ja" ? "履歴から確認" : "Review your hands"}
-                </p>
-              </div>
-              <div>
-                <p className="uppercase tracking-wide text-slate-400">
-                  {language === "ja" ? "トーナメント" : "Store Ladder"}
-                </p>
-                <p className="font-semibold text-white">
-                  {language === "ja" ? "シーズン 02" : "Season 02"}
-                </p>
-              </div>
-            </div>
+
           </div>
         </div>
 
-        <div className="relative flex flex-[0.55] flex-col justify-center">
-          <div className="ml-auto flex w-full max-w-md flex-col gap-4">
+        <div className="relative flex flex-col lg:flex-[0.55] justify-center">
+          <div className="ml-auto flex w-full max-w-md flex-col gap-2 lg:gap-4">
             <ModeButton
               label={locale.menu.cash}
               isActive={activeMode === "cash"}
@@ -441,22 +408,6 @@ export default function MainMenuScreen({
               onHover={() => setActiveMode("cash")}
               onBlur={resetInfoPanel}
             />
-            <button
-              type="button"
-              data-testid="menu-variant-select"
-              onClick={() => {
-                if (onSelectRing) {
-                  onSelectRing();
-                  return;
-                }
-                navigate("/games?mode=cash");
-              }}
-              onMouseEnter={() => setActiveMode("cash")}
-              onBlur={resetInfoPanel}
-              className="rounded-2xl border border-emerald-300/35 bg-emerald-400/10 px-5 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100 transition hover:border-emerald-200/70 hover:bg-emerald-300/15"
-            >
-              {locale.menu.variantSelect}
-            </button>
             <ModeButton
               label={locale.menu.tournament}
               isActive={activeMode === "tournament"}
@@ -548,7 +499,7 @@ export default function MainMenuScreen({
               onHover={() => setActiveMode("settings")}
               onBlur={resetInfoPanel}
             />
-            <div className="mt-5 rounded-2xl border border-slate-700/70 bg-black/55 px-6 py-4 text-xs text-slate-300/85">
+            <div className="mt-5 hidden rounded-2xl border border-slate-700/70 lg:block bg-black/55 px-6 py-4 text-xs text-slate-300/85">
               <div className="mb-1 font-semibold text-slate-100">{infoContent.title}</div>
               <p>{infoContent.body}</p>
             </div>

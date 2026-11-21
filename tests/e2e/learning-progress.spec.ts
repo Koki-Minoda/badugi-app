@@ -18,6 +18,18 @@ test('today links connect missed quizzes, pending reviews and saved practice acr
   await expect(page.getByRole('button', { name: '4枚', exact: true })).toBeDisabled();
   await page.getByRole('link', { name: '学習に戻る', exact: true }).click();
   await expect(page.getByTestId('learning-totals')).toContainText('0%');
+  // Only one recommendation is shown: pending reviews take priority over quiz retries.
+  await expect(page.getByRole('link', { name: /間違えたクイズを復習/ })).toHaveCount(0);
+  await page.getByRole('link', { name: /未復習のハンドを振り返る/ }).click();
+  await page.getByTestId('saved-hand').locator('summary').click();
+  await page.getByRole('button', { name: '復習済みにする', exact: true }).click();
+  await expect(page.getByTestId('saved-hand')).toHaveCount(0);
+  await page.getByTestId('review-filters').locator('summary').click();
+  await page.getByLabel('復習状況').selectOption('done');
+  await page.getByTestId('saved-hand').locator('summary').click();
+  await expect(page.getByRole('button', { name: '復習済み・未復習に戻す' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('link', { name: '学習に戻る', exact: true }).click();
+  await expect(page.getByTestId('learning-totals')).toContainText('1/1');
   await page.getByRole('link', { name: /間違えたクイズを復習（1問）/ }).click();
   await expect(page.getByText('1 / 1', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '4枚', exact: true }).click();
@@ -25,15 +37,6 @@ test('today links connect missed quizzes, pending reviews and saved practice acr
   await page.getByRole('link', { name: '学習に戻る', exact: true }).click();
   await expect(page.getByTestId('learning-totals')).toContainText('50%');
   await expect(page.getByRole('link', { name: /間違えたクイズを復習/ })).toHaveCount(0);
-  await page.getByRole('link', { name: /未復習のハンドを振り返る/ }).click();
-  await page.getByTestId('saved-hand').locator('summary').click();
-  await page.getByRole('button', { name: '復習済みにする', exact: true }).click();
-  await expect(page.getByTestId('saved-hand')).toHaveCount(0);
-  await page.getByLabel('復習状況').selectOption('done');
-  await page.getByTestId('saved-hand').locator('summary').click();
-  await expect(page.getByRole('button', { name: '復習済み・未復習に戻す' })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('link', { name: '学習に戻る', exact: true }).click();
-  await expect(page.getByTestId('learning-totals')).toContainText('1/1');
   await expect(page.getByTestId('learning-today')).toContainText('回答 2問・復習 1件');
   await page.screenshot({ path: info.outputPath('learning-today.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
@@ -43,7 +46,7 @@ test('today links connect missed quizzes, pending reviews and saved practice acr
   await expect(fresh.getByTestId('learning-totals')).toContainText('50%');
   await expect(fresh.getByTestId('learning-totals')).toContainText('1/1');
   await fresh.getByRole('link', { name: /保存条件「毎日の4枚練習」/ }).click();
-  for (const label of ['A♠', '2♥', '3♦', '4♣']) await expect(fresh.getByRole('button', { name: label, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(fresh.getByLabel('選んだ手札')).toHaveText('A♠2♥3♦4♣');
   await expect(fresh.getByTestId('practice-table')).toHaveCount(0);
   const after = await fresh.evaluate(() => { const data = { ...localStorage }; delete data['mgx.learningProgress.v1']; return data; });
   expect(after).toEqual(before);
@@ -64,7 +67,10 @@ test('new game-switching questions score correctly in Japanese and English', asy
   await expect(page.getByTestId('learning-totals')).toContainText('100%');
   await page.getByLabel('Language').selectOption('en');
   await expect(page.getByRole('heading', { name: 'What to study today' })).toBeVisible();
-  await page.getByRole('link', { name: 'Six game-switching rule questions' }).click();
+  await expect(page.getByTestId('learning-dashboard').getByRole('link')).toHaveCount(1);
+  await expect(page.getByRole('link', { name: 'Choose a starting hand to practice', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: /Check your rules knowledge/ }).click();
+  await page.getByLabel('Practice topic').selectOption('draw_rules');
   await page.getByRole('button', { name: 'Three', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Correct');
 });

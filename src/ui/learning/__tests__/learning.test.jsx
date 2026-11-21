@@ -12,8 +12,9 @@ import { LANGUAGE_STORAGE_KEY } from '../../../config/mgxLocaleConfig.js';
 import { DeuceToSevenSingleDrawController } from '../../../games/draw/DeuceToSevenSingleDrawController.js';
 
 vi.mock('../../../games/config/canLaunchVariant.js', () => ({ canLaunchVariant: id => ({ canLaunch: id !== 'flh' }) }));
-vi.mock('../../hooks/usePlayerProgress.js', () => ({ usePlayerProgress: () => ({ tournament: { wins: {} } }) }));
-beforeEach(() => { localStorage.clear(); sessionStorage.clear(); });
+const playerProgress = vi.hoisted(() => ({ unlocked: false }));
+vi.mock('../../hooks/usePlayerProgress.js', () => ({ usePlayerProgress: () => ({ worldChampCleared: playerProgress.unlocked }) }));
+beforeEach(() => { localStorage.clear(); sessionStorage.clear(); playerProgress.unlocked = false; });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 const renderHub = (url = '/learn') => render(<MemoryRouter initialEntries={[url]}><MixedGameProvider><Routes><Route path="/learn" element={<LearningHubScreen />} /><Route path="/mixed" element={<MixedGameScreen language="ja" />} /></Routes></MixedGameProvider></MemoryRouter>);
 
@@ -51,7 +52,18 @@ describe('learning rules and template contracts', () => {
 });
 
 describe('learning routes', () => {
-  it('imports an unsaved deep link while preserving a previously edited template', () => {
+  it('offers every game in one selector next to its rules and play action', () => {
+    renderHub('/learn?variant=badugi');
+    const selector = screen.getByRole('combobox', { name: '学習する種目' });
+    expect(selector.options).toHaveLength(LEARNING_GAMES.length);
+    fireEvent.change(selector, { target: { value: 'deuce_to_seven_triple_draw' } });
+    expect(screen.getByTestId('learn-play').getAttribute('href')).toBe('/game?variant=deuce_to_seven_triple_draw');
+    expect(screen.getByTestId('learn-play').textContent).toContain('2-7 Triple Draw');
+    expect(screen.queryByRole('button', { name: 'Badugi', exact: true })).toBeNull();
+  });
+
+  it('imports an unsaved deep link after unlock while preserving a previously edited template', () => {
+    playerProgress.unlocked = true;
     const view = renderHub('/mixed?preset=learn-horse');
     let profiles = JSON.parse(localStorage.getItem('mixedGameProfiles'));
     expect(profiles.find(p => p.id === 'learn-horse').handsPerGame).toBe(4);

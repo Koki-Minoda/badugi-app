@@ -1,5 +1,5 @@
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import GameSelectorScreen from "../GameSelectorScreen.jsx";
 
@@ -31,6 +31,15 @@ describe("GameSelectorScreen", () => {
     expect(screen.queryByText("検証中")).toBeNull();
     expect(screen.queryByText("Triple-draw 2-7 lowball using three draws and fixed-limit betting streets.")).toBeNull();
     expect(screen.queryByText("すぐに開始できるゲーム")).toBeNull();
+  });
+
+  it("shows one public status per game without internal IDs or QA metadata", () => {
+    render(<GameSelectorScreen language="ja" />);
+    const card = within(screen.getByTestId("game-selector-card-deuce_to_seven_triple_draw"));
+    expect(card.getAllByText("Alpha")).toHaveLength(1);
+    expect(card.queryByText("D01")).toBeNull();
+    expect(card.queryByText(/優先フェーズ|QA|評価|Renderer/)).toBeNull();
+    expect(card.getByRole("button").disabled).toBe(false);
   });
 
   it("renders English variant descriptions when language is en", () => {

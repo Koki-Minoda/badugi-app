@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useLanguage } from "../preferences/language.js";
+import { getLearningGame } from "../learning/learningCatalog.js";
 import { createPortal } from "react-dom";
 import Card from "./Card";
 import { formatStatAf, formatStatPercent } from "../utils/stats.js";
@@ -265,15 +267,20 @@ function PlayerSmartHud({
   player,
   positionLabel,
   stats,
-  statsLine,
+  displayVariant,
+  ja,
+  onClose,
   stackValue,
   betValue,
   statusBadges,
 }) {
-  const [scope, setScope] = useState("all");
   const street = stats?.street ?? {};
   const hands = Number.isFinite(stats?.hands) ? stats.hands : 0;
   const avatarSource = resolvePlayerAvatarSource(player);
+  const measured = hands > 0;
+  const metrics = [["VPIP", stats?.vpipRate], ["PFR", stats?.pfrRate], ["ATS", stats?.atsRate], ["3BET", stats?.threeBetRate]].filter(([, value]) => Number.isFinite(value));
+  const showStreets = measured && getVariantLayoutProfile(displayVariant).layoutGroup === LAYOUT_GROUPS.DEFAULT
+    && Object.values(street).some(round => Object.values(round ?? {}).some(Number.isFinite));
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
@@ -289,34 +296,19 @@ function PlayerSmartHud({
               {player.name}
             </p>
             <p className="text-[10px] uppercase tracking-wide text-slate-400">
-              {positionLabel ?? "Seat"} · Hands {hands}
+              {positionLabel ?? (ja ? "席" : "Seat")} · {ja ? "記録" : "Hands"} {hands}
             </p>
           </div>
         </div>
-        <select
-          value={scope}
-          onChange={(event) => setScope(event.target.value)}
-          className="pointer-events-auto rounded bg-emerald-600 px-2 py-1 text-[11px] font-black text-white outline-none"
-          aria-label="HUD game scope"
-        >
-          <option value="all">All Games</option>
-          <option value="nlh">NLH</option>
-          <option value="plo">PLO</option>
-          <option value="badugi">Badugi</option>
-          <option value="deuce">2-7</option>
-          <option value="stud">Stud</option>
-          <option value="razz">Razz</option>
-        </select>
+        <button type="button" onClick={onClose} className="min-h-11 rounded-lg border border-white/20 px-3 text-xs text-emerald-200">{ja ? '閉じる' : 'Close'}</button>
       </div>
 
-      <div className="grid grid-cols-4 gap-2">
-        <HudMetricRing label="VPIP" value={stats?.vpipRate} />
-        <HudMetricRing label="PFR" value={stats?.pfrRate} />
-        <HudMetricRing label="ATS" value={stats?.atsRate} />
-        <HudMetricRing label="3BET" value={stats?.threeBetRate} />
-      </div>
+      <p className="text-xs text-emerald-200">{getLearningGame(displayVariant)?.name ?? displayVariant}</p>
+      {measured && metrics.length > 0 ? <div className="grid grid-cols-4 gap-2">
+        {metrics.map(([label, value]) => <HudMetricRing key={label} label={label} value={value} />)}
+      </div> : <p className="text-sm text-slate-300">{ja ? '統計はまだ集計されていません。' : 'Statistics are not available yet.'}</p>}
 
-      <div className="grid grid-cols-3 gap-3">
+      {showStreets && <div className="grid grid-cols-3 gap-3">
         <div>
           <p className="mb-1 text-center text-[11px] font-black uppercase text-slate-200">
             Flop
@@ -344,27 +336,24 @@ function PlayerSmartHud({
           <HudBar label="TAF" value={street.river?.taf} />
           <HudBar label="Hands" value={null} trailing={hands} />
         </div>
-      </div>
+      </div>}
 
       <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-2 text-[11px]">
         <div>
-          <p className="text-slate-500">Stack</p>
+          <p className="text-slate-500">{ja ? "持ち点" : "Stack"}</p>
           <p className="font-black text-white">{stackValue}</p>
         </div>
         <div>
-          <p className="text-slate-500">Bet</p>
+          <p className="text-slate-500">{ja ? "ベット" : "Bet"}</p>
           <p className="font-black text-white">{betValue}</p>
         </div>
         <div>
-          <p className="text-slate-500">Status</p>
+          <p className="text-slate-500">{ja ? "状態" : "Status"}</p>
           <p className="truncate font-black text-white">
-            {statusBadges.length > 0 ? statusBadges.join(", ") : "Ready"}
+            {statusBadges.length > 0 ? statusBadges.join(", ") : (ja ? "参加中" : "Ready")}
           </p>
         </div>
       </div>
-      <p className="truncate text-[10px] uppercase tracking-wide text-slate-400">
-        {statsLine}
-      </p>
     </div>
   );
 }
@@ -386,6 +375,8 @@ export default function Player({
   layoutProfile,
   mobileHeroCardOnly = false,
 }) {
+  const ja = useLanguage() === "ja";
+  const PlayerName = !compact && index !== selfIndex ? "button" : "span";
   const seatRef = useRef(null);
   const closeTimerRef = useRef(null);
   const [hudOpen, setHudOpen] = useState(false);
@@ -450,7 +441,7 @@ export default function Player({
     `${player.name}${positionLabel ? ` (${positionLabel})` : ""}`,
     `Stack: ${stackValue}`,
     `${player.allIn && betValue > 0 ? "All-in" : "Bet"}: ${betValue}`,
-    `Status: ${statusBadges.length > 0 ? statusBadges.join(", ") : "Ready"}`,
+    `Status: ${statusBadges.length > 0 ? statusBadges.join(", ") : (ja ? "参加中" : "Ready")}`,
     `Last action: ${player.lastAction || "-"}`,
     playerTitleBadge ? `Title: ${playerTitleBadge}` : null,
     personalityBadge ? `Personality: ${personalityBadge}` : null,
@@ -492,7 +483,7 @@ export default function Player({
     const rightLimit = panelBesideTable
       ? panelRect.left - margin
       : window.innerWidth - margin;
-    const width = Math.min(620, Math.max(320, rightLimit - margin));
+    const width = Math.min(360, Math.max(320, rightLimit - margin));
     const estimatedHeight = 318;
     const preferredBelow = rect.bottom + margin;
     const preferredAbove = rect.top - estimatedHeight - margin;
@@ -570,7 +561,9 @@ export default function Player({
               player={player}
               positionLabel={positionLabel}
               stats={stats}
-              statsLine={statsLine}
+              displayVariant={displayVariant}
+              ja={ja}
+              onClose={() => setHudOpen(false)}
               stackValue={stackValue}
               betValue={betValue}
               statusBadges={statusBadges}
@@ -585,11 +578,8 @@ export default function Player({
       <div
         ref={seatRef}
         data-testid={`seat-${seatIndex}`}
-        tabIndex={0}
         aria-label={playerDetailTitle}
-        onMouseMove={hudOpen ? undefined : openHud}
         onMouseLeave={scheduleCloseHud}
-        onFocus={openHud}
         onBlur={scheduleCloseHud}
         className={`relative ${isCompactStudLayout ? "overflow-hidden" : "overflow-visible"} rounded-[18px] border shadow-[0_10px_20px_rgba(0,0,0,0.35)] backdrop-blur flex flex-col outline-none transition hover:z-[80] focus:z-[80] focus-within:z-[80] focus-visible:ring-2 focus-visible:ring-sky-300 ${
           isFolded
@@ -751,9 +741,13 @@ export default function Player({
                       <StatusPill label={positionLabel} tone="slate" />
                     </span>
                   )}
-                  <span
+                  <PlayerName
                     data-testid={`seat-${seatIndex}-name`}
-                    className="truncate"
+                    className={`truncate text-left ${PlayerName === "button" ? "underline decoration-dotted underline-offset-2" : ""}`}
+                    type={PlayerName === "button" ? "button" : undefined}
+                    onClick={PlayerName === "button" ? () => hudOpen ? setHudOpen(false) : openHud() : undefined}
+                    aria-label={PlayerName === "button" ? (ja ? `${player.name}の詳細` : `${player.name} details`) : undefined}
+                    aria-expanded={PlayerName === "button" ? hudOpen : undefined}
                     title={player.name}
                     style={{
                       fontSize: "var(--player-name-size, 14px)",
@@ -761,7 +755,7 @@ export default function Player({
                     }}
                   >
                     {player.name}
-                  </span>
+                  </PlayerName>
                   {index === dealerIdx && (
                     <StatusPill label="D" tone="yellow" />
                   )}

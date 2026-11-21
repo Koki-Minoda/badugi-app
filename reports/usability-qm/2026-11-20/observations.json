@@ -1,0 +1,37 @@
+{
+  "provenance": "Manual transcription of relevant CUA accessibility observations during this audit. Full screenshot coverage and limitations are in the QM report.",
+  "U04": {
+    "surface": "macOS Safari, production game, Settings modal",
+    "screenshotCoverage": "pc-settings-developer.jpg captures the top of the settings modal. The developer section below was observed in the accessibility tree.",
+    "observedLabels": [
+      "DEVELOPER",
+      "AI Tier Tuning Panel",
+      "KPIを確認しながらCPUティアを一時的に上書きできます（テスト用途）。",
+      "TIER OVERRIDE",
+      "自動 (Pro基準)",
+      "Override解除",
+      "P2P RL CAPTURE",
+      "開発中の P2P / 対人戦ハンドを JSONL バッファへ蓄積します（テスト用途）。",
+      "Capture Disabled",
+      "EXPORT P2P MATCH BUFFER",
+      "JSONL Export"
+    ]
+  },
+  "U01": {
+    "sequence": [
+      "Logged-in menu -> learning hub",
+      "Learning hub -> menu at /menu",
+      "Game selector at /games?mode=cash -> Start Badugi",
+      "/game?variant=badugi&aiTier=standard -> registration/login entry",
+      "Click registration/login entry -> menu",
+      "Select cash and Badugi again inside App -> game table"
+    ]
+  },
+  "observedOutcomes": {
+    "pcPracticeCompletedHands": 1,
+    "iphonePracticeCompletedHands": 1,
+    "iphoneSavedReviewEntries": 1,
+    "pcRangeComparison": "Stand pat and four single-card discard rows, A and B equity columns",
+    "clock": "Started, counted down, and paused at 09:31"
+  }
+}

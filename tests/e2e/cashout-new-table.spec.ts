@@ -19,7 +19,7 @@ test("cash-out New Table starts a new PLO hand on the same screen and variant", 
     const previous = await result.getAttribute("data-hand-id");
     expect(previous).toBeTruthy();
     await page.getByTestId("hand-result-cash-out").click();
-    const cashOut = page.getByRole("dialog", { name: "Cash out result" });
+    const cashOut = page.getByRole("dialog", { name: /^(精算結果|Cash out result)$/i });
     await expect(cashOut.getByTestId("cash-out-hands")).toHaveText("2");
     await cashOut.getByRole("button", {name:"新しい卓",exact:true}).click();
     await expect.poll(async () => (await snapshot()).handCount).toBe(1);

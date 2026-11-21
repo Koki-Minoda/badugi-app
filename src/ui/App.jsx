@@ -31,6 +31,7 @@ import {
 import { formatComment } from "./utils/commentCatalog.js";
 import GameRegistry from "../games/_core/GameRegistry";
 import { DEBUG_TOURNAMENT, logMTT } from "../config/debugFlags.js";
+import { appendBoundedDiagnosticLog } from "./utils/boundedDiagnosticBuffer.js";
 import { BUILD_INFO } from "../config/buildInfo.js";
 import { exposeBrowserGameplayState } from "./qa/exposeBrowserGameplayState.js";
 import MobileQaDebugPanel from "./qa/MobileQaDebugPanel.jsx";
@@ -2957,15 +2958,15 @@ export default function App() {
       return `[${level}] phase=${context.phase} drawRound=${context.drawRound} betRound=${context.betRoundIndex} turn=${context.turn} ${payload}`;
     };
     console.log = (...args) => {
-      consoleLogBuffer.current.push(formatConsoleEntry("LOG", args));
+      appendBoundedDiagnosticLog(consoleLogBuffer.current, formatConsoleEntry("LOG", args));
       original.log(...args);
     };
     console.warn = (...args) => {
-      consoleLogBuffer.current.push(formatConsoleEntry("WARN", args));
+      appendBoundedDiagnosticLog(consoleLogBuffer.current, formatConsoleEntry("WARN", args));
       original.warn(...args);
     };
     console.error = (...args) => {
-      consoleLogBuffer.current.push(formatConsoleEntry("ERROR", args));
+      appendBoundedDiagnosticLog(consoleLogBuffer.current, formatConsoleEntry("ERROR", args));
       original.error(...args);
     };
     return () => {

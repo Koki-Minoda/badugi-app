@@ -62,6 +62,15 @@ class FrozenBadugiRunnerTest(unittest.TestCase):
         self.assertEqual(len({seed % runner.gate.SEED_PERIOD
                               for seeds in scheduled.values() for seed in seeds}), 160)
 
+    def test_phase2_safety_look_is_not_a_promotion_plan(self):
+        plan, manifests, shas, plan_sha, code_sha = inputs()
+        plan["evaluationPurpose"] = "PHASE2_SAFETY_DIAGNOSTIC_ONLY"
+        self.assertEqual(len(runner.validate_preflight(
+            plan, manifests, shas, plan_sha, code_sha, look=2)["candidate"]), 80)
+        plan["evaluationPurpose"] = "UNSEALED"
+        with self.assertRaisesRegex(ValueError, "evaluation purpose"):
+            runner.validate_preflight(plan, manifests, shas, plan_sha, code_sha, look=2)
+
     def test_preflight_rejects_unsealed_or_changed_inputs(self):
         for label, mutate in (
             ("model", lambda p, m, s: s.update(candidate="f" * 64)),

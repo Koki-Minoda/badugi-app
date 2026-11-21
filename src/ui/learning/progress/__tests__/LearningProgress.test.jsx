@@ -14,13 +14,15 @@ it('starts with honest empty metrics and a first-lesson link', () => {
   show();
   expect(screen.getByTestId('learning-totals').textContent).toContain('—');
   expect(screen.getByRole('link', { name: '種目切り替えのルールを6問' }).getAttribute('href')).toBe('/learn/quiz?topic=draw_rules');
+  expect(screen.getAllByRole('link')).toHaveLength(1);
   expect(localStorage.getItem(PROGRESS_STORAGE_KEY)).toBeNull();
 });
-it('offers pending reviews and saved practice, and marking reviewed updates the home counts', () => {
+it('prioritizes pending reviews, then offers saved practice after review', () => {
   saveReview({ handId: 'review-1', variantId: 'badugi' });
   savePracticePreset('Named setup', { variant: 'badugi', cards: ['AS', '2H', '3D', '4C'] });
   show();
-  expect(screen.getByRole('link', { name: /Named setup/ }).getAttribute('href')).toContain('cards=AS');
+  expect(screen.queryByRole('link', { name: /Named setup/ })).toBeNull();
+  expect(screen.getAllByRole('link')).toHaveLength(1);
   fireEvent.click(screen.getByRole('link', { name: /未復習のハンドを振り返る/ }));
   screen.getByTestId('saved-hand').open = true;
   fireEvent.click(screen.getByRole('button', { name: '復習済みにする' }));
@@ -30,6 +32,8 @@ it('offers pending reviews and saved practice, and marking reviewed updates the 
   expect(screen.getByRole('button', { name: '復習済み・未復習に戻す' }).getAttribute('aria-pressed')).toBe('true');
   fireEvent.click(screen.getByRole('link', { name: '学習に戻る' }));
   expect(screen.getByTestId('learning-totals').textContent).toContain('1/1');
+  expect(screen.getByRole('link', { name: /Named setup/ }).getAttribute('href')).toContain('cards=AS');
+  expect(screen.getAllByRole('link')).toHaveLength(1);
 });
 it('persists a wrong answer across screens, retries it and clears the missed suggestion', () => {
   vi.spyOn(Math, 'random').mockReturnValue(0.999);

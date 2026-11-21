@@ -105,3 +105,21 @@ for (const width of [320, 390, 852]) for (const locale of ['ja', 'en']) {
     await expect(page).not.toHaveURL(/settings/);
   });
 }
+
+for (const width of [320, 390, 852]) for (const locale of ['ja', 'en']) {
+  test(`MIX header navigation fits ${width}px in ${locale}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto(new URL('mixed', base).href);
+    await page.getByLabel('言語 / Language').selectOption(locale);
+    const header = page.locator('header').first();
+    await expect(header.getByRole('heading')).toHaveText(locale === 'ja' ? 'MIXを作成' : 'Build a MIX');
+    expect(await header.evaluate(el => [...el.querySelectorAll('button')].every(button => {
+      const range = document.createRange(); range.selectNodeContents(button);
+      const rect = button.getBoundingClientRect();
+      return range.getClientRects().length === 1 && rect.height >= 44 && rect.right <= innerWidth;
+    }))).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+    await header.getByRole('button', { name: locale === 'ja' ? 'メニュー' : 'Main Menu', exact: true }).click();
+    await expect(page).toHaveURL(/menu/);
+  });
+}

@@ -62,3 +62,5 @@ U03の確認画像: [iPhone](../../reports/usability-fixes/2026-11-21/u03-iphone
 - #463: 2ndが1/3、3rdが2/3になる交換回数表示を修正。0始まりの局面番号を表示時に変換し、PC・スマホで1/3・2/3・3/3、単一ドロー1/1を表示。英語のスマホ表示にも回数を追加。レイアウト回帰18件、既知不具合50件、RL安全性66件、build通過。実対局の[2nd](../../reports/usability-fixes/2026-11-21/ios-simulator/19-second-draw-fixed.jpg)・[3rd](../../reports/usability-fixes/2026-11-21/ios-simulator/20-third-draw-fixed.jpg)も再確認。
 
 - #464: 統合検証で見つかったMIX開始の回帰を修正。通常キャッシュURLより、学習・MIX・大会の明示した開始情報を優先。開始条件13件、PC・Android・iPhoneのMIX開始とモデル帰属の統合3件、既知不具合50件、RL安全性66件、build通過。
+
+- #465: MIX画面の見出し・戻り操作がスマホで圧迫される問題を修正。見出しと操作を適切に折り返し、MIXと日本語の種目一覧に統一。320・390・852pxの日英WebKit6件、既知不具合50件、RL安全性66件、build通過。[iOS修正後](../../reports/usability-fixes/2026-11-21/ios-simulator/35-mix-header-fixed.jpg)。

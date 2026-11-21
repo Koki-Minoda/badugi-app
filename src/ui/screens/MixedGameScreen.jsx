@@ -564,25 +564,25 @@ export default function MixedGameScreen({ language: languageProp }) {
         color: designTokens.colors.textStrong,
       }}
     >
-      <header className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between">
+      <header className="max-w-6xl mx-auto px-6 py-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-emerald-300">
-            Mixed Game Builder
+            MIX
           </p>
-          <h1 className="text-3xl font-extrabold">{ja ? 'ミックスローテーションを作成' : 'Build a MIX'}</h1><LanguageSelect />
+          <h1 className="text-2xl sm:text-3xl font-extrabold">{ja ? 'MIXを作成' : 'Build a MIX'}</h1><LanguageSelect />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => navigate("/menu")}
-            className="px-4 py-2 rounded-full border border-white/20 hover:bg-white/10 transition text-sm"
+            className="min-h-11 whitespace-nowrap px-4 py-2 rounded-full border border-white/20 hover:bg-white/10 transition text-sm"
           >
             {ja ? "メニュー" : "Main Menu"}
           </button>
           <button
             onClick={() => navigate("/games")}
-            className="px-4 py-2 rounded-full border border-cyan-400/40 text-cyan-200 hover:bg-cyan-400/10 transition text-sm"
+            className="min-h-11 whitespace-nowrap px-4 py-2 rounded-full border border-cyan-400/40 text-cyan-200 hover:bg-cyan-400/10 transition text-sm"
           >
-            Catalog
+            {ja ? '種目一覧' : 'Catalog'}
           </button>
         </div>
       </header>

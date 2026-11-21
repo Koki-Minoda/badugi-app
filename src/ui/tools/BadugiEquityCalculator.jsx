@@ -51,6 +51,7 @@ function DiscardPicker({ hand, discards, onChange, ja }) {
           {discards.length > 0 ? (ja ? `${discards.length}枚` : `${discards.length} selected`) : (ja ? 'パット' : 'Stand pat')}
         </span>
       </p>
+      <p className="text-xs text-slate-400">{ja ? "手札は変えずに、今回交換する札を選びます。" : "Select discards for this draw without editing the starting hand."}</p>
       <div className="flex flex-wrap gap-2">
         {hand.map(card => {
           const selected = discards.includes(card);

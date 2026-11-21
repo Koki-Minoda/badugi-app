@@ -15,6 +15,8 @@ import {
 import { findReplayFrameIndex } from "./replayFrameUtils.js";
 import { buildReplayTimeline } from "./replayTimelineViewModel.js";
 import ReplayCoachingOverlay from "../components/ReplayCoachingOverlay.jsx";
+import BadugiReplayDecisionPreview from "../coaching/BadugiReplayDecisionPreview.jsx";
+import { reviewVariant } from "../review/reviewStore.js";
 import {
   buildReplayReviewContract,
   isReplayReviewContract,
@@ -412,9 +414,11 @@ export default function ReplayScreen({
   const maxFrameIndex = Math.max(frames.length - 1, 0);
   const clampedIndex = Math.min(Math.max(frameIndex, 0), maxFrameIndex);
   const currentFrame = frames[clampedIndex] ?? null;
+  const isBadugi = reviewVariant(handSnapshot) === "badugi";
+  const showDecisionReview = isBadugi && frames.at(-1)?.event?.type === "HAND_END";
   const analysis = useMemo(
-    () => deriveAnalysis(currentFrame, handSnapshot),
-    [currentFrame, handSnapshot],
+    () => isBadugi ? null : deriveAnalysis(currentFrame, handSnapshot),
+    [currentFrame, handSnapshot, isBadugi],
   );
   const trainingIndex = trainingState?.index ?? null;
   const candidateResults = useMemo(() => {
@@ -485,6 +489,7 @@ export default function ReplayScreen({
   );
 
   useEffect(() => {
+    if (isBadugi) return undefined;
     let cancelled = false;
     const buffer = getHandHistoryBufferSnapshot();
     const bufferKey = buildBufferKey(buffer);
@@ -514,7 +519,7 @@ export default function ReplayScreen({
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [trainingRequestKey]);
+  }, [trainingRequestKey, isBadugi]);
 
   const refreshSnapshot = useCallback(() => {
     if (initialHandSnapshot && (!handId || initialHandSnapshot.handId === handId)) {
@@ -773,6 +778,16 @@ export default function ReplayScreen({
 
         <div className="flex flex-col gap-3">
           <ReplayHighlightLegend />
+          {showDecisionReview && (
+            <BadugiReplayDecisionPreview
+              hand={handSnapshot}
+              frames={frames}
+              frameIndex={clampedIndex}
+              onJump={goToIndex}
+              onPause={() => setIsPlaying(false)}
+              language={language}
+            />
+          )}
           {coachingAnnotation ? (
             <ReplayCoachingOverlay
               annotation={coachingAnnotation}
@@ -816,7 +831,7 @@ export default function ReplayScreen({
               }
             />
           ) : null}
-          <div className="flex flex-wrap items-center gap-3">
+          {!isBadugi && <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => setShowAnalysis((value) => !value)}
@@ -824,8 +839,8 @@ export default function ReplayScreen({
             >
               {showAnalysis ? "Hide Analysis" : "Show Analysis"}
             </button>
-          </div>
-          {showAnalysis && (
+          </div>}
+          {!isBadugi && showAnalysis && (
             <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/80">
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase tracking-[0.4em] text-slate-400">Analysis</p>

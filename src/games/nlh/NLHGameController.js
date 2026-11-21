@@ -88,6 +88,7 @@ export class NLHGameController {
     this.deck = null;
     this.burnedCards = [];
     this.handCounter = 0;
+    this.fullRaiseCountThisStreet = 0;
   }
 
   get holeCardCount() {
@@ -194,6 +195,7 @@ export class NLHGameController {
     }));
     this.state.boardCards = [];
     this.burnedCards = [];
+    this.fullRaiseCountThisStreet = 0;
     this.state.raiseRestrictedSeatIndexes = [];
     this.state.street = "PREFLOP";
     this.resetDeck();
@@ -422,6 +424,9 @@ export class NLHGameController {
         return { success: false, reason: "Unsupported action" };
     }
     if (fullRaise) {
+      if ((this.config.gameDefinition?.betting?.structure ?? this.config.gameDefinition?.betting) !== "fixed-limit") {
+        this.fullRaiseCountThisStreet += 1;
+      }
       this.state.players.forEach((entry, index) => {
         if (index !== seatIndex && entry && !entry.folded && !entry.seatOut && !entry.allIn) {
           entry.hasActedThisStreet = false;
@@ -576,6 +581,7 @@ export class NLHGameController {
   }
 
   resetStreetBets() {
+    this.fullRaiseCountThisStreet = 0;
     this.state.players = this.state.players.map((player) => ({
       ...player,
       betThisStreet: 0,

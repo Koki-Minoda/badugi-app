@@ -1,0 +1,194 @@
+{
+  "date": "2026-11-22",
+  "device": "Xcode Device Hub iPhone 17 / iOS 26.5",
+  "browser": "native iOS Safari",
+  "origin": "http://127.0.0.1:4392",
+  "auth": "real local FastAPI + isolated SQLite; signup 201 and native login, no auth fixture",
+  "source_base": "4c97d6e58a84be5adf3d55e74ce2a9f0c021a44c",
+  "additional_fixes": [
+    462,
+    463,
+    464,
+    465
+  ],
+  "limits": [
+    "Native graph check uses one completed cash hand; no claim of native 500-hand growth verification.",
+    "Full A/B range comparison, unlocked MIX and tournament completion are covered separately by automated regressions, not claimed as native checks.",
+    "Local simulator keyboard configuration and two CUA reconnections were tooling issues, not product results."
+  ],
+  "images": [
+    {
+      "file": "03-menu-authenticated.jpg",
+      "sha256": "2b9a535aa2b8d26976eef041a7c986bae01075b935f89941905d6884bd4d1759",
+      "bytes": 196418
+    },
+    {
+      "file": "04-settings-header-before-fit.jpg",
+      "sha256": "b025a1751a6dee9c342a2a25e75bf9bd2b8e332e4b8455c00770a1bf05910b80",
+      "bytes": 191101
+    },
+    {
+      "file": "05-settings-saved.jpg",
+      "sha256": "450a7d3341862b13f5d478b7df83732aea0c0a1174fa246c3e0c52f9bc24ebb6",
+      "bytes": 188055
+    },
+    {
+      "file": "06-settings-header-fixed.jpg",
+      "sha256": "63659f2feead79746fb02a3d50a3c22fae92de1a7a28f6caabae26dc3dca8505",
+      "bytes": 189357
+    },
+    {
+      "file": "07-learn-next-action.jpg",
+      "sha256": "98eea626cb10298589bc57321c6bcdb5b61f62db4dc49912ef15ff1c6b608799",
+      "bytes": 204958
+    },
+    {
+      "file": "08-learn-native-dropdown.jpg",
+      "sha256": "093d3daa96975f76ecc118d7961a5d3fa1617d4981b3028f1c1d7a169b737623",
+      "bytes": 213605
+    },
+    {
+      "file": "09-cash-from-learning.jpg",
+      "sha256": "a349e0569af3d020c33389f9204b6656d96175fdb4b76ddad44a67281afee713",
+      "bytes": 203390
+    },
+    {
+      "file": "10-cash-discard-selected.jpg",
+      "sha256": "0dd58cc923440a4d4c73afbbe70061571dcc83f73aac19a65505e0c6b1f2f527",
+      "bytes": 209032
+    },
+    {
+      "file": "11-third-draw-before-number-fix.jpg",
+      "sha256": "3d49921c21307b7698f9b74bb18db9442ffd8ee6c3b2d9bfa91a9b0826c18b7e",
+      "bytes": 210260
+    },
+    {
+      "file": "12-history-personal-results.jpg",
+      "sha256": "726268905437aaf9edab7259864eb53a28771b0c7da76b60d7ed597b4409b752",
+      "bytes": 183980
+    },
+    {
+      "file": "13-personal-results-open.jpg",
+      "sha256": "5b2968c623f9a5d50a124431c23c67a703e1d253dfc64729382ee70178f1ac09",
+      "bytes": 173435
+    },
+    {
+      "file": "14-results-radar.jpg",
+      "sha256": "b92baedf7c05ff5ec18ef0783a1d7a13312c9e49bc16a19dd0807729c01209a4",
+      "bytes": 197512
+    },
+    {
+      "file": "15-third-draw-question.jpg",
+      "sha256": "70f5172352370d4663362c70d9d80da7072628398e7d50bef1afad724ba38f72",
+      "bytes": 207196
+    },
+    {
+      "file": "16-third-draw-bbet.jpg",
+      "sha256": "c30c02077dd9af3de86919a63803f7499f2503356b4bb5380a634b87a0614c78",
+      "bytes": 183237
+    },
+    {
+      "file": "17-first-draw-fixed.jpg",
+      "sha256": "455d60e383e85d2269ad17e1fad41a0a50946799697e64484347749d3102da85",
+      "bytes": 209516
+    },
+    {
+      "file": "18-cash-landscape.jpg",
+      "sha256": "03dc3b3de523aaae55d5ec9199ce3533f368055f62f594a74b261c96a30e0fd0",
+      "bytes": 315209
+    },
+    {
+      "file": "19-second-draw-fixed.jpg",
+      "sha256": "0803e1e62b3b2d7d22e91358d0342cecc964dbc6e443015d62bc4d9b4da97425",
+      "bytes": 209812
+    },
+    {
+      "file": "20-third-draw-fixed.jpg",
+      "sha256": "1c1ea163f3643a3ff9310810832dce4cde0eaa5b448af493d5e8a31a87af8b96",
+      "bytes": 210372
+    },
+    {
+      "file": "21-cashout-ja.jpg",
+      "sha256": "44604980ce637eb35d14e2a1b002301dd61595fc52cd4c5f28d17ea8ae399996",
+      "bytes": 165932
+    },
+    {
+      "file": "22-equity-first-draw.jpg",
+      "sha256": "77449d12397215449d6bc1247a1f4b8d4d44e9ab1e766aa49ff0845e2a5ff574",
+      "bytes": 209062
+    },
+    {
+      "file": "23-equity-editor.jpg",
+      "sha256": "7001692499e1c50fc70303183388a152cfe845f6815daeeecd029b3fee54b723",
+      "bytes": 204226
+    },
+    {
+      "file": "24-equity-discard-and-opponent-results.jpg",
+      "sha256": "719b97051ee61c43210b7c75f70a8755e6efa7e9f0ab8582a37ba06615d98a1d",
+      "bytes": 216251
+    },
+    {
+      "file": "25-equity-opponent-change.jpg",
+      "sha256": "ef22d4aba14cb09e6c063c8c02a9ba7959fdea71ffd7eb0f9f3690671ecc7c88",
+      "bytes": 210505
+    },
+    {
+      "file": "26-practice-setup.jpg",
+      "sha256": "071961ea915757f1cf8da19d64e66ae48b94afb1b39c346c6065077f001d3791",
+      "bytes": 188932
+    },
+    {
+      "file": "27-practice-options.jpg",
+      "sha256": "8f3054b8985c98a6db8bf4f9779c59c3dbbf28d6cb30567acd1401a3d9cd44a2",
+      "bytes": 196685
+    },
+    {
+      "file": "28-practice-hero-actions.jpg",
+      "sha256": "3c1cdc49e95a449508a98942154a4cb7923de0c6ea0cadbd6387a433d79f5d84",
+      "bytes": 195310
+    },
+    {
+      "file": "29-practice-result-saved.jpg",
+      "sha256": "cf830d4b743d250e43157cde25a51bf2771c732e2cf1ee79c61509a6a7a62daa",
+      "bytes": 193545
+    },
+    {
+      "file": "30-review-list.jpg",
+      "sha256": "84cd8470e2e4aad12192a0b2eca9482bd64dd4dee33a60ba536312cd279d2afa",
+      "bytes": 157293
+    },
+    {
+      "file": "31-review-filters.jpg",
+      "sha256": "d30bad55fc593c6ab8210c9107605443289ffc412b38d3a6b09ecb5cf13fea2b",
+      "bytes": 175741
+    },
+    {
+      "file": "32-learn-recommendation-after-save.jpg",
+      "sha256": "3037ff6e0e0d491ccb6fb14371ba5440d1026af41e3ff0dfe279c4fc24cfa013",
+      "bytes": 213694
+    },
+    {
+      "file": "33-tournament-list.jpg",
+      "sha256": "53d6e2b79f448921506d1de6fbec0519215e9216e148339dc738b5589770b3ba",
+      "bytes": 192518
+    },
+    {
+      "file": "34-mix-header-before.jpg",
+      "sha256": "1d7b6c27a03f9f26b026e2a608f81d2de8921fbfd4585832aeb067c211442d1a",
+      "bytes": 195110
+    },
+    {
+      "file": "35-mix-header-fixed.jpg",
+      "sha256": "48ca258be1fd680b8cfcec173d868871ece5266d392411c9564ffdd46471ebd5",
+      "bytes": 188120
+    }
+  ],
+  "final_native_product_revision": "6f8413a7913f3ec9f939699d8d0d9f5d7140fe86",
+  "post_native_fix": {
+    "issue": 467,
+    "scope": "Locked preset URLs preview without persisting profiles",
+    "unit_tests_passed": 18,
+    "browser_tests_passed": 21,
+    "native_recheck": "not performed: Mac was locked after the main native QM"
+  }
+}

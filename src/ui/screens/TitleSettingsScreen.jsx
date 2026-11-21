@@ -30,7 +30,7 @@ function formatPercent(value, digits = 1) {
   return `${(value * 100).toFixed(digits)}%`;
 }
 
-export default function TitleSettingsScreen({ embedded = false, onClose = null } = {}) {
+export default function TitleSettingsScreen({ embedded = false, onClose = null, backLabel = null } = {}) {
   const navigate = useNavigate();
   const ja = useLanguage() === "ja";
   const stageLabel = (id) => ja ? ({store: "店舗大会", local: "地域大会", national: "全国大会", world: "世界大会"}[id] ?? id) : stageLabels[id];
@@ -135,9 +135,9 @@ export default function TitleSettingsScreen({ embedded = false, onClose = null }
           <button
             type="button"
             onClick={handleBack}
-            className="px-4 py-2 rounded-lg border border-white/30 hover:bg-white/10 transition"
+            className="min-h-11 px-4 py-2 rounded-lg border border-white/30 hover:bg-white/10 transition"
           >
-            {ja ? (embedded ? "ゲームへ戻る" : "ゲーム選択へ戻る") : (embedded ? "Back to game" : "Back to menu")}
+            {backLabel ?? (ja ? (embedded ? "ゲームへ戻る" : "ゲーム選択へ戻る") : (embedded ? "Back to game" : "Back to menu"))}
           </button>
           {!embedded && (
             <button

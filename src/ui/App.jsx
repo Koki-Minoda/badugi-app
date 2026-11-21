@@ -14481,24 +14481,9 @@ export default function App() {
   if (currentScreen === "settings") {
     return (
       <>
-        <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 px-6 text-center text-slate-100">
-          <p className="text-xs uppercase tracking-[0.4em] text-amber-400">
-            MGX
-          </p>
-          <h2 className="mt-2 text-4xl font-semibold">
-            {MGX_LOCALES[language]?.modal?.settingsTitle ?? "Settings"}
-          </h2>
-          <p className="mt-4 max-w-xl text-sm text-slate-400">
-            {MGX_LOCALES[language]?.modal?.settingsBody ??
-              "Settings will be added later. Return to the main menu to jump into your preferred mode."}
-          </p>
-          <button
-            type="button"
-            onClick={handleBackToMenu}
-            className="mt-8 rounded-full border border-amber-300/60 px-8 py-3 text-xs uppercase tracking-[0.4em] text-amber-100 hover:bg-amber-300/10"
-          >
-            {MGX_LOCALES[language]?.common?.backToMenu ?? "Back to Menu"}
-          </button>
+        <div className="min-h-screen bg-slate-950">
+          <TitleSettingsScreen embedded onClose={handleBackToMenu}
+            backLabel={language === "ja" ? "メニューへ戻る" : "Back to menu"} />
         </div>
         <SaveFailureNotice language={language} />
         <DebugHud

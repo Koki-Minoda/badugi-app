@@ -121,8 +121,7 @@ describe("MainMenuScreen", () => {
     render(<MainMenuScreen language="ja" />);
     expect(screen.getByRole("button", { name: "キャッシュゲーム" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "ハンド履歴" })).toBeTruthy();
-    expect(screen.getByText("キャッシュ・トナメ")).toBeTruthy();
-    expect(screen.getByText("履歴から確認")).toBeTruthy();
+    expect(screen.queryByText("シーズン 02")).toBeNull();
 
     fireEvent.click(screen.getByTestId("menu-ring"));
     expect(screen.queryByRole("button", { name: "ゲームを選択" })).toBeNull();

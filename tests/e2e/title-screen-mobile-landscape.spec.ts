@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const appUrl = process.env.E2E_APP_URL ?? "http://127.0.0.1:3000";
 
@@ -75,11 +75,20 @@ test("a late menu image cannot move the tournament button during a press", async
 });
 
 // iOS QM #462: prevent one-character wrapping in profile navigation.
-const base = process.env.E2E_APP_URL ?? 'http://127.0.0.1:3000/';
+async function openHeaderScreen(page: Page, path: string) {
+  // Load Vite's entry first: /settings is outside its /dev/ asset base.
+  // These layout checks then use the same client-side routes as the app.
+  await page.goto(appUrl);
+  await expect(page.getByTestId('title-screen')).toBeVisible();
+  await page.evaluate(path => {
+    history.pushState(null, '', path);
+    dispatchEvent(new PopStateEvent('popstate'));
+  }, path);
+}
 for (const width of [320, 390, 852]) for (const locale of ['ja', 'en']) {
   test(`settings header remains readable at ${width}px in ${locale}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
-    await page.goto(new URL('settings', base).href);
+    await openHeaderScreen(page, '/settings');
     await page.getByLabel('言語 / Language').selectOption(locale);
     const header = page.locator('header').first();
     await expect(header.getByRole('heading')).toHaveText(locale === 'ja' ? 'プロフィール設定' : 'Title & Avatar');
@@ -109,7 +118,7 @@ for (const width of [320, 390, 852]) for (const locale of ['ja', 'en']) {
 for (const width of [320, 390, 852]) for (const locale of ['ja', 'en']) {
   test(`MIX header navigation fits ${width}px in ${locale}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
-    await page.goto(new URL('mixed', base).href);
+    await openHeaderScreen(page, '/mixed');
     await page.getByLabel('言語 / Language').selectOption(locale);
     const header = page.locator('header').first();
     await expect(header.getByRole('heading')).toHaveText(locale === 'ja' ? 'MIXを作成' : 'Build a MIX');

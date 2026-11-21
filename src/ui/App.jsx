@@ -9,6 +9,7 @@ import { multiGameVariantForTable, recordMultiGameResult } from './multigame/mul
 import { computeUnlockState } from "./utils/playerProgress.js";
 import { getPlayerProgressFromConsolidated } from "./utils/consolidatedProgress.js";
 import LearningGameLaunch from "./learning/LearningGameLaunch.jsx";
+import { getCashLaunchRequest } from "./game/cashLaunchRequest.js";
 // src/ui/App.jsx
 import React, {
   useCallback,
@@ -446,6 +447,7 @@ function readStoredAuthIdentity() {
 export default function App() {
   const location = useLocation();
   const trialVariant = new URLSearchParams(location.search).get('variant');
+  const cashLaunchRequestRef = useRef(getCashLaunchRequest(location));
   const guestTrial = !new URLSearchParams(location.search).get('mode') && new URLSearchParams(location.search).get('trial') === '1' && PUBLIC_PLAYABLE_VARIANTS.some(v => v.availabilityKey === trialVariant);
   const mixedGame = useContext(MixedGameContext);
   const mixedGameRef = useRef(mixedGame);
@@ -466,7 +468,7 @@ export default function App() {
   const modeRef = useRef(initialModeRef.current);
   const [language, setLanguage] = useLanguageState();
   // MGX branding: kitsune title screen + title → menu → game flow (2025-11-28)
-  const [currentScreen, setCurrentScreen] = useState(() => (guestTrial || location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? "menu" : "title");
+  const [currentScreen, setCurrentScreen] = useState(() => (cashLaunchRequestRef.current || guestTrial || location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? "menu" : "title");
   const [hubActiveSnapshot, setHubActiveSnapshot] = useState(null);
   const [gameUtilityModal, setGameUtilityModal] = useState(null);
   const pendingRingStartRef = useRef(false);
@@ -14406,9 +14408,11 @@ export default function App() {
             onAuthenticated={handleAuthSuccess}
             onAuthStateChange={handleAuthStateChange}
           >
-            {(guestTrial || location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? <LearningGameLaunch
-              variantId={guestTrial ? trialVariant : location.state.learningVariant ?? location.state.mixedProfileId ?? 'multi-game'}
+            {(cashLaunchRequestRef.current || guestTrial || location.state?.learningVariant || location.state?.mixedProfileId || location.state?.multiGameConfig || location.state?.multiGameResume) ? <LearningGameLaunch
+              variantId={guestTrial ? trialVariant : location.state?.learningVariant ?? cashLaunchRequestRef.current?.variantId ?? location.state?.mixedProfileId ?? 'multi-game'}
               onLaunch={(variantId) => {
+                const cashTierId = cashLaunchRequestRef.current?.cashTierId;
+                cashLaunchRequestRef.current = null;
                 navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
                 if (guestTrial) { handleSelectRing(trialVariant); return; }
                 if (location.state?.multiGameConfig || location.state?.multiGameResume) {
@@ -14434,7 +14438,7 @@ export default function App() {
                   dealerChoiceActiveRef.current = Boolean(location.state?.dealerChoice);
                   if (dealerChoiceActiveRef.current) shiftDealerChoiceVariant();
                   handleSelectRing(normalizeAppVariantId(result.gameId), { keepMixed: true });
-                } else handleSelectRing(variantId);
+                } else handleSelectRing(variantId, { cashTierId });
               }}
             /> : <MenuScreenWithLogout
               language={language}

@@ -1,0 +1,81 @@
+{
+  "verified_revision": "37e3fec251fe701da05d8c617adba32e191c78c9",
+  "date": "2026-11-21",
+  "scope": "Local production build; browser fixtures for authenticated menu checks. No production rollout or post-fix iOS simulator re-QM.",
+  "checks": [
+    {
+      "name": "UI and calculation regression",
+      "files": 38,
+      "tests_passed": 276
+    },
+    {
+      "name": "History tier2",
+      "files": 2,
+      "tests_passed": 4
+    },
+    {
+      "name": "Known game bugs",
+      "files": 1,
+      "tests_passed": 50
+    },
+    {
+      "name": "RL safety",
+      "files": 8,
+      "tests_passed": 66
+    },
+    {
+      "name": "Browser interactions",
+      "tests_passed": 8,
+      "devices": [
+        "Desktop Chromium",
+        "iPhone SE WebKit",
+        "375x667 Chromium",
+        "390x844 Chromium",
+        "852x320 Chromium"
+      ]
+    },
+    {
+      "name": "lint",
+      "errors": 0,
+      "existing_warnings": 3
+    },
+    {
+      "name": "production build",
+      "result": "passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "reports/usability-fixes/2026-11-21/final/practice-iphone.png",
+      "sha256": "3ec4d313f644e8a0b20f2654a20ec8d0f4add1dd08f9b807fd90a2141f535c66"
+    },
+    {
+      "path": "reports/usability-fixes/2026-11-21/final/practice-desktop.png",
+      "sha256": "21be6ff1506576a0e283161f412135af1593518a07c53c18a7fd632336c3a63c"
+    },
+    {
+      "path": "reports/usability-fixes/2026-11-21/final/practice-setup-mobile.png",
+      "sha256": "8fcb57d7f4b21874bbbfe7dcca71be6712e75b9b503ef86ea1d7c8e07de9a932"
+    },
+    {
+      "path": "reports/usability-fixes/2026-11-21/final/menu-mobile.png",
+      "sha256": "70d0010fa5bec9a2d05a2c509220f6ffb0ff448b0cdc0d7ecb00c80f0e5c92fc"
+    },
+    {
+      "path": "reports/usability-fixes/2026-11-21/final/equity-mobile.png",
+      "sha256": "6c73abc998912f984bf2a168ac06c4f151490b407525392be6e815fc7049edb9"
+    },
+    {
+      "path": "reports/usability-fixes/2026-11-21/final/equity-desktop.png",
+      "sha256": "19b565803c1dea109cf4f2544be94413d4d35d42fb8c14df33a7dca8c47bb86f"
+    },
+    {
+      "path": "reports/usability-fixes/2026-11-21/final/settings-mobile-en.png",
+      "sha256": "674d5f3c0a5d41c71aea056936f140172c0b5bb1ccbde984c52c90b55d09247e"
+    },
+    {
+      "path": "reports/usability-fixes/2026-11-21/final/settings-landscape-en.png",
+      "sha256": "7024df950ff1369e9f4c933bf1800a9152fddd44a10a1d8390dc77378a39aec0"
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "date": "2026-11-22",
+  "issues": [
+    469,
+    470
+  ],
+  "initial_ci": {
+    "url": "https://github.com/Koki-Minoda/badugi-app/actions/runs/44919928127",
+    "head": "b97b8450e4214f3525d8fa66c2b216f7d3c4fd94",
+    "status": "cancelled after confirmed obsolete UI selector failures",
+    "confirmed_failures": [
+      "nlh-qa",
+      "omaha-qa",
+      "dramaha-qa",
+      "cash-playability-qa"
+    ],
+    "cause": "Cash-out selectors still expected English labels after Japanese localization."
+  },
+  "local_checks": [
+    {
+      "name": "Cash lifecycle and new table",
+      "passed": 36
+    },
+    {
+      "name": "NLH/PLO/Dramaha Hi desktop and android",
+      "passed": 6,
+      "hands": 60
+    },
+    {
+      "name": "Release-candidate MIX desktop and iPhone portrait/landscape",
+      "passed": 3,
+      "games_per_case": 11
+    },
+    {
+      "name": "Known game bugs",
+      "passed": 50
+    },
+    {
+      "name": "RL safety",
+      "passed": 66
+    },
+    {
+      "name": "Lint",
+      "errors": 0,
+      "existing_warnings": 3
+    }
+  ],
+  "test_files": [
+    {
+      "file": "tests/e2e/all-live-core5-cash-production.spec.ts",
+      "sha256": "91ad937e11a92fd385a2cbe818c22d440ca65ec69fa81c08f14155fa79aaeb34"
+    },
+    {
+      "file": "tests/e2e/helpers/core5LifecycleE2EHelper.ts",
+      "sha256": "41c3960555e2a07ac970ea9ce89bb43adbdf19cb1d855e3d4787cba8290da66d"
+    },
+    {
+      "file": "tests/e2e/cashout-new-table.spec.ts",
+      "sha256": "c365965537a9327b13f1db44f55c485991374a096a7e896f89067da9475c302b"
+    },
+    {
+      "file": "tests/e2e/release-candidate-mix-smoke.spec.ts",
+      "sha256": "ea8b0e99d3f2ef26c8c16c3f4f314fc08b5e396378ed39834f387da3c6a465e5"
+    }
+  ]
+}

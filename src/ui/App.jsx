@@ -67,7 +67,7 @@ import {
   shouldSyncLegacyTurnToController,
   shouldPreferControllerActionActor,
 } from "./utils/actorSourceOfTruth.js";
-import { BOARD_NPC_AUTO_ACTION_DELAY_MS, NPC_AUTO_ACTION_DELAY_MS, runNpcDrawAllInAutoFastPath } from "./utils/npcAutoActionTiming.js";
+import { BOARD_NPC_AUTO_ACTION_DELAY_MS, npcAutoActionDelayMs, runNpcDrawAllInAutoFastPath } from "./utils/npcAutoActionTiming.js";
 import { resolveControllerDrawHistory } from "./utils/controllerDrawHistory.js";
 import { resolveBadugiBetControls } from "./app/badugiBetControls.js";
 
@@ -13425,7 +13425,7 @@ export default function App() {
         autoResolveCpuDrawIfNeeded();
         return;
       }
-    }, NPC_AUTO_ACTION_DELAY_MS);
+    }, npcAutoActionDelayMs({ isTournament }));
 
     return () => clearTimeout(timer);
   }, [

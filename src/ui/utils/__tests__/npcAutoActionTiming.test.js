@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   NPC_AUTO_ACTION_DELAY_MS,
+  MTT_NPC_AUTO_ACTION_DELAY_MS,
+  npcAutoActionDelayMs,
   runNpcDrawAllInAutoFastPath,
   shouldBypassNpcDrawAllInAutoDelay,
 } from "../npcAutoActionTiming.js";
@@ -26,6 +28,12 @@ function scheduleLikeNpcAutoEffect({ phase, seatIndex, player, autoResolveCpuDra
 describe("npcAutoActionTiming", () => {
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it("uses the shorter CPU beat only for tournament action turns", () => {
+    expect(npcAutoActionDelayMs({ isTournament: true })).toBe(MTT_NPC_AUTO_ACTION_DELAY_MS);
+    expect(MTT_NPC_AUTO_ACTION_DELAY_MS).toBeLessThan(NPC_AUTO_ACTION_DELAY_MS);
+    expect(npcAutoActionDelayMs({ isTournament: false })).toBe(NPC_AUTO_ACTION_DELAY_MS);
   });
 
   it("bypasses the timer for all-in NPC draw actions", () => {

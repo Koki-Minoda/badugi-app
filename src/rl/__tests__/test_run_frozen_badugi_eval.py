@@ -54,6 +54,30 @@ def inputs():
 
 
 class FrozenBadugiRunnerTest(unittest.TestCase):
+    def test_deck_seed_preflight_rejects_cross_session_hand_alias(self):
+        # Distinct session seeds can deal the same deck at different hand indices.
+        runner.validate_unique_deck_seeds(
+            {"candidate": [1000, 2000000], "reference": [3000000]}, 20)
+        with self.assertRaisesRegex(ValueError, "deck seed alias"):
+            runner.validate_unique_deck_seeds(
+                {"candidate": [1000, 1000 + 1009 * 10],
+                 "reference": [3000000]}, 20)
+        with self.assertRaisesRegex(ValueError, "session seed aliases"):
+            runner.validate_unique_deck_seeds(
+                {"candidate": [1000], "reference": [1000 + runner.gate.SEED_PERIOD]}, 20)
+
+    def test_preflight_rejects_adjacent_profile_deck_alias(self):
+        plan, manifests, shas, plan_sha, code_sha = inputs()
+        plan["lookSessionsPerCell"] = [2, 100]
+        plan["maxHandsPerArm"] = 80_000
+        for manifest in manifests.values():
+            manifest["sessionsPerProfileGroup"] = 100
+        # Profile bases are 10,000 apart. Index 90 in the next profile
+        # aliases index 0 ten hands later: 10,090 = 1,009 * 10.
+        with self.assertRaisesRegex(ValueError, "controller deck seed alias"):
+            runner.validate_preflight(plan, manifests, shas,
+                                      plan_sha, code_sha, look=100)
+
     def test_preflight_seals_real_controller_matrix_and_seed_schedule(self):
         values = inputs()
         scheduled = runner.validate_preflight(*values, look=2)

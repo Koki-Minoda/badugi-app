@@ -29,6 +29,7 @@ GROUPS = tuple(f'{seats}/{occupied}-{mode}' for mode in ("cash", "mtt")
                for seats, occupied in ((2, 2), (3, 3), (6, 6), (6, 2), (6, 3)))
 PROFILES = ("passive", "pressure", "draw_heavy", "random_legal")
 MAX_SESSIONS_PER_CELL = 5000
+CONTROLLER_DECK_HAND_STRIDE = 1009
 
 
 def sha256(path: Path) -> str:
@@ -53,6 +54,26 @@ def expected_cells() -> dict[str, dict]:
                 "noRebuy": True, "constantBigBet": True,
             }
     return result
+
+
+def validate_unique_deck_seeds(scheduled: dict[str, list[int]], hands: int) -> None:
+    """Reject two session seeds that generate any identical controller hand deck.
+
+    Checking only session seeds misses aliases between different hand indexes.
+    The session-seed set is small enough to keep in memory even at the maximum
+    look; this avoids materializing millions of individual hand seeds.
+    """
+    if type(hands) is not int or hands < 1:
+        raise ValueError("controller deck audit requires a positive hand count")
+    residues = [seed % gate.SEED_PERIOD for arm in scheduled.values() for seed in arm]
+    if len(set(residues)) != len(residues):
+        raise ValueError("controller session seed aliases modulo 2^32")
+    seed_set = set(residues)
+    for seed in seed_set:
+        for hand_gap in range(1, hands):
+            other = (seed + CONTROLLER_DECK_HAND_STRIDE * hand_gap) % gate.SEED_PERIOD
+            if other in seed_set:
+                raise ValueError("controller deck seed alias across sessions")
 
 
 def validate_preflight(plan: dict, manifests: dict[str, dict],
@@ -102,6 +123,7 @@ def validate_preflight(plan: dict, manifests: dict[str, dict],
             raise ValueError("scheduled seeds are outside windows or collide modulo 2^32")
         all_residues.update(seed % gate.SEED_PERIOD for seed in seeds)
         scheduled[arm] = seeds
+    validate_unique_deck_seeds(scheduled, plan["handsPerSession"])
     return scheduled
 
 

@@ -24,4 +24,21 @@
 
 [画像一覧・ハッシュ・確認範囲](../../reports/usability-fixes/2026-11-21/ios-simulator/verification.json)。修正ごとのコミットと検証は[修正一覧](MGX_USABILITY_FIXES_20261121.md)に追記する。PR・CI・本番反映はこの再QM後に実行し、完了を確認して別途記録する。
 
-再QM後の追補 #467: ロック中のpresetリンクに残っていた暗黙の保存をなくした。関連単体18件、PC・Android・iPhoneの関連ブラウザー21件を再確認。追加のネイティブ操作を始めた時点ではMacがロックされていたため、この追補のネイティブ再操作は未実施。上記33枚のネイティブ確認と、追加したリンク経由の回帰検証を分けて扱う。
+再QM後の追補 #467: ロック中のpresetリンクに残っていた暗黙の保存をなくした。関連単体18件、PC・Android・iPhoneの関連ブラウザー21件を再確認。追加のネイティブ操作を始めた時点ではMacがロックされていたため、この時点では追補のネイティブ再操作は未実施だった。上記33枚のネイティブ確認とリンク経由の自動回帰検証を分けて記録し、残っていたネイティブ確認は下記の追補で完了した。
+
+
+## 追補 #467：MIXリンクのネイティブ再QM（2026-11-22）
+
+[確認タスク #473](https://github.com/Koki-Minoda/badugi-app/issues/473)。iPhone 17 / iOS 26.5のネイティブSafariで、本番の [Lowball Basicsリンク](https://mgx-poker.com/mixed?preset=learn-lowball)を実操作した。本番のリリース情報は `bb25f6709937b709cc28144ca7098caec06a38d1`（PR #468のマージ）であることを確認。前回のローカル環境と区別し、今回の確認には認証・保存内容の差し替えを使っていない。
+
+| 確認項目 | 実操作と結果 | 証跡 |
+|---|---|---|
+| リンクからのプレビュー | Lowball Basicsの名前とA-5 Triple Draw・2-7 Triple Draw・Badugiの3種目、閲覧のみの説明を表示 | [36](../../reports/usability-fixes/2026-11-21/ios-simulator/36-mix-link-preview-locked.jpg)、[40](../../reports/usability-fixes/2026-11-21/ios-simulator/40-mix-link-name-preview.jpg) |
+| 編集の抑止 | MIX名・選択モード・重複許可をタップしても、入力や選択が開かず値が変わらない | [41](../../reports/usability-fixes/2026-11-21/ios-simulator/41-mix-link-edit-blocked.jpg) |
+| 保存・開始の抑止 | 「MIXを保存」「Mixed Game 開始」をタップしても、保存通知や対局開始に進まずプレビューに留まる | [37](../../reports/usability-fixes/2026-11-21/ios-simulator/37-mix-link-save-start-blocked.jpg) |
+| 暗黙の追加がない | 保存済み一覧の先頭と末尾を確認。既存の7件のみで、Lowball Basicsが追加されていない | [38](../../reports/usability-fixes/2026-11-21/ios-simulator/38-mix-link-saved-list-top.jpg)、[39](../../reports/usability-fixes/2026-11-21/ios-simulator/39-mix-link-saved-list-bottom.jpg) |
+| 再読込後も未保存 | Safariでページを再読込し、ページ内検索の「Lowball」が0件になることを確認。プレビューを開いただけでは永続化されない | [42](../../reports/usability-fixes/2026-11-21/ios-simulator/42-mix-link-reload-not-saved.jpg) |
+
+結果：5項目とも問題なし。前回残っていたMIXリンク修正のネイティブ再確認を完了し、7枚の画像を追加した。既存33枚と合わせて40枚の証跡を保持する。保存状態は画面と再読込で確認したもので、端末のlocalStorageのバイト一致やカスタム編集済みMIXの保全を今回ネイティブで再検証したという意味ではない。そこは既存の自動回帰検証と分ける。ツールの再接続とURL入力の補正は製品不具合には数えない。
+
+[画像ハッシュと今回の確認結果](../../reports/usability-fixes/2026-11-21/ios-simulator/verification.json)の `post_native_fix.native_recheck_followup` に実施範囲を記録した。過去のMacロック時点の未実施記録は履歴として保持している。

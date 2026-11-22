@@ -181,6 +181,41 @@
       "file": "35-mix-header-fixed.jpg",
       "sha256": "48ca258be1fd680b8cfcec173d868871ece5266d392411c9564ffdd46471ebd5",
       "bytes": 188120
+    },
+    {
+      "file": "36-mix-link-preview-locked.jpg",
+      "sha256": "c442ecc83750e4c574ac7ac9bf3cbb48b96f73ce24d80e0bf17c496a1bb61827",
+      "bytes": 191614
+    },
+    {
+      "file": "37-mix-link-save-start-blocked.jpg",
+      "sha256": "46b87e65aa9676986da4b4943f163a9c5ac31a2c64df34c545b74b1bb640b11a",
+      "bytes": 191935
+    },
+    {
+      "file": "38-mix-link-saved-list-top.jpg",
+      "sha256": "0c9fa82d726470286917c12c97e36e42061375a9b170585665d112bbd6271787",
+      "bytes": 199669
+    },
+    {
+      "file": "39-mix-link-saved-list-bottom.jpg",
+      "sha256": "3bbc6558c940b7ffe1d4873d34043b2bb7c5af42302304dda69994ec8f218bd7",
+      "bytes": 199671
+    },
+    {
+      "file": "40-mix-link-name-preview.jpg",
+      "sha256": "5cfd996bdf3266867fbf89e5140a821e951a041ebc4466c93a490797039a8b0a",
+      "bytes": 177842
+    },
+    {
+      "file": "41-mix-link-edit-blocked.jpg",
+      "sha256": "5e5108f209035b4de879ef0d77900f0bb41be95603adf24914c86aa1b51a16f2",
+      "bytes": 177186
+    },
+    {
+      "file": "42-mix-link-reload-not-saved.jpg",
+      "sha256": "58bed519d44d5c907875084be61bfc8c7078cb039b594abba4ea42dc3a40013e",
+      "bytes": 190677
     }
   ],
   "final_native_product_revision": "6f8413a7913f3ec9f939699d8d0d9f5d7140fe86",
@@ -189,6 +224,64 @@
     "scope": "Locked preset URLs preview without persisting profiles",
     "unit_tests_passed": 18,
     "browser_tests_passed": 21,
-    "native_recheck": "not performed: Mac was locked after the main native QM"
+    "native_recheck": "not performed: Mac was locked after the main native QM",
+    "native_recheck_followup": {
+      "date": "2026-11-22",
+      "timezone": "Asia/Tokyo",
+      "issue": 473,
+      "status": "passed",
+      "device": "Xcode Device Hub iPhone 17 / iOS 26.5",
+      "browser": "native iOS Safari",
+      "origin": "https://mgx-poker.com",
+      "entry_url": "https://mgx-poker.com/mixed?preset=learn-lowball",
+      "verified_production_commit": "bb25f6709937b709cc28144ca7098caec06a38d1",
+      "release_build_time": "2026-11-21T18:55:11.397Z",
+      "method": "Native Safari UI operated through CUA; no browser auth or storage fixture injected.",
+      "checks": [
+        {
+          "name": "preset preview",
+          "result": "Lowball Basics, A-5 Triple Draw / 2-7 Triple Draw / Badugi, preview-only explanation visible",
+          "images": [
+            "36-mix-link-preview-locked.jpg",
+            "40-mix-link-name-preview.jpg"
+          ]
+        },
+        {
+          "name": "editing blocked",
+          "result": "Tapping MIX name, selection mode and allow-duplicates checkbox does not open editing or change values",
+          "images": [
+            "41-mix-link-edit-blocked.jpg"
+          ]
+        },
+        {
+          "name": "save and start blocked",
+          "result": "Tapping Save MIX and Start leaves the preview in place, without starting a game or showing a save result",
+          "images": [
+            "37-mix-link-save-start-blocked.jpg"
+          ]
+        },
+        {
+          "name": "saved list unchanged by preview",
+          "result": "Seven default saved MIXes remain; Lowball Basics absent from the complete list",
+          "images": [
+            "38-mix-link-saved-list-top.jpg",
+            "39-mix-link-saved-list-bottom.jpg"
+          ]
+        },
+        {
+          "name": "reload does not persist preset",
+          "result": "Native Safari reload followed by Find on Page for Lowball reports 0 matches; Lowball Basics is not added to saved MIXes",
+          "native_find_result": 0,
+          "images": [
+            "42-mix-link-reload-not-saved.jpg"
+          ]
+        }
+      ],
+      "limits": [
+        "Native verification observes saved-list/UI persistence. No native localStorage byte comparison or custom saved-profile fixture was used; those remain separate automated regression coverage.",
+        "One CUA runtime reconnection and keyboard/URL entry corrections were tooling issues, not product failures."
+      ],
+      "resolves": "The earlier native_recheck field records the previous Mac-lock limitation; this followup completes that deferred check."
+    }
   }
 }

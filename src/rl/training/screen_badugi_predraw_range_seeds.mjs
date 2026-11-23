@@ -49,12 +49,14 @@ export function classifyBadugiPredrawHeroHand(cards) {
 }
 
 export function screenBadugiPredrawSeedRange({ firstSeed, scanCount, seatCount,
-  occupiedSeatCount, heroSeat, madeCards, highBand, maxMatches }) {
+  occupiedSeatCount, heroSeat, madeCards, highBand, highRank = null, maxMatches }) {
   if (!Number.isInteger(firstSeed) || firstSeed < 0 ||
       !Number.isInteger(scanCount) || scanCount <= 0 ||
       firstSeed + scanCount > 2 ** 32 ||
       ![2, 3, 4].includes(madeCards) ||
       !['A-5', '6-9', 'T-K'].includes(highBand) ||
+      (highRank !== null && (!Number.isInteger(highRank) || highRank < 0 ||
+        highRank > 12 || (highRank <= 4 ? 'A-5' : highRank <= 8 ? '6-9' : 'T-K') !== highBand)) ||
       !Number.isInteger(maxMatches) || maxMatches <= 0) {
     throw new TypeError('seed range screen requires bounded unsigned seeds and hand class');
   }
@@ -66,7 +68,8 @@ export function screenBadugiPredrawSeedRange({ firstSeed, scanCount, seatCount,
       seed, seatCount, occupiedSeatCount, heroSeat,
     });
     const hand = classifyBadugiPredrawHeroHand(cards);
-    if (hand.madeCards === madeCards && hand.highBand === highBand) {
+    if (hand.madeCards === madeCards && hand.highBand === highBand &&
+        (highRank === null || hand.highRank === highRank)) {
       selected.push({ seed, heroSeat, cards, hand });
     }
   }

@@ -70,6 +70,22 @@ describe('development-only predraw seed screen', () => {
     }
   });
 
+  it('can select one exact highest card within a hand band', () => {
+    const result = screenBadugiPredrawSeedRange({
+      firstSeed: 3100000000, scanCount: 100000,
+      seatCount: 6, occupiedSeatCount: 6, heroSeat: 2,
+      madeCards: 4, highBand: 'A-5', highRank: 4, maxMatches: 3,
+    });
+    expect(result.selected).toHaveLength(3);
+    expect(result.selected.every(({ hand }) => hand.madeCards === 4 &&
+      hand.highRank === 4 && hand.highBand === 'A-5')).toBe(true);
+    expect(() => screenBadugiPredrawSeedRange({
+      firstSeed: 3100000000, scanCount: 1,
+      seatCount: 6, occupiedSeatCount: 6, heroSeat: 2,
+      madeCards: 4, highBand: 'A-5', highRank: 5, maxMatches: 1,
+    })).toThrow('bounded unsigned seeds');
+  });
+
   it('rejects invalid seat and hand input', () => {
     expect(() => previewBadugiPredrawHeroHand({
       seed: 1, seatCount: 6, occupiedSeatCount: 2, heroSeat: 4,

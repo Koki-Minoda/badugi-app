@@ -45,8 +45,8 @@ class PublicRangeBeliefTests(unittest.TestCase):
         for events in ([], [event], [event, {'type': 'DRAW_ACTION',
                                             'seat': 1, 'drawCount': 0}]):
             estimate = estimate_public_range(actor_seen_cards=self.seen,
-                public_events=events, target_seat=1, seed=31, particles=256,
-                five_low_particles=64)
+                public_events=events, target_seat=1, seed=31, particles=2048,
+                five_low_particles=256)
             fine = estimate.fine_probabilities
             self.assertIsNotNone(fine)
             self.assertAlmostEqual(sum(fine), 1)
@@ -60,7 +60,7 @@ class PublicRangeBeliefTests(unittest.TestCase):
         for seed in range(12):
             estimate = estimate_public_range(actor_seen_cards=seen,
                 public_events=[], target_seat=1, seed=seed,
-                particles=256, five_low_particles=64)
+                particles=2048, five_low_particles=256)
             self.assertAlmostEqual(estimate.fine_probabilities[4], expected)
             self.assertGreater(estimate.fine_probabilities[4], 0)
         legacy = estimate_public_range(actor_seen_cards=seen,
@@ -69,7 +69,7 @@ class PublicRangeBeliefTests(unittest.TestCase):
         blocked = estimate_public_range(actor_seen_cards=[(rank, suit)
             for rank in range(5) for suit in range(4)],
             public_events=[], target_seat=1, seed=1,
-            particles=256, five_low_particles=64)
+            particles=2048, five_low_particles=256)
         self.assertEqual(blocked.fine_probabilities[4], 0)
         with self.assertRaisesRegex(ValueError, 'five-low stratification'):
             estimate_public_range(actor_seen_cards=seen, public_events=[],

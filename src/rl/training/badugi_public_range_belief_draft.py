@@ -202,8 +202,9 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
     if type(target_seat) is not int or target_seat < 0 or type(seed) is not int or type(particles) is not int or particles < 64:
         raise ValueError("range estimate requires seat, deterministic seed and >=64 particles")
     if (type(five_low_particles) is not int or
-            five_low_particles != 0 and not 64 <= five_low_particles < particles):
-        raise ValueError("five-low stratification requires zero or 64..particles-1 reserved samples")
+            five_low_particles != 0 and not (
+                particles >= 2048 and 128 <= five_low_particles <= particles // 4)):
+        raise ValueError("five-low stratification requires >=2048 total and 128..25% reserved samples")
     if not isinstance(public_events, (list, tuple)):
         raise ValueError("range estimate requires ordered public events")
     if type(style_weight) not in (int, float) or not math.isfinite(style_weight) or not 0 <= style_weight <= 1:

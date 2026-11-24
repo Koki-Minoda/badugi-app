@@ -1,9 +1,11 @@
 """Meaningful public-information and blocker contracts for range particles."""
 import dataclasses
+import math
 import unittest
 
 from rl.training.badugi_public_range_belief_draft import (
-    RangeEstimate, _public_action_likelihood, estimate_public_range,
+    RangeEstimate, _fine_bucket_from_score, _public_action_likelihood,
+    estimate_public_range,
     guarded_range_action, remaining_rank_counts,
 )
 
@@ -25,6 +27,53 @@ class PublicRangeBeliefTests(unittest.TestCase):
         self.assertEqual((ranks[0], ranks[3], ranks[8]), (3, 2, 3))
         with self.assertRaisesRegex(ValueError, "counted twice"):
             remaining_rank_counts([(0, 0), (0, 0)])
+
+    def test_five_low_is_separate_from_nine_low_and_three_cards(self):
+        self.assertEqual(_fine_bucket_from_score(4, [0, 1, 2, 3]), 4)  # A234
+        self.assertEqual(_fine_bucket_from_score(4, [0, 1, 2, 4]), 4)  # A235
+        self.assertEqual(_fine_bucket_from_score(4, [0, 1, 2, 5]), 3)  # A236
+        self.assertEqual(_fine_bucket_from_score(4, [0, 1, 2, 8]), 3)  # A239
+        self.assertEqual(_fine_bucket_from_score(4, [0, 1, 2, 9]), 2)  # A23T
+        self.assertEqual(_fine_bucket_from_score(3, [0, 1, 2]), 1)
+        self.assertEqual(_fine_bucket_from_score(2, [0, 1]), 0)
+
+    def test_fine_posterior_preserves_frozen_four_bucket_mass(self):
+        event = {'type': 'BET_ACTION', 'seat': 1, 'action': 'RAISE',
+                 'amountBb': 2, 'drawRoundIndex': 1,
+                 'legalActions': [0, 2, 4], 'toCallBb': 1,
+                 'potBb': 4, 'activePlayers': 3}
+        for events in ([], [event], [event, {'type': 'DRAW_ACTION',
+                                            'seat': 1, 'drawCount': 0}]):
+            estimate = estimate_public_range(actor_seen_cards=self.seen,
+                public_events=events, target_seat=1, seed=31, particles=256,
+                five_low_particles=64)
+            fine = estimate.fine_probabilities
+            self.assertIsNotNone(fine)
+            self.assertAlmostEqual(sum(fine), 1)
+            self.assertEqual(tuple(estimate.probabilities[:3]), tuple(fine[:3]))
+            self.assertAlmostEqual(estimate.probabilities[3], fine[3] + fine[4])
+            self.assertFalse(estimate.calibrated)
+
+    def test_rare_five_low_prior_keeps_exact_mass_without_zero_particles(self):
+        seen = [(5, 0), (6, 1), (7, 2), (8, 3)]
+        expected = 120 / math.comb(48, 4)
+        for seed in range(12):
+            estimate = estimate_public_range(actor_seen_cards=seen,
+                public_events=[], target_seat=1, seed=seed,
+                particles=256, five_low_particles=64)
+            self.assertAlmostEqual(estimate.fine_probabilities[4], expected)
+            self.assertGreater(estimate.fine_probabilities[4], 0)
+        legacy = estimate_public_range(actor_seen_cards=seen,
+            public_events=[], target_seat=1, seed=1, particles=256)
+        self.assertIsNone(legacy.fine_probabilities)
+        blocked = estimate_public_range(actor_seen_cards=[(rank, suit)
+            for rank in range(5) for suit in range(4)],
+            public_events=[], target_seat=1, seed=1,
+            particles=256, five_low_particles=64)
+        self.assertEqual(blocked.fine_probabilities[4], 0)
+        with self.assertRaisesRegex(ValueError, 'five-low stratification'):
+            estimate_public_range(actor_seen_cards=seen, public_events=[],
+                target_seat=1, seed=1, particles=256, five_low_particles=256)
 
     def test_public_raise_and_draw_change_current_range(self):
         plain = estimate_public_range(actor_seen_cards=self.seen,

@@ -8,6 +8,7 @@ from __future__ import annotations
 import math
 import random
 from dataclasses import dataclass
+from itertools import combinations, permutations
 
 from rl.env.badugi_env import build_deck, evaluate_badugi
 from rl.training.badugi_starting_ranges import best_badugi_keep
@@ -15,6 +16,8 @@ from rl.training.badugi_public_style_draft import estimate_public_style
 
 DECK = tuple(build_deck())
 BUCKETS = ("one_or_two", "three", "ten_to_king_badugi", "nine_or_better_badugi")
+FINE_BUCKETS = ("one_or_two", "three", "ten_to_king_badugi",
+                "six_to_nine_badugi", "five_or_better_badugi")
 BET_ACTIONS = ("FOLD", "CHECK", "CALL", "BET", "RAISE")
 
 
@@ -37,13 +40,47 @@ def remaining_rank_counts(actor_seen_cards):
     return tuple(counts)
 
 
-def _bucket(hand):
-    made, ranks = evaluate_badugi(hand)
+def _bucket_from_score(made, ranks):
     if made <= 2:
         return 0
     if made == 3:
         return 1
     return 3 if max(ranks) <= 8 else 2
+
+
+def _bucket(hand):
+    return _bucket_from_score(*evaluate_badugi(hand))
+
+
+def _fine_bucket_from_score(made, ranks):
+    if made <= 2:
+        return 0
+    if made == 3:
+        return 1
+    high = max(ranks)
+    return 4 if high <= 4 else 3 if high <= 8 else 2
+
+
+def _stratified_five_low_particles(unseen, particles, reserved, rng):
+    """Exact prior mass for rare A-5 Badugis, sampled within each stratum."""
+    available = set(unseen)
+    five_low_hands = [tuple(zip(ranks, suits))
+                      for ranks in combinations(range(5), 4)
+                      for suits in permutations(range(4))
+                      if all((rank, suit) in available
+                             for rank, suit in zip(ranks, suits))]
+    prior = len(five_low_hands) / math.comb(len(unseen), 4)
+    if not five_low_hands:
+        hands = [tuple(rng.sample(unseen, 4)) for _ in range(particles)]
+        return hands, [1.0 / particles] * particles
+    hands = [rng.choice(five_low_hands) for _ in range(reserved)]
+    while len(hands) < particles:
+        hand = tuple(rng.sample(unseen, 4))
+        if _fine_bucket_from_score(*evaluate_badugi(hand)) != 4:
+            hands.append(hand)
+    weights = ([prior / reserved] * reserved +
+               [(1.0 - prior) / (particles - reserved)] * (particles - reserved))
+    return hands, weights
 
 
 def _event(event, target_seat):
@@ -147,12 +184,15 @@ class RangeEstimate:
     particles: int
     calibrated: bool = False
     style_weight_applied: float = 0.0
+    # Diagnostic split only: A-5 and 6-9 still share the coarse action likelihood.
+    # This field cannot authorize a betting override without separate calibration.
+    fine_probabilities: tuple[float, float, float, float, float] | None = None
 
 
 def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
                           particles=2048, opponent_public_history=None,
                           style_weight=0.0, action_model=None,
-                          profiled_action_model=None):
+                          profiled_action_model=None, five_low_particles=0):
     """Particle posterior for a single opponent, with no private-opponent input.
 
     Rebuild from all actor-visible cards and chronological public events. This
@@ -161,6 +201,9 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
     seen = _cards(actor_seen_cards)
     if type(target_seat) is not int or target_seat < 0 or type(seed) is not int or type(particles) is not int or particles < 64:
         raise ValueError("range estimate requires seat, deterministic seed and >=64 particles")
+    if (type(five_low_particles) is not int or
+            five_low_particles != 0 and not 64 <= five_low_particles < particles):
+        raise ValueError("five-low stratification requires zero or 64..particles-1 reserved samples")
     if not isinstance(public_events, (list, tuple)):
         raise ValueError("range estimate requires ordered public events")
     if type(style_weight) not in (int, float) or not math.isfinite(style_weight) or not 0 <= style_weight <= 1:
@@ -175,9 +218,13 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
     if len(unseen) < 8:
         raise ValueError("insufficient unseen cards")
     rng = random.Random(seed)
-    hands = [tuple(rng.sample(unseen, 4)) for _ in range(particles)]
+    if five_low_particles:
+        hands, weights = _stratified_five_low_particles(
+            unseen, particles, five_low_particles, rng)
+    else:
+        hands = [tuple(rng.sample(unseen, 4)) for _ in range(particles)]
+        weights = [1.0 / particles] * particles
     used_cards = [frozenset(hand) for hand in hands]
-    weights = [1.0 / particles] * particles
     used = 0
     for event in public_events:
         if not _event(event, target_seat):
@@ -195,8 +242,8 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
                 for bucket in range(4))
         next_weights = []
         for hand, weight in zip(hands, weights):
-            made = evaluate_badugi(hand)[0]
-            bucket = _bucket(hand)
+            made, ranks = evaluate_badugi(hand)
+            bucket = _bucket_from_score(made, ranks)
             likelihood = (modeled_buckets[bucket] if modeled_buckets is not None else
                           _public_action_likelihood(event, bucket, made))
             next_weights.append(weight * likelihood)
@@ -229,11 +276,17 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
             used_cards = selected_used
             weights = [step] * particles
     probabilities = [0.0] * 4
+    fine_probabilities = [0.0] * 5 if five_low_particles else None
     for hand, weight in zip(hands, weights):
-        probabilities[_bucket(hand)] += weight
+        made, ranks = evaluate_badugi(hand)
+        probabilities[_bucket_from_score(made, ranks)] += weight
+        if fine_probabilities is not None:
+            fine_probabilities[_fine_bucket_from_score(made, ranks)] += weight
     counts = remaining_rank_counts(seen)
     return RangeEstimate(tuple(probabilities), counts[0], counts[3], used, particles,
-                         style_weight_applied=0.0)
+                         style_weight_applied=0.0,
+                         fine_probabilities=(tuple(fine_probabilities)
+                                             if fine_probabilities is not None else None))
 
 
 def guarded_range_action(*, base_action, legal_mask, hero_made, hero_high,

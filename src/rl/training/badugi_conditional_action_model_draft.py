@@ -29,27 +29,30 @@ def _context(event):
     return f"{street}:{players}:{price_bin}:{menu}", menu
 
 
-def _valid_row(row):
+def _valid_row(row, bucket_count):
     if not isinstance(row, dict) or set(row) != {
             "sessionId", "stateId", "truthBucket", "publicEvent"}:
         raise ValueError("conditional fit requires exact offline fields")
     if (type(row["sessionId"]) is not int or row["sessionId"] < 0 or
             type(row["stateId"]) is not int or row["stateId"] < 0 or
-            type(row["truthBucket"]) is not int or row["truthBucket"] not in range(4)):
-        raise ValueError("conditional fit requires independent IDs and a 4-class label")
+            type(row["truthBucket"]) is not int or
+            row["truthBucket"] not in range(bucket_count)):
+        raise ValueError("conditional fit requires independent IDs and a valid class label")
     return _context(row["publicEvent"])
 
 
-def fit_conditional_action_model(rows, *, min_sessions=100, prior_strength=8.0):
+def fit_conditional_action_model(rows, *, min_sessions=100, prior_strength=8.0,
+                                 bucket_count=4):
     """Fit population action responses, weighting each session equally."""
-    if (type(min_sessions) is not int or min_sessions < 1 or
+    if (type(bucket_count) is not int or bucket_count not in (4, 5) or
+            type(min_sessions) is not int or min_sessions < 1 or
             type(prior_strength) not in (int, float) or
             not math.isfinite(prior_strength) or prior_strength <= 0):
         raise ValueError("conditional fit requires positive frozen settings")
     by_session = defaultdict(list)
     seen = set()
     for row in rows:
-        context, menu = _valid_row(row)
+        context, menu = _valid_row(row, bucket_count)
         key = row["sessionId"], row["stateId"]
         if key in seen:
             raise ValueError("conditional fit cannot reuse a state")
@@ -70,6 +73,7 @@ def fit_conditional_action_model(rows, *, min_sessions=100, prior_strength=8.0):
             by_bucket_menu[f"{bucket}:{menu}"][action] += contribution
             by_menu[menu][action] += contribution
     return {"status": "DEVELOPMENT_FIT_ONLY", "sessions": len(by_session),
+            "bucketCount": bucket_count,
             "priorStrength": float(prior_strength),
             "contextCounts": dict(by_context), "bucketMenuCounts": dict(by_bucket_menu),
             "menuCounts": dict(by_menu), "actionOverrideAllowed": False}
@@ -80,14 +84,16 @@ def conditional_action_probability(model, event, hypothetical_bucket):
     context, menu = _context(event)
     if (not isinstance(model, dict) or model.get("status") != "DEVELOPMENT_FIT_ONLY" or
             model.get("actionOverrideAllowed") is not False or
-            type(hypothetical_bucket) is not int or hypothetical_bucket not in range(4)):
+            type(hypothetical_bucket) is not int or
+            hypothetical_bucket not in range(model.get("bucketCount", 4))):
         raise ValueError("conditional inference requires a fitted research model")
     legal = event["legalActions"]
     bucket = hypothetical_bucket
     # The old public likelihood is the prior, normalized on the observed legal
     # menu. Both levels of empirical counts retain the hand bucket interaction.
-    prior = [_public_action_likelihood({**event, "action": BET_ACTIONS[action]}, bucket,
-                                       max(1, 4 if bucket >= 2 else bucket + 1))
+    coarse_bucket = min(bucket, 3)
+    prior = [_public_action_likelihood({**event, "action": BET_ACTIONS[action]}, coarse_bucket,
+                                       max(1, 4 if coarse_bucket >= 2 else coarse_bucket + 1))
              for action in legal]
     global_counts = model["bucketMenuCounts"].get(f"{bucket}:{menu}", [0.0] * 5)
     alpha = model["priorStrength"]

@@ -15,6 +15,41 @@ def event(action):
 
 
 class ConditionalActionModelTests(unittest.TestCase):
+    def test_five_class_likelihood_is_candidate_only_and_public(self):
+        rows = [{"sessionId": i, "stateId": 0,
+                 "truthBucket": 4 if i % 2 else 3,
+                 "publicEvent": event("RAISE" if i % 2 else "CALL")}
+                for i in range(150)]
+        model = fit_conditional_action_model(rows, bucket_count=5,
+                                             min_sessions=100)
+        self.assertEqual(model["bucketCount"], 5)
+        self.assertFalse(model["actionOverrideAllowed"])
+        self.assertGreater(conditional_action_probability(model, event("RAISE"), 4),
+                           conditional_action_probability(model, event("RAISE"), 3))
+        for bucket in (3, 4):
+            self.assertAlmostEqual(sum(conditional_action_probability(
+                model, event(action), bucket)
+                for action in ("FOLD", "CALL", "RAISE")), 1)
+        args = {"actor_seen_cards": [(5, 0), (6, 1), (7, 2), (8, 3)],
+                "public_events": [event("RAISE")], "target_seat": 1,
+                "seed": 71, "particles": 2048, "five_low_particles": 256}
+        base = estimate_public_range(**args)
+        modeled = estimate_public_range(**args, fine_action_model=model)
+        self.assertGreater(modeled.fine_probabilities[4], base.fine_probabilities[4])
+        self.assertFalse(modeled.calibrated)
+        self.assertAlmostEqual(modeled.probabilities[3],
+                               sum(modeled.fine_probabilities[3:]), places=10)
+        with self.assertRaisesRegex(ValueError, "five-low particles"):
+            estimate_public_range(**{**args, "five_low_particles": 0},
+                                  fine_action_model=model)
+        with self.assertRaisesRegex(ValueError, "five fitted classes"):
+            estimate_public_range(**args, fine_action_model={**model, "bucketCount": 4})
+        with self.assertRaisesRegex(ValueError, "choose one"):
+            estimate_public_range(**args, fine_action_model=model, action_model=model)
+        with self.assertRaisesRegex(ValueError, "public action fields only"):
+            conditional_action_probability(model,
+                {**event("RAISE"), "opponentCards": []}, 4)
+
     def test_hand_bucket_changes_a_public_action_likelihood(self):
         rows = [{"sessionId": i, "stateId": 0, "truthBucket": i % 2 * 3,
                  "publicEvent": event("FOLD" if i % 2 == 0 else "RAISE")}

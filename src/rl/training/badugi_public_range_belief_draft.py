@@ -192,7 +192,8 @@ class RangeEstimate:
 def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
                           particles=2048, opponent_public_history=None,
                           style_weight=0.0, action_model=None,
-                          profiled_action_model=None, five_low_particles=0):
+                          profiled_action_model=None, five_low_particles=0,
+                          fine_action_model=None):
     """Particle posterior for a single opponent, with no private-opponent input.
 
     Rebuild from all actor-visible cards and chronological public events. This
@@ -213,8 +214,11 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
         estimate_public_style(opponent_public_history)  # Validate public-only history.
     if style_weight != 0:
         raise ValueError("uncalibrated style mixture is disabled")
-    if action_model is not None and profiled_action_model is not None:
+    if sum(model is not None for model in
+           (action_model, profiled_action_model, fine_action_model)) > 1:
         raise ValueError("choose one candidate action model")
+    if fine_action_model is not None and five_low_particles == 0:
+        raise ValueError("fine action model requires five-low particles")
     unseen = tuple(card for card in DECK if card not in seen)
     if len(unseen) < 8:
         raise ValueError("insufficient unseen cards")
@@ -236,6 +240,13 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
             from rl.training.badugi_conditional_action_model_draft import conditional_action_probability
             modeled_buckets = tuple(conditional_action_probability(action_model, event, bucket)
                                     for bucket in range(4))
+        elif fine_action_model is not None and event["type"] == "BET_ACTION":
+            from rl.training.badugi_conditional_action_model_draft import conditional_action_probability
+            if (not isinstance(fine_action_model, dict) or
+                    fine_action_model.get("bucketCount") != 5):
+                raise ValueError("fine action model requires five fitted classes")
+            modeled_buckets = tuple(conditional_action_probability(fine_action_model, event, bucket)
+                                    for bucket in range(5))
         elif profiled_action_model is not None and event["type"] == "BET_ACTION":
             from rl.training.badugi_profiled_action_model_draft import profiled_action_probability
             modeled_buckets = tuple(profiled_action_probability(
@@ -244,7 +255,9 @@ def estimate_public_range(*, actor_seen_cards, public_events, target_seat, seed,
         next_weights = []
         for hand, weight in zip(hands, weights):
             made, ranks = evaluate_badugi(hand)
-            bucket = _bucket_from_score(made, ranks)
+            bucket = (_fine_bucket_from_score(made, ranks)
+                      if fine_action_model is not None else
+                      _bucket_from_score(made, ranks))
             likelihood = (modeled_buckets[bucket] if modeled_buckets is not None else
                           _public_action_likelihood(event, bucket, made))
             next_weights.append(weight * likelihood)

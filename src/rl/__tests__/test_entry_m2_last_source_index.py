@@ -15,6 +15,9 @@ class LastSourceIndex(unittest.TestCase):
         self.assertEqual(source_class(
             "d03-iron-multistreet-value-audit-20261117/betting-decisions.jsonl",
             "SEED_BEARING_EXPERIMENT"), "RECORDED_ONE_HAND_RESET_SEED")
+        self.assertEqual(source_class(
+            "d03-predraw-bb-prior-raise-20261125/safety-rows.jsonl.partial",
+            "SEED_BEARING_EXPERIMENT"), "RECORDED_ONE_HAND_RESET_SEED")
         self.assertEqual(source_class("unknown/paired-hands.jsonl",
                                       "SEED_BEARING_EXPERIMENT"),
                          "UNRESOLVED_ROOT_SEED_EXCLUSION_ONLY")

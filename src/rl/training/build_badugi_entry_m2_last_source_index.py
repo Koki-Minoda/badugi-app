@@ -25,6 +25,7 @@ RESET_SOURCES = {
     "d03-iron-hand-range-audit-20261117/smoke.jsonl": "collect_opening_calls.py",
     "d03-iron-range-calibration-20261117/fit-rows.jsonl": "collect.py",
     "d03-iron-range-calibration-20261117/validate-rows.jsonl": "collect.py",
+    "d03-predraw-bb-prior-raise-20261125/safety-rows.jsonl.partial": "run.py",
 }
 RESET_PLAN = {"d03-iron-cross-leak-audit-20261117": "frozen-draw-plan.json"}
 SESSION_STUDIES = frozenset("""
@@ -139,13 +140,16 @@ def build(inventory_path: Path, previous_manifest_path: Path, root: Path,
                 raise ValueError(f"one-hand producer now advances hands: {relative}")
             if kind == "RECORDED_SESSION_DECKS" and "next_hand" not in code:
                 raise ValueError(f"session producer lacks next_hand: {relative}")
-            plan_name = ("pilot-plan.json" if kind == "RECORDED_SESSION_DECKS" and
+            plan_name = ("safety-plan.json" if relative ==
+                         "d03-predraw-bb-prior-raise-20261125/safety-rows.jsonl.partial" else
+                         "pilot-plan.json" if kind == "RECORDED_SESSION_DECKS" and
                          study == "d03-a5-fourcard-all-street-pilot-20261124" else
                          "safety-plan.json" if kind == "RECORDED_SESSION_DECKS" else
                          RESET_PLAN.get(study, "frozen-plan.json"))
             plan = root / study / plan_name
             plan_data = json.loads(plan.read_text())
             expected_code = (plan_data.get("collectorSha256") or
+                             plan_data.get("runCodeSha256") or
                              plan_data.get("sha256", {}).get("collector"))
             if not expected_code or hashlib.sha256(producer.read_bytes()).hexdigest() != expected_code:
                 raise ValueError(f"producer does not match frozen plan: {relative}")

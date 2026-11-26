@@ -142,6 +142,7 @@ def audit_selected_opportunity(row: dict, intended_stratum: str) -> dict:
         raise ValueError("actor-visible hand summary mismatch")
     mask = target.get("legalMask")
     amounts = target.get("legalAmountsChips")
+    applied = target.get("controllerAppliedAmountsChips")
     if (not isinstance(mask, list) or len(mask) != 6 or
             not isinstance(amounts, list) or len(amounts) != 6 or
             any(value not in (0, 1) for value in mask) or
@@ -150,6 +151,9 @@ def audit_selected_opportunity(row: dict, intended_stratum: str) -> dict:
                 for index in (0, 2, 4)) or
             amounts[0] != 0 or amounts[2] <= 0 or amounts[4] <= amounts[2]):
         raise ValueError("FOLD/CALL/RAISE legality or amount mismatch")
+    if (not isinstance(applied, dict) or set(applied) != {"0", "2", "4"} or
+            any(applied[str(index)] != amounts[index] for index in (0, 2, 4))):
+        raise ValueError("FOLD/CALL/RAISE amount not attested by applied controller branch")
     if target.get("naturalAction") not in (0, 2, 4):
         raise ValueError("natural model action is not legal among F/C/R")
     if (type(target.get("toCallBigBets")) not in (int, float) or

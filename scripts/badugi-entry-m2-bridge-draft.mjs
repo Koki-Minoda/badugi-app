@@ -63,6 +63,36 @@ function actorVisibleAudit(session, decision) {
 }
 
 let session = null;
+let resetRequest = null;
+let actionLog = [];
+
+function actualLegalAmounts() {
+  const current = session.currentDecision();
+  if (current.phase !== 'BET') throw new TypeError('M2 amount audit requires BET');
+  const actions = [0, 2, 4].filter((index) => current.legalMask[index] === 1);
+  const amounts = {};
+  for (const index of actions) {
+    const replay = new InteractiveSession(resetRequest);
+    replay.nextHand();
+    for (const action of actionLog) replay.step(action);
+    const before = replay.currentDecision();
+    if (before.seat !== current.seat || before.phase !== current.phase ||
+        before.drawRoundIndex !== current.drawRoundIndex ||
+        before.decisionIndex !== current.decisionIndex || before.legalMask[index] !== 1) {
+      throw new TypeError('M2 amount audit replay diverged before action');
+    }
+    replay.step(index);
+    const event = replay.publicEvents.at(-1);
+    if (event?.type !== 'BET_ACTION' || event.seat !== current.seat ||
+        !Number.isFinite(event.amount) || event.amount < 0) {
+      throw new TypeError('M2 amount audit lacks actual controller contribution');
+    }
+    amounts[index] = event.amount;
+  }
+  return { type: 'amount_audit', seat: current.seat,
+    decisionIndex: current.decisionIndex, actualAmountsChips: amounts };
+}
+
 const input = createInterface({ input: process.stdin, crlfDelay: Infinity });
 for await (const line of input) {
   try {
@@ -70,12 +100,17 @@ for await (const line of input) {
     let response;
     if (request.command === 'reset') {
       session = new InteractiveSession(request);
+      resetRequest = request;
+      actionLog = [];
       response = session.nextHand();
       if (response.type !== 'decision') throw new TypeError('M2 requires a first-hand decision');
       const audit = openingAudit(session, request.heroSeat);
       response = { ...response, ...audit };
     } else if (request.command === 'step' && session) {
       response = session.step(request.actionIndex);
+      actionLog.push(request.actionIndex);
+    } else if (request.command === 'audit_legal_amounts' && session) {
+      response = actualLegalAmounts();
     } else {
       throw new TypeError('M2 bridge expects reset or step in an active first hand');
     }

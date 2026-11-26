@@ -44,6 +44,7 @@ class EntryM2SamplingContractTest(unittest.TestCase):
             "madeCards": 3, "highRankZeroBased": 9,
             "legalMask": [1, 0, 1, 0, 1, 0],
             "legalAmountsChips": [0, None, 10, None, 30, None],
+            "controllerAppliedAmountsChips": {"0": 0, "2": 10, "4": 30},
             "naturalAction": 2, "toCallBigBets": .25,
             "openingPosition": 0, "publicActions": [],
         }
@@ -57,6 +58,11 @@ class EntryM2SamplingContractTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             audit_selected_opportunity({"chipLedgerPass": True,
                                         "target": {**target, "legalMask": [1, 0, 1, 0, 0, 0]}},
+                                       "A6T_boundary")
+        with self.assertRaisesRegex(ValueError, "applied controller"):
+            audit_selected_opportunity({"chipLedgerPass": True,
+                                        "target": {**target, "controllerAppliedAmountsChips":
+                                                   {"0": 0, "2": 10, "4": 20}}},
                                        "A6T_boundary")
         selected = {**row, "openingActorCards": target["actorCurrentCards"]}
         self.assertTrue(audit_selected_deal(selected, "A6T_boundary")

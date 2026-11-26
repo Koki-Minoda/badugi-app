@@ -20,6 +20,21 @@ def reset(seats: int, occupied: int, tournament: bool, hero: int, seed: int) -> 
 
 
 class EntryM2BridgeTest(unittest.TestCase):
+    def test_legal_amounts_match_applied_controller_branches(self):
+        requests = [{"command": "reset", "seatCount": 2, "occupiedSeatCount": 2,
+                     "isTournament": False, "heroSeat": 0, "seed": 132228,
+                     "includeLedger": True}, {"command": "audit_legal_amounts"}]
+        result = subprocess.run(["node", str(BRIDGE)],
+                                input="".join(json.dumps(item) + "\n" for item in requests),
+                                text=True, capture_output=True, cwd=ROOT, timeout=15,
+                                check=True)
+        decision, audit = map(json.loads, result.stdout.splitlines())
+        self.assertEqual(audit["type"], "amount_audit")
+        self.assertEqual(audit["decisionIndex"], decision["decisionIndex"])
+        self.assertEqual(audit["actualAmountsChips"], {"0": 0, "2": 10, "4": 30})
+        self.assertEqual([decision["auditActorVisible"]["legalAmountsChips"][index]
+                          for index in (0, 2, 4)], [0, 10, 30])
+
     def test_hero_initial_cards_across_modes_and_seats(self):
         for seats, occupied in ((2, 2), (3, 3), (6, 2), (6, 3), (6, 6)):
             for tournament in (False, True):

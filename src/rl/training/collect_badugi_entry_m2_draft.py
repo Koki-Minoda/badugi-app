@@ -133,6 +133,15 @@ def collect_hand(bridge: AuditBridge, agent: OnnxAgent, record: dict,
                 visible = decision["auditActorVisible"]
                 evidence = decision["beliefEvidence"]
                 order = opening_order(visible["dealerSeat"], occupied, physical)
+                amount_audit = bridge.send({"command": "audit_legal_amounts"})
+                actual_amounts = amount_audit.get("actualAmountsChips", {})
+                if (amount_audit.get("type") != "amount_audit" or
+                        amount_audit.get("seat") != hero or
+                        amount_audit.get("decisionIndex") != decision["decisionIndex"] or
+                        set(actual_amounts) != {"0", "2", "4"} or
+                        any(actual_amounts[str(index)] != visible["legalAmountsChips"][index]
+                            for index in (0, 2, 4))):
+                    raise ValueError("M2 legal F/C/R amount differs from applied controller branch")
                 target = {
                     "actorCurrentCards": visible["actorCurrentCards"],
                     "openingPosition": order.index(hero),
@@ -148,6 +157,7 @@ def collect_hand(bridge: AuditBridge, agent: OnnxAgent, record: dict,
                     "publicActions": evidence["publicActions"],
                     "legalMask": decision["legalMask"],
                     "legalAmountsChips": visible["legalAmountsChips"],
+                    "controllerAppliedAmountsChips": actual_amounts,
                     "naturalAction": action,
                 }
         else:

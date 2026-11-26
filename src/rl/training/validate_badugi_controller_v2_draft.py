@@ -19,15 +19,18 @@ import onnxruntime as ort
 
 if __package__:
     from .train_badugi_controller_v2_draft import (
-        ControllerBridge, DQNAgent, PROFILES, SCHEMA, check_decision, contract_hash,
-        opponent_action, observable_reference_action,
+        ControllerBridge, DQNAgent, HAND_AWARE_TRAINING_PROFILES, PROFILES, SCHEMA,
+        check_decision, contract_hash, opponent_action, observable_reference_action,
+        training_opponent_action,
     )
 else:
     from train_badugi_controller_v2_draft import (
-        ControllerBridge, DQNAgent, PROFILES, SCHEMA, check_decision, contract_hash,
-        opponent_action, observable_reference_action,
+        ControllerBridge, DQNAgent, HAND_AWARE_TRAINING_PROFILES, PROFILES, SCHEMA,
+        check_decision, contract_hash, opponent_action, observable_reference_action,
+        training_opponent_action,
     )
 from rl.env.badugi_env import evaluate_badugi
+from rl.training.unknown_badugi_opponents import UNKNOWN_PROFILES, unknown_opponent_action
 
 GROUPS = tuple((seats, occupied, tournament) for tournament in (False, True)
                for seats, occupied in ((2, 2), (3, 3), (6, 6), (6, 2), (6, 3)))
@@ -113,6 +116,36 @@ class FoldGuardedPhaseAgent(PhaseRoutedAgent):
         return self.bet_agent.act(obs, epsilon=epsilon, action_mask=action_mask)
 
 
+class FirstStreetKPatRaiseAgent:
+    """Development-only response for a K-high four-card Badugi before draw one."""
+
+    def __init__(self, base_agent):
+        self.base_agent = base_agent
+        self.overrides = 0
+
+    def act(self, obs, epsilon, action_mask):
+        action = self.base_agent.act(obs, epsilon=epsilon, action_mask=action_mask)
+        if (action == 2 and float(obs[8]) == 0.0 and float(obs[9]) == 0.0 and
+                float(obs[24]) == 1.0 and float(obs[25]) == 1.0 and
+                action_mask[4] == 1):
+            self.overrides += 1
+            return 4
+        return action
+
+
+class FirstStreetNineOrBetterPatRaiseAgent(FirstStreetKPatRaiseAgent):
+    """Development-only first-street value raise for a nine-low or better Badugi."""
+
+    def act(self, obs, epsilon, action_mask):
+        action = self.base_agent.act(obs, epsilon=epsilon, action_mask=action_mask)
+        if (action == 2 and float(obs[8]) == 0.0 and float(obs[9]) == 0.0 and
+                round(float(obs[24]) * 4) == 4 and
+                round(float(obs[25]) * 12) <= 8 and action_mask[4] == 1):
+            self.overrides += 1
+            return 4
+        return action
+
+
 def phase_model_sha(bet_path, draw_path, fold_guardian=False):
     bet_sha = hashlib.sha256(bet_path.read_bytes()).hexdigest()
     draw_sha = hashlib.sha256(draw_path.read_bytes()).hexdigest()
@@ -129,6 +162,10 @@ def main():
     parser.add_argument('--reference', action='store_true')
     parser.add_argument('--fold-guardian', action='store_true',
                         help='Exploratory phase pair only: keep published Standard BET FOLD')
+    parser.add_argument('--first-street-k-pat-raise', action='store_true',
+                        help='Exploratory only: change K-high four-card Badugi CALL to legal RAISE before draw one')
+    parser.add_argument('--first-street-nine-pat-raise', action='store_true',
+                        help='Exploratory only: change nine-low or better four-card Badugi CALL to legal RAISE before draw one')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--sessions-per-profile', type=int, default=6)
     parser.add_argument('--session-start-index', type=int, default=0,
@@ -136,15 +173,22 @@ def main():
     parser.add_argument('--hands-per-session', type=int, default=20)
     parser.add_argument('--seed-base', type=int, default=410040001)
     parser.add_argument('--evaluation-manifest', type=Path)
+    parser.add_argument('--opponent-suite', choices=('known', 'unknown-v1', 'hand-aware-v1'),
+                        default='known', help='Select a frozen controller opponent distribution')
     parser.add_argument('--decision-ledger', action='store_true',
                         help='Record every controller decision and terminal all-seat chip ledger')
     parser.add_argument('--only-group', choices=GROUP_NAMES,
                         help='Exploratory diagnosis only; frozen product evaluations require all groups')
-    parser.add_argument('--only-profile', choices=PROFILES,
+    parser.add_argument('--only-profile', choices=PROFILES + UNKNOWN_PROFILES + HAND_AWARE_TRAINING_PROFILES,
                         help='Exploratory diagnosis only; frozen product evaluations require all profiles')
     parser.add_argument('--capture-opening', action='store_true',
                         help='Exploratory replay only: save hero first pre-draw BET cards/context')
     args = parser.parse_args()
+    profiles = (PROFILES if args.opponent_suite == 'known' else
+                UNKNOWN_PROFILES if args.opponent_suite == 'unknown-v1' else
+                HAND_AWARE_TRAINING_PROFILES)
+    if args.only_profile and args.only_profile not in profiles:
+        raise ValueError('profile does not belong to selected opponent suite')
     if (args.output.exists() or not 1 <= args.sessions_per_profile <= 5000 or
             not 0 <= args.session_start_index or
             args.session_start_index + args.sessions_per_profile > 5000 or
@@ -158,6 +202,12 @@ def main():
         raise ValueError('frozen product evaluations cannot filter groups or profiles')
     if args.evaluation_manifest and args.capture_opening:
         raise ValueError('opening capture is diagnostic only; do not change a frozen evaluation')
+    if args.first_street_k_pat_raise and args.first_street_nine_pat_raise:
+        raise ValueError('choose only one first-street raise diagnostic')
+    if args.evaluation_manifest and (args.first_street_k_pat_raise or args.first_street_nine_pat_raise):
+        raise ValueError('first-street raise diagnostics cannot be a frozen product evaluation')
+    if args.reference and (args.first_street_k_pat_raise or args.first_street_nine_pat_raise):
+        raise ValueError('first-street raise diagnostics require an ONNX or checkpoint base agent')
     phase_pair = args.bet_onnx is not None and args.draw_onnx is not None
     if args.fold_guardian and not phase_pair:
         raise ValueError('fold guardian requires a BET candidate and published Standard DRAW ONNX')
@@ -173,6 +223,10 @@ def main():
     if args.model and (agent.obs_dim != 96 or agent.n_actions != 6 or
                   agent.checkpoint_training_state.get('schemaVersion') != SCHEMA):
         raise ValueError('candidate observation/action contract mismatch')
+    if args.first_street_k_pat_raise:
+        agent = FirstStreetKPatRaiseAgent(agent)
+    elif args.first_street_nine_pat_raise:
+        agent = FirstStreetNineOrBetterPatRaiseAgent(agent)
     candidate_path = args.model or args.onnx_model
     model_sha = (REFERENCE_POLICY_ID if args.reference else
                  phase_model_sha(args.bet_onnx, args.draw_onnx, args.fold_guardian) if phase_pair else
@@ -194,7 +248,8 @@ def main():
                      manifest['sessionsPerProfileGroup'] <= 5000) or
                 manifest.get('handsPerSessionMax') != args.hands_per_session or
                 manifest.get('groupMatrix') != GROUP_NAMES or
-                manifest.get('opponentProfiles') != list(PROFILES)):
+                manifest.get('opponentProfiles') != list(profiles) or
+                manifest.get('opponentSuite', 'known') != args.opponent_suite):
             raise ValueError('evaluation arguments differ from frozen manifest')
         if manifest.get('requireDecisionLedger', False) != args.decision_ledger:
             raise ValueError('decision-ledger setting differs from frozen manifest')
@@ -216,7 +271,7 @@ def main():
         for group_index, (seats, occupied, tournament) in enumerate(GROUPS):
             if args.only_group and GROUP_NAMES[group_index] != args.only_group:
                 continue
-            for profile_index, profile in enumerate(PROFILES):
+            for profile_index, profile in enumerate(profiles):
                 if args.only_profile and profile != args.only_profile:
                     continue
                 for session_index in range(args.session_start_index,
@@ -260,7 +315,12 @@ def main():
                                     first_opening = opening_context(response['observation'], action)
                                     first_opening['decisionOrdinal'] = len(decision_trace)
                             else:
-                                action = opponent_action(response, profile, rng)
+                                action = (unknown_opponent_action(response, profile, rng)
+                                          if args.opponent_suite == 'unknown-v1' else
+                                          training_opponent_action(response, profile, rng,
+                                                                   'hand-aware-v1')
+                                          if args.opponent_suite == 'hand-aware-v1' else
+                                          opponent_action(response, profile, rng))
                             decision_trace.append({'seat': response['seat'],
                                                    'phase': response['phase'],
                                                    'actionIndex': action,
@@ -336,6 +396,14 @@ def main():
                'modelKind': ('phase-routed-onnx' if phase_pair else 'onnx' if args.onnx_model
                              else 'pytorch' if args.model else 'reference'),
                'foldGuardian': args.fold_guardian,
+               'firstStreetKPatRaise': args.first_street_k_pat_raise,
+               'firstStreetKPatRaiseCount': agent.overrides if args.first_street_k_pat_raise else 0,
+               'firstStreetNinePatRaise': args.first_street_nine_pat_raise,
+               'firstStreetNinePatRaiseCount': agent.overrides if args.first_street_nine_pat_raise else 0,
+               'policySha256': (hashlib.sha256((model_sha + ':first-street-k-pat-raise-v1').encode()).hexdigest()
+                                if args.first_street_k_pat_raise else
+                                hashlib.sha256((model_sha + ':first-street-nine-pat-raise-v1').encode()).hexdigest()
+                                if args.first_street_nine_pat_raise else model_sha),
                'decisionLedgerIncluded': args.decision_ledger,
                'captureOpening': args.capture_opening,
                'seedBase': args.seed_base, 'sessionStartIndex': args.session_start_index,
@@ -346,7 +414,8 @@ def main():
                'handTraceSha256': file_sha256(hand_path),
                'sessionsPerProfileGroup': args.sessions_per_profile,
                'handsPerSessionMax': args.hands_per_session,
-               'opponentProfiles': [args.only_profile] if args.only_profile else PROFILES,
+               'opponentSuite': args.opponent_suite,
+               'opponentProfiles': [args.only_profile] if args.only_profile else profiles,
                'groups': [args.only_group] if args.only_group else GROUP_NAMES}
     (args.output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     print(json.dumps(summary, indent=2))

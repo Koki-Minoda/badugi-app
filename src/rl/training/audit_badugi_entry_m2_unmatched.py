@@ -19,6 +19,9 @@ import numpy as np
 
 SEED = re.compile(rb'"(?:seed|sessionSeed|deckSeed)"\s*:\s*(-?\d+)')
 HAND_INDEX = re.compile(rb'"(?:handIndex|handInSession)"\s*:\s*(\d+)')
+RECORDED_HAND_SEED = re.compile(
+    rb'"seed"\s*:\s*(-?\d+)\s*,\s*"(?:handIndex|handInSession)"\s*:\s*(\d+)'
+)
 MODULUS = 2**32
 HORIZON = 20
 
@@ -49,6 +52,8 @@ def source_class(relative_path: str) -> str | None:
         return "target_one_hand"
     if study == "d03-iron-anchor-rate-20261117" and name == "hand-trace.jsonl":
         return "indexed_hand_trace"
+    if study.startswith("d03-") and name in {"hand-trace.jsonl", "hand-trace.jsonl.incomplete"}:
+        return "recorded_hand_trace"
     return None
 
 
@@ -88,6 +93,24 @@ def actual_deck_residues(relative_path: str, line: bytes) -> tuple[str | None, I
         return kind, [base]
     if kind == "selected_20_hand":
         return kind, [(base + 1009 * i) % MODULUS for i in range(HORIZON)]
+    if kind == "recorded_hand_trace":
+        # A trace row records one dealt hand.  publicActionTrace can contain
+        # many nested `handIndex` fields, so an unpaired search is ambiguous.
+        # The collector writes top-level seed immediately before its index.
+        pairs = list(RECORDED_HAND_SEED.finditer(line))
+        has_terminal = (b'"chipDeltaBySeat"' in line or
+                        b'"allSeatChipDelta"' in line)
+        has_trace_identity = (b'"heroSeat"' in line and b'"profile"' in line and
+                              (b'"group"' in line or b'"seatCount"' in line))
+        decision_start = line.find(b'"decisions"')
+        if decision_start < 0:
+            decision_start = line.find(b'"allSeatDecisions"')
+        if (len(pairs) == 1 and int(pairs[0][1]) % MODULUS == base and
+                0 <= pairs[0].start() < decision_start and
+                has_terminal and has_trace_identity):
+            index = int(pairs[0][2])
+            return kind, [(base + 1009 * index) % MODULUS]
+        return None, []
     hand_match = HAND_INDEX.search(line)
     if kind == "indexed_hand_trace" and hand_match:
         index = int(hand_match.group(1))

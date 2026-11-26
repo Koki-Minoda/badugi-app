@@ -67,6 +67,36 @@ class SourceAwareResidues(unittest.TestCase):
         self.assertEqual(kind, "indexed_hand_trace")
         self.assertEqual(values, [3588575095])
 
+    def test_recorded_hand_trace_uses_only_its_dealt_index(self):
+        kind, values = actual_deck_residues(
+            "d03-iron-constrained-update-20261117/development-screen/checkpoint31/hand-trace.jsonl",
+            b'{"seed":4100,"handIndex":23,"group":"cash","profile":"balanced",'
+            b'"heroSeat":0,'
+            b'"chipDeltaBySeat":[0,0],"decisions":[],"publicActionTrace":['
+            b'{"handIndex":23},{"handIndex":23}]}')
+        self.assertEqual(kind, "recorded_hand_trace")
+        self.assertEqual(values, [(4100 + 23 * 1009) % 2**32])
+        self.assertNotIn(4100 + 24 * 1009, values)
+
+    def test_legacy_and_incomplete_trace_record_only_actual_hand(self):
+        kind, values = actual_deck_residues(
+            "d03-v2-beginner-anchor-train-2000hand-20261104/hand-trace.jsonl.incomplete",
+            b'{"seatCount":6,"seed":5000,"handInSession":8,"profile":"balanced",'
+            b'"heroSeat":0,'
+            b'"allSeatChipDelta":[0,0,0,0,0,0],"allSeatDecisions":[]}')
+        self.assertEqual(kind, "recorded_hand_trace")
+        self.assertEqual(values, [5000 + 8 * 1009])
+
+    def test_hand_trace_missing_terminal_or_seed_index_pair_stays_unresolved(self):
+        for row in (
+            b'{"seed":10,"handIndex":1,"publicActionTrace":[]}',
+            b'{"seed":10,"group":"cash","handIndex":1,'
+            b'"chipDeltaBySeat":[0,0]}',
+        ):
+            kind, values = actual_deck_residues(
+                "d03-example/hand-trace.jsonl", row)
+            self.assertEqual((kind, values), (None, []))
+
     def test_unknown_or_changed_format_fails_closed(self):
         self.assertEqual(actual_deck_residues("d03-new/paired-hands.jsonl",
                                                b'{"seed":5}'), (None, []))

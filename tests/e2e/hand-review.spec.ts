@@ -19,7 +19,10 @@ async function finishHand(page: Page) {
 
 test('save a real hand result, annotate, reload, retain after history removal, and filter', async ({ page }, info) => {
   await page.route('**/api/**', route => route.fulfill({ json: route.request().url().includes('/auth/me') ? { id: 'review-qa', username: 'Review QA' } : {} }));
-  await page.addInitScript(() => localStorage.setItem('mgx_auth', JSON.stringify({ accessToken: 'local-qa', user: { id: 'review-qa', username: 'Review QA' } })));
+  await page.addInitScript(() => {
+    localStorage.setItem('mgx_auth', JSON.stringify({ accessToken: 'local-qa', user: { id: 'review-qa', username: 'Review QA' } }));
+    localStorage.setItem('mgx.handResult.autoNext', 'off');
+  });
   await page.goto('/learn?variant=ace_to_five_triple_draw');
   await page.getByTestId('learn-play').click();
   await expect(page.getByTestId('game-rule-reminder')).toBeVisible();

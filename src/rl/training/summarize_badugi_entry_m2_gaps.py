@@ -13,7 +13,9 @@ from pathlib import Path
 
 from rl.training.badugi_starting_ranges import _score_key, all_starting_score_keys
 from rl.training.collect_badugi_entry_m2_draft import sha256, validate_plan
-from rl.training.entry_m2_sampling_contract import audit_selected_deal, best_badugi, parse_cards
+from rl.training.entry_m2_sampling_contract import (
+    PROFILES, audit_selected_deal, best_badugi, parse_cards,
+)
 
 
 def hand_class(cards: list[str], cutoff: tuple[int, ...]) -> str:
@@ -43,19 +45,57 @@ def cell_key(cell: dict) -> tuple:
             cell["priorRaiseCountCapped"], cell["handClass"])
 
 
+def opening_position_from_public_button(dealer: int, hero: int,
+                                        active: int, physical: int) -> int:
+    if (not all(type(value) is int for value in (dealer, hero, active, physical)) or
+            not 2 <= active <= physical or not 0 <= dealer < active or
+            not 0 <= hero < active):
+        raise ValueError("M2 public button or occupied hero seat invalid")
+    clockwise = [(dealer + offset) % physical for offset in range(1, physical + 1)
+                 if (dealer + offset) % physical < active]
+    first = dealer if active == 2 else clockwise[2]
+    order = [(first + offset) % physical for offset in range(physical)
+             if (first + offset) % physical < active]
+    return order.index(hero)
+
+
+def prior_raises_from_public_actions(events: list[dict], active: int) -> int:
+    if not isinstance(events, list):
+        raise ValueError("M2 public action history missing")
+    count = 0
+    for event in events:
+        if not isinstance(event, dict) or not isinstance(event.get("type"), str):
+            raise ValueError("M2 public action event malformed")
+        if event["type"] != "BET_ACTION":
+            continue
+        if (type(event.get("drawRoundIndex")) is not int or
+                event["drawRoundIndex"] != 0 or
+                type(event.get("seat")) is not int or
+                not 0 <= event["seat"] < active or
+                event.get("action") not in ("FOLD", "CHECK", "CALL", "BET", "RAISE")):
+            raise ValueError("M2 predraw public BET action malformed")
+        count += event["action"] == "RAISE"
+    return count
+
+
 def row_key(row: dict, cutoff: tuple[int, ...]) -> tuple | None:
     target = row.get("target")
     if target is None:
         return None
     physical, active, mode = row["group"]
-    if (type(target.get("openingPosition")) is not int or
-            not 0 <= target["openingPosition"] < active or
+    if (type(target.get("dealerSeat")) is not int or
+            type(target.get("openingPosition")) is not int or
             type(target.get("priorRaiseCount")) is not int or
             target["priorRaiseCount"] < 0):
-        raise ValueError("M2 target has invalid position or prior raise count")
-    return (mode, physical, active, target["openingPosition"],
+        raise ValueError("M2 target lacks public button or classification fields")
+    position = opening_position_from_public_button(target["dealerSeat"],
+                                                   row["heroSeat"], active, physical)
+    prior = prior_raises_from_public_actions(target.get("publicActions"), active)
+    if target["openingPosition"] != position or target["priorRaiseCount"] != prior:
+        raise ValueError("M2 opening position or prior raises disagree with public history")
+    return (mode, physical, active, position,
             price_band(target["toCallBigBets"]),
-            min(2, target["priorRaiseCount"]),
+            min(2, prior),
             hand_class(target["actorCurrentCards"], cutoff))
 
 
@@ -66,14 +106,18 @@ def reconcile(allocation: dict, rows: list[dict], cutoff: tuple[int, ...]) -> di
     if not cells or len({cell_key(cell) for cell in cells}) != len(cells):
         raise ValueError("M2 baseline cells are missing or duplicated")
     count = Counter()
+    count_by_profile = Counter()
     no_opportunity = Counter()
     for row in rows:
         key = row_key(row, cutoff)
+        if row.get("profile") not in PROFILES:
+            raise ValueError("M2 known artificial profile missing")
         if key is None:
             no_opportunity[(row["group"][2], row["group"][0],
-                            row["group"][1], row["stratum"])] += 1
+                            row["group"][1], row["stratum"], row["profile"])] += 1
         else:
             count[key] += 1
+            count_by_profile[(key, row["profile"])] += 1
     result_rows = []
     for cell in cells:
         key = cell_key(cell)
@@ -84,6 +128,8 @@ def reconcile(allocation: dict, rows: list[dict], cutoff: tuple[int, ...]) -> di
             "mode", "physicalSeats", "activeSeats", "openingPosition", "priceBand",
             "priorRaiseCountCapped", "handClass", "priorityTier")},
             "priorOpportunityCount": existing, "newM2OpportunityCount": added,
+            "newM2OpportunitiesByKnownArtificialProfile": {
+                profile: count_by_profile[(key, profile)] for profile in PROFILES},
             "descriptiveCombinedCount": existing + added,
             "planningDeficitTo200": max(0, quota - existing - added),
             "opportunityState": "PLANNING_QUOTA_MET" if existing + added >= quota
@@ -93,6 +139,8 @@ def reconcile(allocation: dict, rows: list[dict], cutoff: tuple[int, ...]) -> di
     # Newly observed public environments were absent from the original 53.
     # Preserve them separately; never silently discard or call them impossible.
     new_cells = [{"key": list(key), "newM2OpportunityCount": value,
+                  "newM2OpportunitiesByKnownArtificialProfile": {
+                      profile: count_by_profile[(key, profile)] for profile in PROFILES},
                   "actionRecommendation": "INSUFFICIENT_EV"}
                  for key, value in sorted(count.items())]
     states = Counter(row["opportunityState"] for row in result_rows)
@@ -109,11 +157,13 @@ def reconcile(allocation: dict, rows: list[dict], cutoff: tuple[int, ...]) -> di
             "cells": result_rows, "newlyObservedCells": new_cells,
             "noOpportunityByModeSeatAndOpeningStratum": [
                 {"mode": k[0], "physicalSeats": k[1], "activeSeats": k[2],
-                 "openingStratum": k[3], "selectedDeals": n}
+                 "openingStratum": k[3], "knownArtificialProfile": k[4],
+                 "selectedDeals": n}
                 for k, n in sorted(no_opportunity.items())],
             "limits": ["200 legal opportunities per cell is a collection-planning proxy, not an EV gate.",
                        "A selected opening stratum does not guarantee a legal F/C/R opportunity.",
                        "Rows are one-hand safety observations under known artificial opponents; no policy return is scored.",
+                       "Opponent profile is an audit stratum only and is never an actor inference input.",
                        "M3 local action EV and M4 natural 20-hand policy EV require new independent seeds."]}
 
 

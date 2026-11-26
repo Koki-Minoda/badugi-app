@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 
 from rl.training.badugi_starting_ranges import all_starting_score_keys
@@ -50,8 +51,8 @@ def bind_completed_attempt(row: dict, selected: dict, index: int) -> None:
         raise ValueError("M2 priority raw row opening evidence differs from the sealed schedule")
 
 
-def reconcile_priority_run(plan_path: Path, expected_plan_sha: str,
-                           expected_result_sha: str) -> dict:
+def load_collection_inputs(plan_path: Path, expected_plan_sha: str) -> tuple[dict, list, list]:
+    """Read the shared frozen inputs before collection or reconciliation."""
     folder = plan_path.parent
     plan = json.loads(_read_sealed(folder, plan_path.name, expected_plan_sha))
     if (plan.get("schema") != PLAN_SCHEMA or plan.get("status") != "FROZEN_BEFORE_COLLECTION" or
@@ -79,13 +80,27 @@ def reconcile_priority_run(plan_path: Path, expected_plan_sha: str,
                 for field in screen_inputs) or
             recount.get("acceptedAttempts") != 4_900):
         raise ValueError("M2 priority screen recount does not bind the selected allocation")
+    return plan, targets, selected
 
+
+def reconcile_priority_run(plan_path: Path, expected_plan_sha: str,
+                           expected_result_sha: str) -> dict:
+    folder = plan_path.parent
+    plan, targets, selected = load_collection_inputs(plan_path, expected_plan_sha)
     result = json.loads(_read_sealed(folder, plan["resultFile"], expected_result_sha))
+    latency = result.get("maxInferenceMs")
     if (result.get("schema") != RESULT_SCHEMA or
             result.get("status") != "COMPLETE_PRIORITY_OPPORTUNITY_SAFETY_ONLY" or
             result.get("planSha256") != expected_plan_sha or
             result.get("selectedSha256") != plan["selectedSha256"] or
-            result.get("completedAttempts") != 4_900):
+            result.get("codeGitSha") != plan.get("codeGitSha") or
+            not _is_sha256(plan.get("modelSha256")) or result.get("modelSha256") != plan["modelSha256"] or
+            result.get("completedAttempts") != 4_900 or
+            type(result.get("heroOnnxCalls")) is not int or result["heroOnnxCalls"] <= 0 or
+            type(result.get("fallbackCalls")) is not int or result["fallbackCalls"] != 0 or
+            type(latency) not in (int, float) or not math.isfinite(latency) or
+            type(plan.get("inferenceDeadlineMs")) is not int or
+            not 0 <= latency <= plan["inferenceDeadlineMs"] <= 2000):
         raise ValueError("M2 priority result is incomplete or references another collection")
     raw = _read_sealed(folder, plan["rowsFile"], result["rowsSha256"])
     if not raw.endswith(b"\n"):
@@ -93,8 +108,20 @@ def reconcile_priority_run(plan_path: Path, expected_plan_sha: str,
     rows = [json.loads(line) for line in raw.splitlines()]
     if len(rows) != len(selected):
         raise ValueError("M2 priority raw row count differs from the sealed schedule")
+    calls = 0
+    max_inference = 0
     for index, (row, expected) in enumerate(zip(rows, selected)):
         bind_completed_attempt(row, expected, index)
+        row_calls, row_latency = row.get("modelCalls"), row.get("maxInferenceMs")
+        if (type(row_calls) is not int or row_calls < 0 or
+                type(row.get("controllerDecisions")) is not int or row_calls > row["controllerDecisions"] or
+                type(row_latency) not in (int, float) or not math.isfinite(row_latency) or
+                not 0 <= row_latency <= plan["inferenceDeadlineMs"]):
+            raise ValueError("M2 priority raw inference counts or timing are invalid")
+        calls += row_calls
+        max_inference = max(max_inference, row_latency)
+    if calls != result["heroOnnxCalls"] or max_inference != latency:
+        raise ValueError("M2 priority raw inference totals differ from the sealed result")
     cutoff = all_starting_score_keys()[int((TOTAL_INITIAL_HANDS - 1) * 0.70)]
     return {
         "status": "PRIORITY_OPPORTUNITY_COUNTS_ONLY",

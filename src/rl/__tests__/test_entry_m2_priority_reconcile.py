@@ -49,6 +49,7 @@ class EntryM2PriorityReconciliationTests(unittest.TestCase):
                 "designFile": "design.json", "designSha256": design_sha,
                 "selectedFile": "selected.json", "selectedSha256": selected_sha,
                 "screenRecountFile": "recount.json", "screenRecountSha256": recount_sha,
+                "codeGitSha": "d" * 40, "modelSha256": "e" * 64, "inferenceDeadlineMs": 2000,
                 "rowsFile": "raw.jsonl", "resultFile": "result.json", **screen_inputs,
             })
             raw = b'{"partial":true}'
@@ -57,6 +58,8 @@ class EntryM2PriorityReconciliationTests(unittest.TestCase):
                 "schema": reconciliation.RESULT_SCHEMA,
                 "status": "COMPLETE_PRIORITY_OPPORTUNITY_SAFETY_ONLY",
                 "planSha256": plan_sha, "selectedSha256": selected_sha,
+                "codeGitSha": "d" * 40, "modelSha256": "e" * 64,
+                "heroOnnxCalls": 123, "fallbackCalls": 0, "maxInferenceMs": 31,
                 "completedAttempts": 4_900, "rowsSha256": reconciliation._digest(raw),
             })
             with (patch.object(reconciliation, "TARGETS_SHA256", targets_sha),

@@ -59,15 +59,17 @@ class EntryM2PriorityAttemptTests(unittest.TestCase):
         bridge.send.side_effect = [
             {"type": "decision", "seat": 0, "auditHeroSeat": 1, "auditOpeningHandIndex": 0,
              "auditOpeningHeroCards": CARDS, "auditActorVisible": {"dealerSeat": 0},
+             "handIndex": 0, "decisionIndex": 0, "observation": [0] * 96,
              "legalMask": [1, 0, 1, 0, 1, 0], "ledger": {"accounted": 100, "chipPool": 100}},
             {"type": "hand_end", "decisionCount": 1, "chipDeltaBySeat": [-1, 1],
+             "handIndex": 0, "startingStacks": [50, 50], "endingStacks": [49, 51],
              "ledger": {"terminal": True, "accounted": 100, "chipPool": 100},
              "publicActionTrace": [{"type": "BET_ACTION", "seat": 0, "drawRoundIndex": 0}]},
         ]
         model = Mock()
         record = {"seed": 7, "group": [2, 2, "cash"], "heroSeat": 1, "profile": "tight_value",
                   "stratum": "A6T_boundary", "expectedOpeningActorCards": CARDS,
-                  "expectedOpeningPosition": 1}
+                  "expectedOpeningPosition": 1, "expectedOpeningDealerSeat": 0}
         module = "rl.training.collect_badugi_entry_m2_draft"
         with patch(f"{module}.check_decision"), patch(f"{module}.training_opponent_action", return_value=0):
             result = collect_hand(bridge, model, record, 2000, capture_predraw_attempt=True)

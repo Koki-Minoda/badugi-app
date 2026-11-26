@@ -144,6 +144,7 @@ def collect_hand(bridge: AuditBridge, agent: OnnxAgent, record: dict,
                     raise ValueError("M2 legal F/C/R amount differs from applied controller branch")
                 target = {
                     "actorCurrentCards": visible["actorCurrentCards"],
+                    "dealerSeat": visible["dealerSeat"],
                     "openingPosition": order.index(hero),
                     "madeCards": evidence["actorHandProgress"]["current"]["madeCards"],
                     "highRankZeroBased": evidence["actorHandProgress"]["current"]["highRank"],

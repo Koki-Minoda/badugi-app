@@ -84,10 +84,11 @@ def preflight(plan_path: Path, plan_sha: str) -> tuple[dict, list, Path]:
     return plan, selected, model_path
 
 
-def mark_started(folder: Path, plan_sha: str) -> None:
-    if os.path.lexists(folder / ROWS_FILE) or os.path.lexists(folder / RESULT_FILE):
+def mark_started(folder: Path, plan_sha: str, *, marker_file: str = START_MARKER,
+                 protected_files: tuple = (ROWS_FILE, RESULT_FILE)) -> None:
+    if any(os.path.lexists(folder / name) for name in protected_files):
         raise FileExistsError("M2 priority original already exists; no automatic resume")
-    with (folder / START_MARKER).open("x") as marker:
+    with (folder / marker_file).open("x") as marker:
         json.dump({"status": "STARTED_NO_AUTOMATIC_RESUME", "planSha256": plan_sha}, marker)
         marker.write("\n")
         marker.flush()

@@ -1,0 +1,105 @@
+{
+  "status": "DESIGN_FROZEN_NO_COLLECTION",
+  "stage": "M1_THREE_DRAW_POLICY_SAFETY_DESIGN",
+  "createdJst": "2026-11-26 14:40 JST",
+  "issue": 483,
+  "dependencies": {
+    "exactOneDrawIssue": 479,
+    "exactOneDrawDraftPr": 481,
+    "exactDistributionSha256": "7e3006d848c91b9ddc080fe79473722c9d5cd28f9e4cd60d792674a14a8e457c",
+    "originalToCanonicalMapSha256": "aa1f11b52cfe0bc6ad4d873e19c5b91b61e35b7adb0fb0ff7b8ca2bc756b0023",
+    "candidateV3DraftPr": 477,
+    "candidateV3GitSha": "af058a525e8e87f63266346cc5a51f6d4ffef4c3",
+    "candidateV3SourceSha256": "39a7b59544ca24e3e4d64519c0398b17e552990bf64683e87c2ef76b077998ea",
+    "v2InteractiveSha256": "4cd5271687043944c6ef651326eb1b906700b1172c7e2f08d6166a69d77f4194",
+    "deckManagerMainSha256": "1892d37584277106d80068e13d591e2beb058df106eec00d6eba60d4457e0138",
+    "controllerMainSha256": "6257288bbb0414965b50edcef200befaa34f1f28c04214553101b383e0830f50"
+  },
+  "policyInputWhitelist": [
+    "actingPlayerCurrentFourCards",
+    "actingPlayerPreviouslySeenCardsAndOwnReplacements",
+    "drawRoundIndex",
+    "legalDrawCounts",
+    "physicalAndOccupiedSeats",
+    "dealerRelativePosition",
+    "ownStackAndPublicPotAndBetAmounts",
+    "publicOpponentActionsAndDrawCounts",
+    "publicOpponentHistoryFromCompletedHands"
+  ],
+  "policyInputForbidden": [
+    "opponentUnrevealedCards",
+    "deckOrderOrRemainingCardIdentities",
+    "burnCardIdentity",
+    "opponentDiscardCardIdentities",
+    "futureActionsOrShowdownBeforeReveal",
+    "artificialOpponentTypeLabel"
+  ],
+  "truthOnlyAuditFields": [
+    "fullDeckAndBurnAndDiscardPiles",
+    "allSeatCards",
+    "recycledCards",
+    "terminalScoreAndChipLedger"
+  ],
+  "pilot": {
+    "purpose": "Safety, conditional-deck and opportunity diagnosis only. No policy EV or strength claim.",
+    "initialHandStrataInOrder": [
+      "effective_three_A6T_exact",
+      "effective_two_A2_to_A6_not_previous",
+      "made_four_high_T_to_K_not_previous",
+      "all_other_natural_control"
+    ],
+    "tableGroups": [
+      "cash_2physical_2occupied",
+      "cash_3physical_3occupied",
+      "cash_6physical_2occupied",
+      "cash_6physical_3occupied",
+      "cash_6physical_6occupied",
+      "mtt_2physical_2occupied",
+      "mtt_3physical_3occupied",
+      "mtt_6physical_2occupied",
+      "mtt_6physical_3occupied",
+      "mtt_6physical_6occupied"
+    ],
+    "knownDevelopmentOpponents": [
+      "tight_value", "balanced_range", "loose_station", "bluff_pressure", "legacy_passive"
+    ],
+    "policies": [
+      "P0_checkpoint31_v2_count_and_deterministic_keep_all_streets",
+      "P1_first_draw_max_unconditional_P_four_card_nine_low_then_baseline",
+      "P2_first_draw_max_unconditional_P_four_card_then_baseline",
+      "P3_second_draw_keep_lex_best_current_valid_subset_then_baseline",
+      "P4_third_draw_keep_lex_best_current_valid_subset_then_baseline",
+      "P5_third_draw_PAT_control_then_baseline"
+    ],
+    "candidateTieBreak": "Highest preregistered probability; then fewer discards; then lowest canonical keep mask. P3/P4 choose the legal subset with maximum valid-card count and best lexicographic low rank, then fewer discards and lowest mask.",
+    "firstDrawCacheUse": "P1/P2 use the exact unconditional one-draw cache as a heuristic only. Public betting may correlate with hidden cards, so the cache is not a conditional posterior. No cache lookup on later draws without a separately verified dead-card model.",
+    "baseSeedsPerStratumGroupOpponent": 2,
+    "pairedBaseSeeds": 400,
+    "policyRuns": 2400,
+    "handsPerRun": 1,
+    "stop": "Exactly 400 collision-audited base seeds each replayed under six frozen policies, independent of results. Stop immediately for illegal action/amount, card duplication, chip imbalance, model fallback/deadline, missing public event, or uncontrolled deck recycle discrepancy.",
+    "seedRules": "Screen fresh 32-bit deck seeds for the actor initial-hand stratum, without using later outcomes. Freeze actual seed list and hash before collection; compare against recorded local prior actual deck seeds and planned seeds. Same seed and hero seat across six policies is intentional pairing, not six independent deals. Do not collect until code, model, seed-list and collector hashes are fixed.",
+    "audit": "At every decision validate legal action/amount, 4-card actor hand, all 52 card identities across live deck/burn/discards/seat hands, all-seat chip ledger, real checkpoint31 ONNX, inference deadline and fallback 0. Save public action/draw trace and separate truth-only deck audit. Replay fixed sample of 60 paired base seeds with identical code and input. Report counts of depletion/recycle, all-in draw, folded seats, PAT, draw 1-4, strata and positions.",
+    "descriptiveOutputs": [
+      "per_street_full_score_distribution",
+      "terminal_full_score_distribution",
+      "P_four_card_high_at_most_5_9_T",
+      "draw_and_PAT_frequencies",
+      "score_improvement_or_regression",
+      "recycle_and_depletion_frequency",
+      "missing_or_underpowered_cells"
+    ],
+    "forbiddenClaims": [
+      "best_entry_range", "betting_EV", "known_or_unknown_opponent_strength",
+      "Iron_promotion", "human_GTO"
+    ]
+  },
+  "collectionPrerequisites": [
+    "Candidate-only explicit keep-mask route through the real controller; current v2 has draw-count action and deterministic keep selector only.",
+    "Actor-visible/truth-only projection test, including no opponent hidden cards, burn, deck order or opponent discarded card identity in policy input.",
+    "Real DeckManager recycle parity test across three draws, 2/3/6 occupied seats and all-in/fold cases.",
+    "Fresh 32-bit actual deck-seed collision audit and frozen seed file.",
+    "Frozen collector/analysis/model/code SHA and resource estimate from a bounded smoke run."
+  ],
+  "afterPilot": "Only after safety pilot, prefreeze a separate larger FIT/VALIDATE design with independent seeds and session-level uncertainty. Three-draw score distributions remain separate from M2/M3 legal-entry and betting EV evidence."
+}

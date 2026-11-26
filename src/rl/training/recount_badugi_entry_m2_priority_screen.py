@@ -1,12 +1,12 @@
 """Reproduce an archived priority M2 hero-only screen and verify its selection."""
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
 import numpy as np
 
-from rl.training.collect_badugi_entry_m2_draft import sha256
 from rl.training.entry_m2_sampling_contract import PROFILES, best_badugi, parse_cards, stratum
 from rl.training.plan_badugi_entry_m2_priority_screen import (
     TARGETS_SHA256, build_design, load_priority_targets, verify_selected_schedule,
@@ -116,16 +116,16 @@ def recount_screen(plan_path: Path, plan_sha: str, result_sha: str) -> dict:
         raise ValueError("M2 priority screen trace must be a run-local file")
     trace_path = folder / name
     trace_sha = result["screenTraceSha256"]
-    if sha256(trace_path) != trace_sha:
-        raise ValueError("M2 priority screen trace SHA differs")
+    trace_digest = hashlib.sha256()
     with trace_path.open("rb") as trace:
         def read_rows():
             for line in trace:
+                trace_digest.update(line)
                 if not line.endswith(b"\n"):
                     raise ValueError("M2 priority screen trace ends with an incomplete record")
                 yield json.loads(line)
         recounted, preview_count = recount_prefixes(design, schedule, read_rows())
-    if (sha256(trace_path) != trace_sha or recounted != selected or
+    if (trace_digest.hexdigest() != trace_sha or recounted != selected or
             result.get("previewedDeals") != preview_count or
             result.get("unusedReservedDeals") != n - preview_count):
         raise ValueError("M2 priority selection or preview/unused counts differ from the recount")

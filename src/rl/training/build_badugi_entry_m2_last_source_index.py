@@ -109,7 +109,10 @@ def build(inventory_path: Path, previous_manifest_path: Path, root: Path,
     if (sum(x["family"] == "SEED_BEARING_EXPERIMENT" for x in sources) != 75 or
             sum(x["family"] == "SEED_SCHEDULE" for x in sources) != 12):
         raise ValueError("inventory/source scope changed")
-    output.mkdir(parents=True, exist_ok=False)
+    if len({x["path"] for x in sources}) != len(sources):
+        raise ValueError("duplicate source path")
+    if output.exists():
+        raise FileExistsError(output)
     actual: set[int] = set()
     schedule: set[int] = set()
     unresolved: set[int] = set()
@@ -184,6 +187,9 @@ def build(inventory_path: Path, previous_manifest_path: Path, root: Path,
                 count += 1
         if count != source["rows"] or digest.hexdigest() != source["sha256FromFullAudit"]:
             raise ValueError(f"row count or full SHA mismatch: {relative}")
+        if kind == "RECORDED_ONE_HAND_RESET_SEED":
+            # Decision-level rows may repeat the same reset seed many times.
+            confirmed_uses = len(seen)
         target.update(seen)
         tag = {"path": relative, "classification": kind, "rows": count,
                "uniqueRootSeeds": len(seen), "rowsWithoutRootSeed": missing_root,
@@ -197,6 +203,7 @@ def build(inventory_path: Path, previous_manifest_path: Path, root: Path,
             tag["producerPlanPath"] = str(plan.relative_to(root))
             tag["producerPlanSha256"] = hashlib.sha256(plan.read_bytes()).hexdigest()
         tags.append(tag)
+    output.mkdir(parents=True)
     files = {"confirmedRecorded": _write_u32(output / "confirmed-recorded.u32", actual),
              "uncertainBoundary": _write_u32(output / "uncertain-boundary.u32", boundary),
              "schedule": _write_u32(output / "schedule-reservation.u32", schedule),

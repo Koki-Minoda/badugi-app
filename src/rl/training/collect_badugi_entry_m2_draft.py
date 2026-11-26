@@ -48,18 +48,25 @@ class AuditBridge:
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.selector = selectors.DefaultSelector()
         self.selector.register(self.proc.stdout, selectors.EVENT_READ)
+        self.pending_stdout = bytearray()
 
     def send(self, request: dict) -> dict:
         self.proc.stdin.write(json.dumps(request) + "\n")
         self.proc.stdin.flush()
-        if not self.selector.select(self.deadline_seconds):
-            self.failed = True
-            self.proc.kill()
-            raise TimeoutError("M2 real-controller bridge deadline exceeded")
-        line = self.proc.stdout.readline()
-        if not line:
-            self.failed = True
-            raise RuntimeError("M2 bridge terminated before response")
+        deadline = time.monotonic() + self.deadline_seconds
+        while (newline := self.pending_stdout.find(b"\n")) < 0:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not self.selector.select(remaining):
+                self.failed = True
+                self.proc.kill()
+                raise TimeoutError("M2 real-controller bridge response deadline exceeded")
+            chunk = os.read(self.proc.stdout.fileno(), 64 * 1024)
+            if not chunk:
+                self.failed = True
+                raise RuntimeError("M2 bridge terminated before complete response")
+            self.pending_stdout.extend(chunk)
+        line = self.pending_stdout[:newline]
+        del self.pending_stdout[:newline + 1]
         response = json.loads(line)
         if response.get("type") == "error":
             self.failed = True
@@ -68,9 +75,17 @@ class AuditBridge:
 
     def close(self) -> None:
         self.selector.close()
-        if self.proc.poll() is None:
+        try:
             self.proc.stdin.close()
-            self.proc.wait(timeout=10)
+            try:
+                self.proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+                self.proc.wait()
+                raise
+        finally:
+            self.proc.stdout.close()
+            self.proc.stderr.close()
         if self.proc.returncode and not self.failed:
             raise RuntimeError("M2 bridge failed")
 
@@ -97,7 +112,7 @@ def opening_order(dealer: int, occupied: int, physical: int) -> list[int]:
 
 
 def collect_hand(bridge: AuditBridge, agent: OnnxAgent, record: dict,
-                 inference_deadline_ms: int) -> dict:
+                 inference_deadline_ms: int, *, capture_predraw_attempt: bool = False) -> dict:
     physical, occupied, mode = record["group"]
     hero = record["heroSeat"]
     rng = random.Random(record["seed"] + 997)
@@ -110,14 +125,38 @@ def collect_hand(bridge: AuditBridge, agent: OnnxAgent, record: dict,
     opening = decision.get("auditOpeningHeroCards")
     if opening != record["expectedOpeningActorCards"]:
         raise ValueError("real controller opening hand differs from sealed seed screen")
+    # The initial response carries the public button even when a different
+    # seat acts first or hero never gets a legal three-action opportunity.
+    if capture_predraw_attempt:
+        opening_dealer = decision["auditActorVisible"]["dealerSeat"]
+        if type(opening_dealer) is not int or not 0 <= opening_dealer < occupied:
+            raise ValueError("real controller opening dealer is outside the occupied seats")
+        if opening_dealer != record["expectedOpeningDealerSeat"]:
+            raise ValueError("real controller opening dealer differs from sealed schedule")
+        opening_position = opening_order(opening_dealer, occupied, physical).index(hero)
+        if (type(record.get("expectedOpeningPosition")) is not int or
+                opening_position != record["expectedOpeningPosition"]):
+            raise ValueError("real controller opening position differs from sealed schedule")
+        predraw_decisions = []
+        predraw_opportunities = []
     target = None
     decisions = model_calls = 0
     max_inference_ms = 0.0
     while decision["type"] == "decision":
         check_decision(decision, physical, occupied, mode == "mtt")
+        if capture_predraw_attempt and (
+                decision.get("handIndex") != 0 or decision.get("decisionIndex") != decisions or
+                type(decision.get("seat")) is not int or not 0 <= decision["seat"] < occupied or
+                any(type(value) is not int or value not in (0, 1) for value in decision["legalMask"]) or
+                not np.all(np.isfinite(decision["observation"]))):
+            raise ValueError("M2 priority controller decision sequence, seat, or observation is invalid")
         if decision["ledger"]["accounted"] != decision["ledger"]["chipPool"]:
             raise ValueError("M2 nonterminal all-seat chip ledger mismatch")
         if decision["seat"] == hero:
+            if (capture_predraw_attempt and decision["phase"] == "BET" and
+                    decision["drawRoundIndex"] == 0):
+                predraw_decisions.append({"decisionIndex": decision["decisionIndex"],
+                                          "legalMask": decision["legalMask"]})
             started = time.monotonic()
             action = agent.act(np.asarray(decision["observation"], np.float32), 0.0,
                                np.asarray(decision["legalMask"], np.float32))
@@ -126,7 +165,7 @@ def collect_hand(bridge: AuditBridge, agent: OnnxAgent, record: dict,
             if elapsed > inference_deadline_ms:
                 raise TimeoutError("M2 ONNX inference exceeded deadline")
             model_calls += 1
-            if (target is None and decision["phase"] == "BET" and
+            if ((target is None or capture_predraw_attempt) and decision["phase"] == "BET" and
                     decision["drawRoundIndex"] == 0 and
                     decision["legalMask"][0] == 1 and decision["legalMask"][2] == 1 and
                     decision["legalMask"][4] == 1):
@@ -142,7 +181,7 @@ def collect_hand(bridge: AuditBridge, agent: OnnxAgent, record: dict,
                         any(actual_amounts[str(index)] != visible["legalAmountsChips"][index]
                             for index in (0, 2, 4))):
                     raise ValueError("M2 legal F/C/R amount differs from applied controller branch")
-                target = {
+                opportunity = {
                     "actorCurrentCards": visible["actorCurrentCards"],
                     "dealerSeat": visible["dealerSeat"],
                     "openingPosition": order.index(hero),
@@ -161,10 +200,21 @@ def collect_hand(bridge: AuditBridge, agent: OnnxAgent, record: dict,
                     "controllerAppliedAmountsChips": actual_amounts,
                     "naturalAction": action,
                 }
+                if target is None:
+                    target = opportunity
+                if capture_predraw_attempt:
+                    if (len(opportunity["publicActions"]) != decision["decisionIndex"] or
+                            opportunity["toCallBigBets"] != actual_amounts["2"] / (2 * decision["activeBigBlind"])):
+                        raise ValueError("M2 priority opportunity history or call price disagrees")
+                    predraw_opportunities.append({
+                        **opportunity, "decisionIndex": decision["decisionIndex"],
+                        "activeBigBlindChips": decision["activeBigBlind"],
+                    })
         else:
             action = training_opponent_action(decision, record["profile"], rng,
                                               "hand-aware-v1")
-        if decision["legalMask"][action] != 1:
+        if ((capture_predraw_attempt and (type(action) is not int or not 0 <= action < 6)) or
+                decision["legalMask"][action] != 1):
             raise ValueError("M2 illegal selected action")
         decision = bridge.send({"command": "step", "actionIndex": action})
         decisions += 1
@@ -180,6 +230,28 @@ def collect_hand(bridge: AuditBridge, agent: OnnxAgent, record: dict,
               "maxInferenceMs": max_inference_ms,
               "controllerDecisions": decisions, "chipLedgerPass": True}
     audit_selected_deal(result, record["stratum"])
+    if capture_predraw_attempt:
+        public_trace = decision["publicActionTrace"]
+        starting = decision["startingStacks"]
+        ending = decision["endingStacks"]
+        deltas = decision["chipDeltaBySeat"]
+        if (decision.get("handIndex") != 0 or
+                any(len(vector) != physical or any(type(value) is not int for value in vector)
+                    for vector in (starting, ending, deltas)) or
+                any(after - before != change for before, after, change in zip(starting, ending, deltas)) or
+                any(any(vector[occupied:]) for vector in (starting, ending, deltas)) or
+                model_calls != sum(event["seat"] == hero for event in public_trace)):
+            raise ValueError("M2 priority terminal seat balances or hero ONNX counts disagree")
+        terminal_indices = [index for index, event in enumerate(public_trace)
+                            if event["type"] == "BET_ACTION" and event["seat"] == hero
+                            and event["drawRoundIndex"] == 0]
+        if (len(public_trace) != decisions or
+                terminal_indices != [item["decisionIndex"] for item in predraw_decisions]):
+            raise ValueError("M2 hero predraw decisions disagree with terminal public trace")
+        result.update(openingDealerSeat=opening_dealer, openingPosition=opening_position,
+                      heroPredrawDecisions=predraw_decisions,
+                      terminalHeroPredrawDecisionIndices=terminal_indices,
+                      predrawOpportunities=predraw_opportunities)
     return result
 
 

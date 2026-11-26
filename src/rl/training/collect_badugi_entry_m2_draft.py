@@ -182,33 +182,46 @@ def collect_hand(bridge: AuditBridge, agent: OnnxAgent, record: dict,
     return result
 
 
-def check_recorded_seed_history(plan: dict, rows: list[dict], folder: Path) -> None:
-    """Check the frozen actual-deck residue index, not an asserted PASS flag.
-
-    The index is a sorted, strictly unique little-endian uint32 binary file
-    produced by an independent inventory of recorded prior actual deck seeds.
-    """
-    name = plan.get("recordedDeckResiduesFile")
-    count = plan.get("recordedDeckResiduesCount")
-    digest = plan.get("recordedDeckResiduesSha256")
-    if (not isinstance(name, str) or not name or Path(name).is_absolute() or
-            Path(name).name != name or type(count) is not int or count < 1 or
+def load_residue_index(plan: dict, folder: Path, prefix: str) -> np.memmap:
+    """Verify a sorted, unique little-endian uint32 residue file and its SHA."""
+    name = plan.get(prefix + "File")
+    count = plan.get(prefix + "Count")
+    digest = plan.get(prefix + "Sha256")
+    if (not isinstance(name, str) or not name or
+            (prefix != "recordedDeckResidues" and Path(name).name != name) or
+            type(count) is not int or count < 1 or
             not isinstance(digest, str) or len(digest) != 64):
-        raise ValueError("M2 recorded deck index provenance missing")
-    path = folder / name
+        raise ValueError(f"M2 {prefix} index provenance missing")
+    path = Path(name) if Path(name).is_absolute() else folder / name
     if path.stat().st_size != count * 4 or sha256(path) != digest:
-        raise ValueError("M2 recorded deck index size or SHA mismatch")
+        raise ValueError(f"M2 {prefix} index size or SHA mismatch")
     prior = np.memmap(path, dtype="<u4", mode="r", shape=(count,))
     previous = None
     for start in range(0, count, 1_000_000):
         block = prior[start:start + 1_000_000]
         if (previous is not None and int(block[0]) <= previous) or np.any(block[1:] <= block[:-1]):
-            raise ValueError("M2 recorded deck index is not sorted and unique")
+            raise ValueError(f"M2 {prefix} index is not sorted and unique")
         previous = int(block[-1])
+    return prior
+
+
+def check_recorded_seed_history(plan: dict, rows: list[dict], folder: Path) -> None:
+    """Check both prior and all screened deals, including rejected screens."""
+    prior = load_residue_index(plan, folder, "recordedDeckResidues")
+    screened = load_residue_index(plan, folder, "screenedDeckResidues")
+    count = len(prior)
     residues = np.asarray([row["seed"] % DECK_MODULUS for row in rows], dtype="<u4")
     positions = np.searchsorted(prior, residues)
     if np.any((positions < count) & (prior[np.minimum(positions, count - 1)] == residues)):
         raise ValueError("M2 selected deck seed collides with recorded prior deck")
+    positions = np.searchsorted(screened, residues)
+    if np.any((positions >= len(screened)) |
+              (screened[np.minimum(positions, len(screened) - 1)] != residues)):
+        raise ValueError("M2 selected seed absent from all-screened reservation index")
+    positions = np.searchsorted(prior, screened)
+    if np.any((positions < count) &
+              (prior[np.minimum(positions, count - 1)] == screened)):
+        raise ValueError("M2 screened deck seed collides with recorded prior deck")
 
 
 def validate_plan(plan: dict, rows: list[dict], plan_folder: Path) -> None:
@@ -217,6 +230,10 @@ def validate_plan(plan: dict, rows: list[dict], plan_folder: Path) -> None:
             plan.get("handsPerSession") != 1 or
             len(rows) != plan.get("plannedSessions") or len(rows) != 5000 or
             plan.get("seedListSha256") != sha256(plan_folder / plan["selectedSeedsFile"]) or
+            plan.get("screenPlanSha256") != sha256(plan_folder / "frozen-screen-plan.json") or
+            plan.get("screenTraceSha256") != sha256(plan_folder / "hero-own-screen-trace.jsonl") or
+            plan.get("screenResultSha256") != sha256(plan_folder / "screen-result.json") or
+            plan.get("sourceManifestSha256") != sha256(Path(plan["sourceManifestFile"])) or
             plan.get("collectorSha256") != sha256(Path(__file__)) or
             plan.get("bridgeSha256") != sha256(BRIDGE) or
             plan.get("opponentSha256") != sha256(OPPONENT) or

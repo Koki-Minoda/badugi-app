@@ -234,6 +234,10 @@ def validate_plan(plan: dict, rows: list[dict], plan_folder: Path) -> None:
             plan.get("screenTraceSha256") != sha256(plan_folder / "hero-own-screen-trace.jsonl") or
             plan.get("screenResultSha256") != sha256(plan_folder / "screen-result.json") or
             plan.get("sourceManifestSha256") != sha256(Path(plan["sourceManifestFile"])) or
+            plan.get("unmatchedDirectAuditStatus") !=
+            "PASS_ALL_UNMATCHED_JSONL_NO_COLLISION" or
+            plan.get("unmatchedDirectAuditSha256") !=
+            sha256(Path(plan["unmatchedDirectAuditFile"])) or
             plan.get("collectorSha256") != sha256(Path(__file__)) or
             plan.get("bridgeSha256") != sha256(BRIDGE) or
             plan.get("opponentSha256") != sha256(OPPONENT) or

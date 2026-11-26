@@ -38,6 +38,8 @@ def recount(screen_folder: Path) -> dict:
     result_path = screen_folder / "screen-result.json"
     result = json.loads(result_path.read_text())
     if (plan.get("status") != "FROZEN_BEFORE_SCREEN" or
+            plan.get("unmatchedDirectAuditStatus") !=
+            "PASS_ALL_UNMATCHED_JSONL_NO_COLLISION" or
             result.get("status") != "SCREENED_FOR_SAFETY_COLLECTION" or
             result.get("screenCount") != 1_500_000 or
             result.get("selectedCount") != 5000 or result.get("short") or
@@ -100,6 +102,8 @@ def seal(screen_folder: Path, model_path: Path) -> dict:
     screen = json.loads((screen_folder / "frozen-screen-plan.json").read_text())
     if sha256(Path(screen["sourceManifestFile"])) != screen["sourceManifestSha256"]:
         raise ValueError("M2 prior source inventory manifest changed")
+    if sha256(Path(screen["unmatchedDirectAuditFile"])) != screen["unmatchedDirectAuditSha256"]:
+        raise ValueError("M2 unmatched JSONL collision audit changed")
     plan = {"schema": "mgx-d03-entry-m2-collector/v1",
             "status": "FROZEN_BEFORE_COLLECTION",
             "stage": "ENTRY_OPPORTUNITY_SAFETY_ONLY",
@@ -121,6 +125,9 @@ def seal(screen_folder: Path, model_path: Path) -> dict:
             "recordedDeckResiduesSha256": screen["recordedDeckResiduesSha256"],
             "sourceManifestFile": screen["sourceManifestFile"],
             "sourceManifestSha256": screen["sourceManifestSha256"],
+            "unmatchedDirectAuditStatus": screen["unmatchedDirectAuditStatus"],
+            "unmatchedDirectAuditFile": screen["unmatchedDirectAuditFile"],
+            "unmatchedDirectAuditSha256": screen["unmatchedDirectAuditSha256"],
             "screenedDeckResiduesFile": screen["screenedDeckResiduesFile"],
             "screenedDeckResiduesCount": screen["screenedDeckResiduesCount"],
             "screenedDeckResiduesSha256": screen["screenedDeckResiduesSha256"],

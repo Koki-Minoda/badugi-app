@@ -29,7 +29,7 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def prepare(index_manifest: Path, output: Path) -> dict:
+def prepare(index_manifest: Path, output: Path, unmatched_audit: Path | None = None) -> dict:
     if output.exists():
         raise FileExistsError("M2 screen schedule already exists")
     if subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip():
@@ -63,15 +63,28 @@ def prepare(index_manifest: Path, output: Path) -> dict:
     schedule.astype("<u4").tofile(schedule_path)
     sorted_path = output / "screened-deck-residues.u32le"
     np.sort(schedule).astype("<u4").tofile(sorted_path)
+    audit_fields = {"unmatchedDirectAuditStatus": "NOT_SCANNED_STOP"}
+    if unmatched_audit is not None:
+        independent = json.loads(unmatched_audit.read_text())
+        if (independent.get("status") != "PASS_ALL_UNMATCHED_JSONL_NO_COLLISION" or
+                independent.get("sourceManifestSha256") != sha256(index_manifest) or
+                independent.get("screenSeedScheduleSha256") != sha256(schedule_path) or
+                independent.get("unmatchedFilesScanned") != len(source["unmatchedJsonl"])):
+            raise ValueError("M2 unmatched JSONL audit is incomplete or mismatched")
+        audit_fields = {"unmatchedDirectAuditStatus": independent["status"],
+                        "unmatchedDirectAuditFile": str(unmatched_audit),
+                        "unmatchedDirectAuditSha256": sha256(unmatched_audit)}
     plan = {
         "schema": "mgx-d03-entry-m2-hero-screen/v1",
-        "status": "FROZEN_BEFORE_SCREEN",
+        "status": "FROZEN_BEFORE_SCREEN" if unmatched_audit else
+                  "PREPARED_PRIOR_AUDIT_INCOMPLETE",
         "stage": "HERO_OWN_OPENING_CARDS_ONLY_NO_REWARD",
         "codeGitSha": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT,
                                               text=True).strip(),
         "screenCodeSha256": sha256(SCREEN),
         "sourceManifestFile": str(index_manifest),
         "sourceManifestSha256": sha256(index_manifest),
+        **audit_fields,
         "recordedDeckResiduesFile": str(prior_path),
         "recordedDeckResiduesCount": len(prior),
         "recordedDeckResiduesSha256": sha256(prior_path),
@@ -106,8 +119,10 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--index-manifest", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--unmatched-audit", type=Path)
     args = parser.parse_args()
-    print(json.dumps(prepare(args.index_manifest.resolve(), args.output.resolve())))
+    print(json.dumps(prepare(args.index_manifest.resolve(), args.output.resolve(),
+                             args.unmatched_audit.resolve() if args.unmatched_audit else None)))
 
 
 if __name__ == "__main__":

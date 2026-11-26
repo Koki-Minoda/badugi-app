@@ -36,11 +36,16 @@ const selfSha = sha(readFileSync(new URL(import.meta.url)));
 if (plan.schema !== 'mgx-d03-entry-m2-hero-screen/v1' ||
     plan.status !== 'FROZEN_BEFORE_SCREEN' ||
     plan.stage !== 'HERO_OWN_OPENING_CARDS_ONLY_NO_REWARD' ||
+    plan.unmatchedDirectAuditStatus !== 'PASS_ALL_UNMATCHED_JSONL_NO_COLLISION' ||
+    !plan.unmatchedDirectAuditFile || !plan.unmatchedDirectAuditSha256 ||
     plan.codeGitSha !== codeSha || dirty || plan.screenCodeSha256 !== selfSha ||
     plan.screenCapPerCell !== 30000 || plan.acceptedPerCellStratum !== 25 ||
     plan.screenCount !== 1500000) throw new TypeError('M2 screen plan or code changed');
 if (sha(readFileSync(plan.sourceManifestFile)) !== plan.sourceManifestSha256) {
   throw new TypeError('M2 prior source inventory manifest changed');
+}
+if (sha(readFileSync(plan.unmatchedDirectAuditFile)) !== plan.unmatchedDirectAuditSha256) {
+  throw new TypeError('M2 unmatched JSONL collision audit missing or changed');
 }
 const schedule = readFileSync(join(folder, plan.screenSeedScheduleFile));
 if (schedule.length !== plan.screenCount * 4 || sha(schedule) !== plan.screenSeedScheduleSha256) {

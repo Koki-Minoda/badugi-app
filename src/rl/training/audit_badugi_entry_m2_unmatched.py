@@ -37,9 +37,9 @@ def source_class(relative_path: str) -> str | None:
     screened_studies = {"d03-a5-fourcard-all-street-natural-20261124",
                         "d03-a5-fourcard-public-response-20261125",
                         "d03-a5-fourcard-reraise-guard-20261125"}
-    if study in screened_studies and name == "screen-raw.jsonl.partial":
+    if (study in screened_studies or study.startswith("d03-predraw-")) and name == "screen-raw.jsonl.partial":
         return "screen_one_hand"
-    if study in screened_studies and name == "selected.jsonl":
+    if (study in screened_studies or study.startswith("d03-predraw-")) and name == "selected.jsonl":
         return "selected_20_hand"
     if (study in {"d03-iron-conditional-snow-20261118",
                    "d03-iron-conditional-snow-street1-20261118"} and

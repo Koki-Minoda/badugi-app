@@ -30,6 +30,13 @@ class SourceAwareResidues(unittest.TestCase):
         self.assertEqual(kind, "screen_one_hand")
         self.assertIn(1203101590, values)
 
+    def test_predraw_screen_uses_same_contiguous_deal_range(self):
+        kind, values = actual_deck_residues(
+            "d03-predraw-prior-raise-v1-20261123/screen-raw.jsonl.partial",
+            b'{"cell":{"firstSeed":3600000000},"scanned":3,"selected":[]}')
+        self.assertEqual(kind, "screen_one_hand")
+        self.assertEqual(list(values), [3600000000, 3600000001, 3600000002])
+
     def test_selected_session_expands_all_twenty_actual_hands(self):
         kind, values = actual_deck_residues(
             "d03-a5-fourcard-all-street-natural-20261124/selected.jsonl",

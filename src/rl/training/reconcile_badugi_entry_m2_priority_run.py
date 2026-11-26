@@ -70,7 +70,8 @@ def reconcile_priority_run(plan_path: Path, expected_plan_sha: str,
     verify_selected_schedule(design, selected)
 
     recount = json.loads(_read_sealed(folder, plan["screenRecountFile"], plan["screenRecountSha256"]))
-    screen_inputs = ("screenPlanSha256", "screenTraceSha256", "screenedDeckResiduesSha256")
+    screen_inputs = ("screenPlanSha256", "screenResultSha256", "screenTraceSha256",
+                     "screenedDeckResiduesSha256")
     if (recount.get("schema") != RECOUNT_SCHEMA or recount.get("status") != "PASS" or
             recount.get("selectedSha256") != plan["selectedSha256"] or
             recount.get("designSha256") != plan["designSha256"] or

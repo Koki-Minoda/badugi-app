@@ -36,7 +36,7 @@ class EntryM2PriorityReconciliationTests(unittest.TestCase):
             design_sha = put("design.json", {})
             selected_sha = put("selected.json", [])
             screen_inputs = {"screenPlanSha256": "1" * 64, "screenTraceSha256": "2" * 64,
-                             "screenedDeckResiduesSha256": "3" * 64}
+                             "screenedDeckResiduesSha256": "3" * 64, "screenResultSha256": "4" * 64}
             recount_sha = put("recount.json", {
                 "schema": reconciliation.RECOUNT_SCHEMA, "status": "PASS",
                 "selectedSha256": selected_sha, "designSha256": design_sha,

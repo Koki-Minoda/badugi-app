@@ -45,6 +45,16 @@ def cell_key(cell: dict) -> tuple:
             cell["priorRaiseCountCapped"], cell["handClass"])
 
 
+def verify_row_against_selected(row: dict, selected: dict, index: int) -> None:
+    if (row.get("globalIndex") != index or
+            row.get("seed") != selected["seed"] or
+            row.get("group") != selected["group"] or
+            row.get("profile") != selected["profile"] or
+            row.get("stratum") != selected["stratum"] or
+            row.get("heroSeat") != selected["heroSeat"]):
+        raise ValueError("M2 raw row differs from frozen selected hero schedule")
+
+
 def opening_position_from_public_button(dealer: int, hero: int,
                                         active: int, physical: int) -> int:
     if (not all(type(value) is int for value in (dealer, hero, active, physical)) or
@@ -197,12 +207,9 @@ def main() -> None:
     with rows_file.open() as stream:
         for index, line in enumerate(stream):
             row = json.loads(line)
-            if (index >= len(selected) or row.get("globalIndex") != index or
-                    row.get("seed") != selected[index]["seed"] or
-                    row.get("group") != selected[index]["group"] or
-                    row.get("profile") != selected[index]["profile"] or
-                    row.get("stratum") != selected[index]["stratum"]):
-                raise ValueError("M2 raw row diverged from frozen schedule")
+            if index >= len(selected):
+                raise ValueError("M2 raw row count exceeds frozen schedule")
+            verify_row_against_selected(row, selected[index], index)
             audit_selected_deal(row, row["stratum"])
             rows.append(row)
     if len(rows) != len(selected):

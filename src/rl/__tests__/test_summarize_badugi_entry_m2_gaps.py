@@ -5,6 +5,7 @@ import unittest
 from rl.training.badugi_starting_ranges import _score_key
 from rl.training.summarize_badugi_entry_m2_gaps import (
     hand_class, opening_position_from_public_button, price_band, reconcile,
+    verify_row_against_selected,
 )
 
 
@@ -103,6 +104,17 @@ class EntryM2GapTests(unittest.TestCase):
         self.assertEqual(price_band(0.5), "le_half_BB")
         self.assertEqual(price_band(1.0), "le_one_BB")
         self.assertEqual(price_band(1.001), "above_one_BB")
+
+    def test_forged_hero_seat_cannot_change_position_cell(self):
+        scheduled = {"seed": 17, "group": [2, 2, "cash"],
+                     "profile": "tight_value", "stratum": "A6T_boundary",
+                     "heroSeat": 1}
+        original = {**row(), "globalIndex": 0, "seed": 17}
+        verify_row_against_selected(original, scheduled, 0)
+        forged = {**original, "heroSeat": 0,
+                  "target": {**original["target"], "openingPosition": 0}}
+        with self.assertRaisesRegex(ValueError, "selected hero schedule"):
+            verify_row_against_selected(forged, scheduled, 0)
 
 
 if __name__ == "__main__":

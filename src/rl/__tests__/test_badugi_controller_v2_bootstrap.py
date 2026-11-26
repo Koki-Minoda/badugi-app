@@ -14,10 +14,14 @@ from rl.training.train_badugi_controller_v2_draft import (
     training_opponent_profile,
 )
 from rl.training.export_badugi_controller_v2_mode_ensemble import ModeEnsemble
-from rl.training.export_badugi_controller_v2_candidate import check_parity
+from rl.training.export_badugi_controller_v2_candidate import (
+    check_legal_action_equivalence, check_parity,
+)
 from rl.training.export_badugi_controller_v2_phase_candidate import PhaseEnsemble
 from rl.training.validate_badugi_controller_v2_draft import (
-    FoldGuardedPhaseAgent, OnnxAgent, PhaseRoutedAgent, opening_context,
+    FirstStreetKPatRaiseAgent, FirstStreetNineOrBetterPatRaiseAgent,
+    FoldGuardedPhaseAgent, OnnxAgent,
+    PhaseRoutedAgent, opening_context,
 )
 from rl.env.badugi_env import evaluate_badugi
 
@@ -33,6 +37,44 @@ def decision(phase, made, high, round_index, to_call_bb, mask):
 
 
 class BootstrapPolicyTests(unittest.TestCase):
+    def test_first_street_k_pat_raise_is_legal_and_street_limited(self):
+        class Calls:
+            def act(self, obs, epsilon, action_mask):
+                return 2
+
+        agent = FirstStreetKPatRaiseAgent(Calls())
+        observation = np.zeros(96, dtype=np.float32)
+        observation[24] = observation[25] = 1.0
+        mask = np.asarray([1, 0, 1, 0, 1, 0], dtype=np.float32)
+        self.assertEqual(agent.act(observation, 0.0, mask), 4)
+        observation[9] = 1 / 3
+        self.assertEqual(agent.act(observation, 0.0, mask), 2)
+        observation[9] = 0
+        mask[4] = 0
+        self.assertEqual(agent.act(observation, 0.0, mask), 2)
+        self.assertEqual(agent.overrides, 1)
+
+    def test_first_street_nine_pat_raise_uses_card_quality_and_legal_mask(self):
+        class Calls:
+            def act(self, obs, epsilon, action_mask):
+                return 2
+
+        agent = FirstStreetNineOrBetterPatRaiseAgent(Calls())
+        observation = np.zeros(96, dtype=np.float32)
+        observation[24] = 1.0
+        observation[25] = np.float32(8 / 12)
+        mask = np.asarray([1, 0, 1, 0, 1, 0], dtype=np.float32)
+        self.assertEqual(agent.act(observation, 0.0, mask), 4)
+        observation[25] = np.float32(9 / 12)
+        self.assertEqual(agent.act(observation, 0.0, mask), 2)
+        observation[25] = np.float32(8 / 12)
+        observation[24] = 0.75
+        self.assertEqual(agent.act(observation, 0.0, mask), 2)
+        observation[24] = 1.0
+        mask[4] = 0
+        self.assertEqual(agent.act(observation, 0.0, mask), 2)
+        self.assertEqual(agent.overrides, 1)
+
     def test_opening_context_records_hero_cards_and_rejects_shape_mismatch(self):
         cards = [(0, 0), (2, 1), (4, 2), (6, 3)]
         count, ranks = evaluate_badugi(cards)
@@ -58,6 +100,14 @@ class BootstrapPolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             check_parity(expected, np.asarray([[0.1, 0.49, 0.5], [0.5, 0.1, 0.2]],
                                                    dtype=np.float32))
+
+    def test_precision_export_checks_every_legal_mask(self):
+        original = np.asarray([[10, 5, 4, 0, 0, 0]], dtype=np.float32)
+        self.assertEqual(check_legal_action_equivalence(original, original), (63, 0))
+        altered = np.asarray([[10, 4, 5, 0, 0, 0]], dtype=np.float32)
+        self.assertEqual(original.argmax(axis=1).tolist(), altered.argmax(axis=1).tolist())
+        with self.assertRaisesRegex(ValueError, "changed .* legal actions"):
+            check_legal_action_equivalence(original, altered)
 
     def test_fresh_session_profile_covers_pressure_at_first_hand(self):
         bootstrap = Counter(training_opponent_profile(index, index, True)

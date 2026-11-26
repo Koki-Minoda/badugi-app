@@ -25,6 +25,8 @@ if str(SRC) not in sys.path:
 
 from rl.agents.dqn_agent import DQNAgent, DQNHyperParams
 from rl.utils.replay_buffer import ReplayBuffer
+from rl.training.hand_aware_known_badugi_opponents_draft import (
+    HAND_AWARE_KNOWN_PROFILES, hand_aware_known_opponent_action)
 
 BRIDGE = ROOT / "scripts" / "badugi-controller-v2-bridge.mjs"
 PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_plan_draft.json"
@@ -34,8 +36,10 @@ PRO_FOLD_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_fol
 PRO_ACTION_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_action_anchor_plan.json"
 PRO_FRESH_STACK_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_fresh_stack_plan.json"
 PRO_BET_ONLY_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_pro_bet_only_plan.json"
+IRON_PLAN = ROOT / "src" / "rl" / "training" / "badugi_controller_v2_iron_phase2_continuation_plan.json"
 SCHEMA = "badugi-controller-observation-v2-draft"
 PROFILES = ("passive", "pressure", "draw_heavy", "random_legal")
+HAND_AWARE_TRAINING_PROFILES = (*HAND_AWARE_KNOWN_PROFILES, "legacy_passive")
 CONTRACT_FILES = (
     "src/rl/badugiControllerObservationV2Draft.js",
     "src/rl/badugiControllerEventProjectionV2Draft.js",
@@ -49,6 +53,7 @@ CONTRACT_FILES = (
     "src/rl/agents/dqn_agent.py",
     "src/rl/utils/replay_buffer.py",
     "src/rl/training/train_badugi_controller_v2_draft.py",
+    "src/rl/training/hand_aware_known_badugi_opponents_draft.py",
 )
 
 
@@ -66,6 +71,58 @@ def checkout_identity():
     dirty = subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT,
                                     text=True).strip()
     return code_sha, dirty
+
+
+def validate_iron_seed_schedule(plan):
+    """Reject repeated controller seeds across all bounded Iron segments and stages."""
+    values = (plan.get("trainingSeedBase"), plan.get("segmentSeedStride"),
+              plan.get("stageSeedStride"), plan.get("maximumSegments"))
+    if any(type(value) is not int or value <= 0 for value in values):
+        raise ValueError("Iron seed schedule requires positive frozen integers")
+    base, segment_stride, stage_stride, segments = values
+    first = plan.get("minimumRunIndex", 1)
+    if type(first) is not int or not 1 <= first <= segments:
+        raise ValueError("Iron first segment must be inside the frozen budget")
+    windows = sorted((base + run * segment_stride + stage * stage_stride + group * 1_000_000,
+                      base + run * segment_stride + stage * stage_stride + group * 1_000_000 + 2499)
+                     for run in range(segments - first + 1)
+                     for stage in range(2) for group in range(10))
+    if (windows[-1][1] >= 2 ** 32 or
+            any(previous[1] >= current[0] for previous, current in zip(windows, windows[1:]))):
+        raise ValueError("Iron training seeds collide across segments or modulo 2^32")
+    handoff = plan.get("handoffRunIndex")
+    if handoff is not None and (type(handoff) is not int or not 2 <= handoff <= segments or
+            plan.get("minimumRunIndex") != handoff or
+            not isinstance(plan.get("handoffSourceCodeSha"), str) or
+            len(plan["handoffSourceCodeSha"]) != 40 or
+            not all(c in "0123456789abcdef" for c in plan["handoffSourceCodeSha"]) or
+            not isinstance(plan.get("handoffCheckpointSha256"), str) or
+            len(plan["handoffCheckpointSha256"]) != 64 or
+            not all(c in "0123456789abcdef" for c in plan["handoffCheckpointSha256"])):
+        raise ValueError("Iron continuation requires an exact frozen handoff")
+    return windows
+
+
+def validate_iron_cell_balance(plan):
+    """Keep every frozen 5k segment balanced across its reviewed opponent cells."""
+    groups = [f'{seats}/{occupied}-{mode}' for mode in ('cash', 'mtt')
+              for seats, occupied in ((2, 2), (3, 3), (6, 6), (6, 2), (6, 3))]
+    total = plan.get('segmentMaxHands')
+    bootstrap = plan.get('bootstrapHands')
+    suite = plan.get('opponentSuite', 'legacy-v1')
+    profiles = (HAND_AWARE_TRAINING_PROFILES if suite == 'hand-aware-v1' else
+                PROFILES if suite == 'legacy-v1' else None)
+    if (plan.get('trainingGroups') != groups or
+            profiles is None or plan.get('opponentProfiles') != list(profiles) or
+            plan.get('trainingSessionHands') != 20 or
+            type(total) is not int or total != 5000 or
+            type(bootstrap) is not int or not 0 <= bootstrap < total or
+            bootstrap % (len(groups) * len(profiles)) != 0 or
+            (total - bootstrap) % (len(groups) * len(profiles)) != 0):
+        raise ValueError('Iron stages must allocate whole hands equally across all 40 cells'
+                         if suite == 'legacy-v1' else
+                         'Iron stages must allocate whole hands equally across all 50 cells')
+    return total // (len(groups) * len(profiles))
 
 
 class ControllerBridge:
@@ -105,6 +162,19 @@ def opponent_action(decision, profile, rng):
         order = {"passive": (1, 2, 0, 3, 4), "pressure": (4, 3, 2, 1, 0),
                  "draw_heavy": (2, 1, 3, 4, 0)}[profile]
     return next(action for action in order if action in allowed)
+
+
+def training_opponent_action(decision, profile, rng, suite='legacy-v1'):
+    """Isolated curriculum dispatch; the acting seat sees only its observation."""
+    if suite == 'legacy-v1':
+        return opponent_action(decision, profile, rng)
+    if suite == 'hand-aware-v1':
+        if profile not in HAND_AWARE_TRAINING_PROFILES:
+            raise ValueError('unknown frozen hand-aware opponent profile')
+        return (opponent_action(decision, 'passive', rng)
+                if profile == 'legacy_passive' else
+                hand_aware_known_opponent_action(decision, profile, rng))
+    raise ValueError('unknown frozen opponent suite')
 
 
 def observable_reference_action(decision):
@@ -149,7 +219,8 @@ def check_decision(decision, seat_count, occupied_count, tournament):
 def run_hand(bridge, first_response, agent, rng, hero_seat, profile, epsilon,
              seat_count, occupied_count, tournament, buffer=None, batch_size=64, warmup=512,
              bootstrap=False, demonstrations=None, bootstrap_agent=None,
-             reference_draw_agent=None, bet_only_replay=False):
+             reference_draw_agent=None, bet_only_replay=False,
+             opponent_suite='legacy-v1'):
     response = first_response
     hero_decisions = []
     total_decisions = 0
@@ -181,7 +252,7 @@ def run_hand(bridge, first_response, agent, rng, hero_seat, profile, epsilon,
                 demonstrations.append((obs, action, response["phase"]))
             hero_bb = response["activeBigBlind"] if hero_bb is None else hero_bb
         else:
-            action = opponent_action(response, profile, rng)
+            action = training_opponent_action(response, profile, rng, opponent_suite)
         if response["legalMask"][action] != 1:
             raise ValueError("agent selected an illegal controller action")
         response = bridge.send({"command": "step", "actionIndex": action})
@@ -259,16 +330,17 @@ def sample_reference_demonstrations(demonstrations, batch_size, fold_anchor_per_
     return random.sample(demonstrations, batch_size)
 
 
-def training_opponent_profile(completed, session_index, fresh_session_per_hand=False):
+def training_opponent_profile(completed, session_index, fresh_session_per_hand=False,
+                              profiles=PROFILES):
     """Use every script opponent at fresh stacks in the Pro diagnostic curriculum."""
     offset = session_index if fresh_session_per_hand else completed + session_index
-    return PROFILES[offset % len(PROFILES)]
+    return profiles[offset % len(profiles)]
 
 
 def require_go_manifest(path, tier, hands, init_model=None, reference_model=None,
                         fold_anchor_per_batch=0, raise_anchor_per_batch=0,
                         draw_three_anchor_per_batch=0, fresh_session_per_hand=False,
-                        bet_only_standard_draw=False):
+                        bet_only_standard_draw=False, iron_plan_path=None):
     if path is None:
         raise ValueError("training requires --go-manifest with a frozen passing gate")
     manifest = json.loads(path.read_text())
@@ -326,11 +398,70 @@ def require_go_manifest(path, tier, hands, init_model=None, reference_model=None
                 tier_plan.get("betOnlyStandardDraw", False) != bet_only_standard_draw or
                 manifest.get("tierPlanSha256") != hashlib.sha256(tier_plan_path.read_bytes()).hexdigest()):
             raise ValueError("Pro requires frozen v2 Standard initial checkpoint and published reference ONNX")
+    elif tier == "iron":
+        tier_plan_path = iron_plan_path or IRON_PLAN
+        tier_plan = json.loads(tier_plan_path.read_text())
+        validate_iron_seed_schedule(tier_plan)
+        validate_iron_cell_balance(tier_plan)
+        if manifest.get('opponentSuite', 'legacy-v1') != tier_plan.get('opponentSuite', 'legacy-v1'):
+            raise ValueError('Iron opponent suite differs from frozen plan')
+        learning_rate = tier_plan.get("learningRate")
+        if learning_rate is not None and (type(learning_rate) not in (int, float) or
+                                          not 0 < learning_rate <= 0.0001 or
+                                          manifest.get("learningRate") != learning_rate):
+            raise ValueError("Iron learning rate must be frozen in the plan and GO manifest")
+        if (tier_plan.get("status") != "FROZEN_FOR_ISOLATED_IRON_PHASE2_TRAINING" or
+                tier_plan.get("schemaVersion") != SCHEMA or
+                init_model is None or not init_model.is_file() or
+                reference_model is None or not reference_model.is_file() or
+                manifest.get("initialModelSha256") != hashlib.sha256(init_model.read_bytes()).hexdigest() or
+                manifest.get("referenceModelSha256") != hashlib.sha256(reference_model.read_bytes()).hexdigest() or
+                manifest.get("referenceModelSha256") != tier_plan["publishedProOnnxSha256"] or
+                manifest.get("anchorPolicyId") != "published-v2-pro" or
+                manifest.get("tierPlanSha256") != hashlib.sha256(tier_plan_path.read_bytes()).hexdigest() or
+                manifest.get("explorationEpsilon") != tier_plan["explorationEpsilon"] or
+                manifest.get("bootstrapHands") != tier_plan["bootstrapHands"] or
+                manifest.get("imitationSteps") != tier_plan["imitationSteps"] or
+                manifest.get("referenceAnchorEvery") != tier_plan["referenceAnchorEvery"] or
+                manifest.get("maxHands") != tier_plan["segmentMaxHands"] or
+                not isinstance(manifest.get("runIndex"), int) or
+                manifest["runIndex"] < tier_plan.get("minimumRunIndex", 1) or
+                manifest["runIndex"] > tier_plan["maximumSegments"] or
+                not isinstance(manifest.get("priorCumulativeHands"), int) or
+                manifest["priorCumulativeHands"] < 0 or
+                manifest.get("seedBase") != tier_plan["trainingSeedBase"] +
+                (manifest["runIndex"] - tier_plan.get("minimumRunIndex", 1)) *
+                tier_plan["segmentSeedStride"]):
+            raise ValueError("Iron requires its frozen Phase 2 plan, Pro anchor and bounded segment")
+        prior = DQNAgent.load(str(init_model), device="cpu").checkpoint_training_state
+        if manifest["runIndex"] == 1:
+            if (manifest["priorCumulativeHands"] != 0 or
+                    manifest["initialModelSha256"] != tier_plan["initialProCheckpointSha256"] or
+                    prior.get("tier") != "pro"):
+                raise ValueError("first Iron segment must start from the frozen Pro checkpoint")
+        elif (prior.get("tier") != "iron" or
+              prior.get("runIndex") != manifest["runIndex"] - 1 or
+              prior.get("cumulativeHands") != manifest["priorCumulativeHands"] or
+              (manifest["runIndex"] == tier_plan.get("handoffRunIndex") and
+               (manifest["initialModelSha256"] != tier_plan["handoffCheckpointSha256"] or
+                prior.get("codeGitSha") != tier_plan["handoffSourceCodeSha"])) or
+              (manifest["runIndex"] != tier_plan.get("handoffRunIndex") and
+               prior.get("codeGitSha") != code_sha)):
+            raise ValueError("Iron continuation chain or source SHA differs")
     elif init_model is not None:
         raise ValueError("initial model is only approved for this Standard diagnostic run")
     elif reference_model is not None:
         raise ValueError("reference ONNX is only approved for the Pro diagnostic run")
     return manifest
+
+
+def apply_frozen_iron_learning_rate(agent, manifest):
+    """Apply the reviewed rate after restoring checkpoint optimizer state."""
+    if "learningRate" not in manifest:
+        return
+    agent.hyper.lr = manifest["learningRate"]
+    for group in agent.optimizer.param_groups:
+        group["lr"] = manifest["learningRate"]
 
 
 def main():
@@ -347,6 +478,8 @@ def main():
     parser.add_argument("--seed-base", type=int)
     parser.add_argument("--init-model", type=Path)
     parser.add_argument("--reference-model", type=Path)
+    parser.add_argument("--iron-plan", type=Path,
+                        help="reviewed isolated Iron plan; bound by GO manifest SHA")
     parser.add_argument("--fold-anchor-per-batch", type=int, default=0)
     parser.add_argument("--raise-anchor-per-batch", type=int, default=0)
     parser.add_argument("--draw-three-anchor-per-batch", type=int, default=0)
@@ -379,6 +512,10 @@ def main():
         raise ValueError("BET-only Pro requires isolated training, 20-hand sessions and no DRAW anchor")
     if args.train and (args.output is None or args.output.exists()):
         raise ValueError("training requires a new isolated --output directory")
+    if args.iron_plan and (not args.train or args.tier != "iron" or
+                           not args.iron_plan.resolve().is_relative_to(ROOT)):
+        raise ValueError("alternate Iron plan must be a reviewed repository file")
+    manifest = {}
     if args.train:
         manifest = require_go_manifest(args.go_manifest, args.tier, args.hands,
                                        args.init_model, args.reference_model,
@@ -386,7 +523,7 @@ def main():
                                        args.raise_anchor_per_batch,
                                        args.draw_three_anchor_per_batch,
                                        args.fresh_session_per_hand,
-                                       args.bet_only_standard_draw)
+                                       args.bet_only_standard_draw, args.iron_plan)
         if (manifest.get("bootstrapHands", 0) != args.bootstrap_hands or
                 manifest.get("imitationSteps", 0) != args.imitation_steps or
                 manifest.get("referenceAnchorEvery", 0) != args.reference_anchor_every or
@@ -394,13 +531,27 @@ def main():
             raise ValueError("training method differs from GO manifest")
     seed_base = (manifest["seedBase"] if args.train else
                  args.seed_base or (320040001 if args.bootstrap_hands else 310040001))
+    stage_seed_stride = (json.loads((args.iron_plan or IRON_PLAN).read_text())["stageSeedStride"]
+                         if args.train and args.tier == "iron" else 100_000_000)
+    iron_suite = (json.loads((args.iron_plan or IRON_PLAN).read_text()).get('opponentSuite', 'legacy-v1')
+                  if args.train and args.tier == 'iron' else 'legacy-v1')
+    training_profiles = (HAND_AWARE_TRAINING_PROFILES if iron_suite == 'hand-aware-v1'
+                         else PROFILES)
     random.seed(seed_base)
     np.random.seed(seed_base)
     torch.manual_seed(seed_base)
-    agent = (DQNAgent.load(str(args.init_model), device="cpu") if args.init_model else
+    agent = (DQNAgent.load(str(args.init_model), device="cpu",
+                           restore_training_state=args.train and args.tier == "iron" and
+                           manifest["runIndex"] > 1) if args.init_model else
              DQNAgent(obs_dim=96, n_actions=6, device="cpu", hidden_dim=256,
                       hyperparams=DQNHyperParams(lr=0.0001, batch_size=64)))
-    expected_initial_tier = "beginner" if args.tier == "standard" else "standard"
+    if args.train and args.tier == "iron" and manifest["runIndex"] > 1 and not agent.checkpoint_has_optimizer:
+        raise ValueError("Iron continuation requires an optimizer-bearing checkpoint")
+    if args.train and args.tier == "iron":
+        apply_frozen_iron_learning_rate(agent, manifest)
+    expected_initial_tier = ("beginner" if args.tier == "standard" else
+                             "pro" if args.tier == "iron" and manifest.get("runIndex") == 1 else
+                             "iron" if args.tier == "iron" else "standard")
     if args.init_model and (agent.obs_dim != 96 or agent.n_actions != 6 or
                             agent.checkpoint_training_state.get("schemaVersion") != SCHEMA or
                             agent.checkpoint_training_state.get("tier") != expected_initial_tier):
@@ -408,7 +559,7 @@ def main():
     bootstrap_agent = (DQNAgent.load(str(args.init_model), device="cpu")
                        if args.train and args.tier == "standard" else
                        FrozenOnnxPolicy(args.reference_model)
-                       if args.train and args.tier == "pro" else None)
+                       if args.train and args.tier in ("pro", "iron") else None)
     reference_draw_agent = (bootstrap_agent if args.bet_only_standard_draw else None)
     buffer = ReplayBuffer(capacity=100_000, seed=seed_base) if args.train else None
     bridge = ControllerBridge()
@@ -445,7 +596,7 @@ def main():
             completed = 0
             session_index = 0
             while completed < allocated:
-                session_seed = seed_base + stage_index * 100_000_000 + group_index * 1_000_000 + session_index
+                session_seed = seed_base + stage_index * stage_seed_stride + group_index * 1_000_000 + session_index
                 rng = random.Random(session_seed + 997)
                 response = bridge.send({"command": "reset", "seatCount": seat_count,
                                         "occupiedSeatCount": occupied_count,
@@ -462,7 +613,8 @@ def main():
                             break  # Table finished: restart with a new training seed.
                     profile = (fixed_profile if fixed_profile is not None else
                                training_opponent_profile(completed, session_index,
-                                                         args.fresh_session_per_hand))
+                                                         args.fresh_session_per_hand,
+                                                         training_profiles))
                     eligible = response.get("eligibleSeats", [])
                     if not eligible:
                         raise ValueError("controller bridge has no eligible target seat")
@@ -474,7 +626,7 @@ def main():
                         hero_seat = fixed_hero_seat
                     else:
                         hero_seat = eligible[(completed + session_index) % len(eligible)]
-                    epsilon = (manifest["explorationEpsilon"] if args.train and args.tier in ("standard", "pro") else
+                    epsilon = (manifest["explorationEpsilon"] if args.train and args.tier in ("standard", "pro", "iron") else
                                max(0.05, 0.2 - (len(results) - args.bootstrap_hands) * 0.15 /
                                    max(1, args.hands - args.bootstrap_hands)) if args.bootstrap_hands else
                                max(0.05, 1.0 - len(results) / 5000)) if args.train else 0.0
@@ -485,7 +637,8 @@ def main():
                                        demonstrations=demonstrations if stage == "bootstrap" else None,
                                        bootstrap_agent=bootstrap_agent,
                                        reference_draw_agent=reference_draw_agent,
-                                       bet_only_replay=args.bet_only_standard_draw)
+                                       bet_only_replay=args.bet_only_standard_draw,
+                                       opponent_suite=iron_suite)
                     if (stage == "rl" and args.reference_anchor_every and
                             outcome["heroDecisions"] and
                             completed % args.reference_anchor_every == 0):
@@ -509,13 +662,19 @@ def main():
         bridge.close()
     report = {"status": "TRAINING_CHECKPOINT" if args.train else "NO_GRADIENT_PREFLIGHT",
               "tier": args.tier, "trained": args.train, "modelPublished": False,
+              "codeGitSha": checkout_identity()[0],
+              "trainingRunIndex": manifest.get("runIndex") if args.train else None,
+              "priorCumulativeHands": manifest.get("priorCumulativeHands") if args.train else None,
+              "goManifestSha256": hashlib.sha256(args.go_manifest.read_bytes()).hexdigest() if args.train else None,
               "schemaVersion": SCHEMA,
               "initialModelSha256": (hashlib.sha256(args.init_model.read_bytes()).hexdigest()
                                      if args.init_model else None),
               "referenceModelSha256": (hashlib.sha256(args.reference_model.read_bytes()).hexdigest()
                                        if args.reference_model else None),
               "explorationEpsilon": manifest.get("explorationEpsilon") if args.train else None,
+              "learningRate": agent.hyper.lr if args.train else None,
               "anchorPolicyId": manifest.get("anchorPolicyId") if args.train else None,
+              "opponentSuite": iron_suite,
               "bridgeSha256": hashlib.sha256(BRIDGE.read_bytes()).hexdigest(),
               "contractSha256": contract_hash(),
               "hands": len(results), "decisions": sum(row["decisions"] for row in results),
@@ -561,13 +720,19 @@ def main():
               "groups": sorted(set((row["seatCount"], row["occupiedSeatCount"],
                                     row["isTournament"]) for row in results)),
               "opponentProfiles": sorted(set(row["profile"] for row in results)),
-              "seedSplit": f"{seed_base}+stage*100000000+group*1000000+session; distinct from evaluation seeds",
+              "seedSplit": f"{seed_base}+stage*{stage_seed_stride}+group*1000000+session; distinct from evaluation seeds",
               "stopRule": "run stops at requested hands (max 5000); no automatic continuation or promotion"}
     if args.train:
         args.output.mkdir(parents=True, exist_ok=True)
         agent.save(str(args.output / "candidate.pt"), training_state={
             "schemaVersion": SCHEMA, "tier": args.tier, "hands": len(results),
-            "bridgeSha256": report["bridgeSha256"]})
+            "bridgeSha256": report["bridgeSha256"],
+            **({"runIndex": manifest["runIndex"],
+                "cumulativeHands": manifest["priorCumulativeHands"] + len(results),
+                "codeGitSha": report["codeGitSha"],
+                "goManifestSha256": report["goManifestSha256"],
+                "parentCheckpointSha256": report["initialModelSha256"]}
+               if args.tier == "iron" else {})})
         (args.output / "hand-trace.jsonl").write_text("".join(
             json.dumps(row, separators=(",", ":")) + "\n" for row in results))
         (args.output / "run-summary.json").write_text(json.dumps(report, indent=2) + "\n")

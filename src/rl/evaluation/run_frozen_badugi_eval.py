@@ -28,6 +28,7 @@ COLLECTOR = ROOT / "src/rl/training/validate_badugi_controller_v2_draft.py"
 GROUPS = tuple(f'{seats}/{occupied}-{mode}' for mode in ("cash", "mtt")
                for seats, occupied in ((2, 2), (3, 3), (6, 6), (6, 2), (6, 3)))
 PROFILES = ("passive", "pressure", "draw_heavy", "random_legal")
+UNKNOWN_PROFILES = ("tight_range", "loose_caller", "bluff_early", "style_switch")
 MAX_SESSIONS_PER_CELL = 5000
 
 
@@ -39,12 +40,21 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def expected_cells() -> dict[str, dict]:
+def suite_profiles(plan: dict) -> tuple[str, ...]:
+    suite = plan.get("opponentSuite", "known")
+    if suite == "known":
+        return PROFILES
+    if suite == "unknown-v1":
+        return UNKNOWN_PROFILES
+    raise ValueError("unknown opponent suite")
+
+
+def expected_cells(profiles: tuple[str, ...] = PROFILES) -> dict[str, dict]:
     result = {}
     for group in GROUPS:
         table, occupied_mode = group.split("/", 1)
         occupied, mode = occupied_mode.split("-", 1)
-        for profile in PROFILES:
+        for profile in profiles:
             result[f"{group}|{profile}"] = {
                 "format": mode, "tableSeats": int(table),
                 "occupiedSeats": int(occupied),
@@ -60,13 +70,15 @@ def validate_preflight(plan: dict, manifests: dict[str, dict],
                        code_sha: str, look: int) -> dict[str, list[int]]:
     gate.validate_manifest(plan)
     if plan.get("evaluationPurpose") not in ("PHASE1_WIRING_DIAGNOSTIC_ONLY",
+                                             "PHASE2_SAFETY_DIAGNOSTIC_ONLY",
                                              "PROMOTION_CANDIDATE"):
         raise ValueError("evaluation purpose must be frozen before collection")
     if plan["handsPerSession"] != 20:
         raise ValueError("this D03 frozen runner requires 20-hand sessions")
     if look not in plan["lookSessionsPerCell"] or not 2 <= look <= MAX_SESSIONS_PER_CELL:
         raise ValueError("look is not predeclared or exceeds bounded collector capacity")
-    expected = expected_cells()
+    profiles = suite_profiles(plan)
+    expected = expected_cells(profiles)
     actual = {cell["name"]: cell for cell in plan["cells"]}
     if set(actual) != set(expected):
         raise ValueError("frozen D03 look requires all 40 seat/mode/profile cells")
@@ -88,14 +100,15 @@ def validate_preflight(plan: dict, manifests: dict[str, dict],
                 manifest.get("sessionsPerProfileGroup") != plan["lookSessionsPerCell"][-1] or
                 manifest.get("handsPerSessionMax") != plan["handsPerSession"] or
                 manifest.get("groupMatrix") != list(GROUPS) or
-                manifest.get("opponentProfiles") != list(PROFILES) or
+                manifest.get("opponentProfiles") != list(profiles) or
+                manifest.get("opponentSuite", "known") != plan.get("opponentSuite", "known") or
                 manifest.get("requireDecisionLedger") is not True or
                 type(base) is not int):
             raise ValueError(f"{arm} manifest or ONNX body differs from frozen plan")
         low, high = plan["seedWindows"][arm]
         seeds = [base + group * 1_000_000 + profile * 10_000 + index
                  for group in range(len(GROUPS))
-                 for profile in range(len(PROFILES))
+                 for profile in range(len(profiles))
                  for index in range(look)]
         if (not seeds or min(seeds) < low or max(seeds) > high or
                 any((seed % gate.SEED_PERIOD) in all_residues for seed in seeds)):
@@ -196,8 +209,9 @@ def validate_collection(summary: dict, *, arm: str, manifest_sha: str,
                         model_sha: str, contract_sha: str, code_sha: str,
                         session_start: int, session_count: int,
                         hands: int, session_path: Path,
-                        hand_path: Path) -> None:
-    expected_sessions = len(GROUPS) * len(PROFILES) * session_count
+                        hand_path: Path, profiles: tuple[str, ...] = PROFILES,
+                        suite: str = "known") -> None:
+    expected_sessions = len(GROUPS) * len(profiles) * session_count
     if (summary.get("status") != "FROZEN_EVALUATION" or
             summary.get("evaluationManifestSha256") != manifest_sha or
             summary.get("modelSha256") != model_sha or
@@ -211,14 +225,16 @@ def validate_collection(summary: dict, *, arm: str, manifest_sha: str,
             summary.get("zeroSumSessions") != expected_sessions or
             summary.get("hands") != expected_sessions * hands or
             summary.get("groups") != list(GROUPS) or
-            summary.get("opponentProfiles") != list(PROFILES) or
+            summary.get("opponentProfiles") != list(profiles) or
+            summary.get("opponentSuite", "known") != suite or
             summary.get("sessionTraceSha256") != sha256(session_path) or
             summary.get("handTraceSha256") != sha256(hand_path)):
         raise ValueError(f"{arm} collection is incomplete or differs from its frozen inputs")
 
 
 def validate_audited_seeds(path: Path, *, seed_base: int,
-                           session_start: int, session_count: int) -> None:
+                           session_start: int, session_count: int,
+                           profiles: tuple[str, ...] = PROFILES) -> None:
     """Verify the actual audited session matrix against the frozen seed formula."""
     seen = set()
     with path.open() as source:
@@ -228,20 +244,20 @@ def validate_audited_seeds(path: Path, *, seed_base: int,
             if not isinstance(cell, str) or "|" not in cell:
                 raise ValueError("audited session lacks a known matrix cell")
             group, profile = cell.split("|", 1)
-            if group not in GROUPS or profile not in PROFILES:
+            if group not in GROUPS or profile not in profiles:
                 raise ValueError("audited session is outside the frozen matrix")
             index = row.get("sessionIndex")
             if type(index) is not int or not session_start < index <= session_start + session_count:
                 raise ValueError("audited session index is outside this frozen stage")
             expected_seed = (seed_base + GROUPS.index(group) * 1_000_000 +
-                             PROFILES.index(profile) * 10_000 + index - 1)
+                             profiles.index(profile) * 10_000 + index - 1)
             occupied = int(group.split("/", 1)[1].split("-", 1)[0])
             if (row.get("seed") != expected_seed or
                     row.get("heroSeat") != (index - 1) % occupied or
                     (cell, index) in seen):
                 raise ValueError("audited seed or rotating hero seat differs from frozen schedule")
             seen.add((cell, index))
-    if len(seen) != len(GROUPS) * len(PROFILES) * session_count:
+    if len(seen) != len(GROUPS) * len(profiles) * session_count:
         raise ValueError("audited seed schedule is incomplete")
 
 
@@ -276,6 +292,7 @@ def verify_previous_look(path: Path, *, plan: dict, plan_sha: str,
                 hashes.get(f"{arm}ModelBody") != model_shas[arm]
                 for arm in ("candidate", "reference"))):
         raise ValueError("previous look identity differs from this frozen evaluation")
+    profiles = suite_profiles(plan)
     cumulative_rows = {}
     for arm in ("candidate", "reference"):
         for key, name in ((f"{arm}Audit", f"{arm}-audit.json"),
@@ -291,9 +308,10 @@ def verify_previous_look(path: Path, *, plan: dict, plan_sha: str,
         validate_audited_seeds(path / f"{arm}-audited.jsonl",
                                seed_base=seed_bases[arm],
                                session_start=result["stageSessionStartIndex"],
-                               session_count=result["stageSessionsPerCell"])
+                               session_count=result["stageSessionsPerCell"],
+                               profiles=profiles)
         cumulative_rows[arm] = rows
-        if len(rows) != len(GROUPS) * len(PROFILES) * result["lookSessionsPerCell"]:
+        if len(rows) != len(GROUPS) * len(profiles) * result["lookSessionsPerCell"]:
             raise ValueError("previous look cumulative session count differs")
     recomputed = gate.evaluate(plan, cumulative_rows)
     if any(result.get(key) != recomputed[key]
@@ -343,6 +361,8 @@ def run(*, plan_path: Path, manifests: dict[str, Path], models: dict[str, Path],
     if not _git_clean():
         raise ValueError("frozen evaluation requires a clean checkout")
     plan = json.loads(plan_path.read_text())
+    profiles = suite_profiles(plan)
+    suite = plan.get("opponentSuite", "known")
     manifest_data = {arm: json.loads(path.read_text()) for arm, path in manifests.items()}
     model_shas = {arm: sha256(path) for arm, path in models.items()}
     code_sha = _git_head()
@@ -372,7 +392,7 @@ def run(*, plan_path: Path, manifests: dict[str, Path], models: dict[str, Path],
         arm: [manifest_data[arm]["seedBase"] + group * 1_000_000 +
               profile * 10_000 + index
               for group in range(len(GROUPS))
-              for profile in range(len(PROFILES))
+              for profile in range(len(profiles))
               for index in range(start, look)]
         for arm in ("candidate", "reference")
     }
@@ -395,7 +415,8 @@ def run(*, plan_path: Path, manifests: dict[str, Path], models: dict[str, Path],
                        "--session-start-index", str(start),
                        "--hands-per-session", str(plan["handsPerSession"]),
                        "--seed-base", str(manifest_data[arm]["seedBase"]),
-                       "--evaluation-manifest", str(manifests[arm]), "--decision-ledger"]
+                       "--evaluation-manifest", str(manifests[arm]), "--decision-ledger",
+                       "--opponent-suite", suite]
             env = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
             with log_path.open("x") as log:
                 subprocess.run(command, cwd=ROOT, env=env, stdout=log,
@@ -411,7 +432,8 @@ def run(*, plan_path: Path, manifests: dict[str, Path], models: dict[str, Path],
                                 code_sha=code_sha, session_start=start,
                                 session_count=stage_count,
                                 hands=plan["handsPerSession"],
-                                session_path=session_path, hand_path=hand_path)
+                                session_path=session_path, hand_path=hand_path,
+                                profiles=profiles, suite=suite)
             audited_path = output_dir / f"{arm}-audited.jsonl"
             report_path = output_dir / f"{arm}-audit.json"
             audit_reports[arm] = trace_audit.audit_files(
@@ -427,7 +449,8 @@ def run(*, plan_path: Path, manifests: dict[str, Path], models: dict[str, Path],
                 raise ValueError(f"{arm} independent trace audit is incomplete")
             validate_audited_seeds(audited_path,
                                    seed_base=manifest_data[arm]["seedBase"],
-                                   session_start=start, session_count=stage_count)
+                                   session_start=start, session_count=stage_count,
+                                   profiles=profiles)
             audited_paths[arm] = audited_path
         cumulative_paths = {}
         for arm in ("candidate", "reference"):
